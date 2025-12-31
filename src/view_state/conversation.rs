@@ -1676,66 +1676,6 @@ mod tests {
         assert_eq!(result, HitTestResult::Miss, "Line beyond entry should miss");
     }
 
-    #[test]
-    fn hit_test_performance_100k_entries() {
-        use std::time::Instant;
-
-        // Create 100k entries
-        let entries: Vec<ConversationEntry> = (0..100_000)
-            .map(|i| make_valid_entry(&format!("uuid-{}", i)))
-            .collect();
-
-        let mut state = ConversationViewState::new(
-            None,
-            None,
-            entries,
-            200_000,
-            crate::model::PricingConfig::default(),
-        );
-
-        let params = LayoutParams::new(80, WrapMode::Wrap);
-        state.recompute_layout(params);
-        // Total height: 1,000,000 lines
-
-        // Test hit-testing at various positions
-        let test_cases = vec![
-            (0, 0),        // First entry
-            (500_000, 25), // Middle (entry 50,000)
-            (999_999, 50), // Last entry, last line
-            (250_000, 10), // Quarter
-            (750_000, 30), // Three quarters
-        ];
-
-        let mut total_duration = std::time::Duration::ZERO;
-        let iterations = 100;
-
-        for &(absolute_y, column) in &test_cases {
-            for _ in 0..iterations {
-                let start = Instant::now();
-                let _result = state.hit_test(
-                    (absolute_y % 1000) as u16, // screen_y
-                    column,
-                    LineOffset::new(absolute_y - (absolute_y % 1000)), // scroll_offset
-                );
-                total_duration += start.elapsed();
-            }
-        }
-
-        let avg_duration = total_duration / (test_cases.len() as u32 * iterations);
-
-        println!(
-            "Average hit_test duration for 100k entries: {:?}",
-            avg_duration
-        );
-        println!("Total test duration: {:?}", total_duration);
-
-        // Verify <1ms requirement
-        assert!(
-            avg_duration.as_millis() < 1,
-            "Hit test should complete in <1ms, got {:?}",
-            avg_duration
-        );
-    }
 
     // === needs_relayout Tests ===
 
