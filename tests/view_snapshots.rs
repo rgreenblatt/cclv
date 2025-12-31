@@ -1283,3 +1283,96 @@ fn bug_thinking_blocks_not_wrapped_like_prose() {
          Actual output:\n{output}"
     );
 }
+
+// ===== Horizontal Scroll Bug Reproduction =====
+
+/// Bug reproduction: Horizontal scroll does not work
+///
+/// EXPECTED: When wrap mode is OFF and user presses Right arrow,
+///           content should shift left to reveal truncated text.
+/// ACTUAL: Content remains unchanged - horizontal_offset state updates
+///         but rendering does not apply the offset to displayed content.
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/horizontal_scroll_repro.jsonl
+/// 2. Press 'w' to toggle wrap off (if needed)
+/// 3. Scroll to a line that is truncated (exceeds viewport width)
+/// 4. Press Right arrow multiple times
+/// 5. Observe: Content does not shift horizontally
+#[test]
+#[ignore = "cclv-lo7: horizontal scroll has no visual effect"]
+fn bug_horizontal_scroll_does_not_work() {
+    use cclv::source::FileSource;
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+    use std::path::PathBuf;
+
+    // Load minimal fixture with long line
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/horizontal_scroll_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create app with narrow terminal (60 chars) so long line is truncated
+    let backend = TestBackend::new(60, 15);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = cclv::config::keybindings::KeyBindings::default();
+    let input_source =
+        cclv::source::InputSource::Stdin(cclv::source::StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Initial render
+    app.render_test().expect("Initial render should succeed");
+
+    // Capture initial state - tool block JSON line should be truncated, MARKER not visible
+    // Tool blocks render as JSON which does NOT wrap regardless of wrap mode
+    let initial_output = buffer_to_string(app.terminal().backend().buffer());
+
+    // The fixture contains a tool_use with file_path ending in "MARKER_END_OF_LINE.txt"
+    // With 60-char width, this marker should NOT be visible initially
+    assert!(
+        !initial_output.contains("MARKER_END_OF_LINE"),
+        "MARKER should be beyond viewport initially (line truncated at ~58 chars).\n\
+         If visible, the test fixture is too short.\n\
+         Output:\n{initial_output}"
+    );
+
+    // Simulate pressing Right arrow 50 times to scroll horizontally
+    let right_key = KeyEvent::new(KeyCode::Right, KeyModifiers::NONE);
+    for _ in 0..50 {
+        let _ = app.handle_key_test(right_key);
+    }
+    app.render_test().expect("Render after scroll should succeed");
+
+    // Capture output after horizontal scroll
+    let scrolled_output = buffer_to_string(app.terminal().backend().buffer());
+
+    // Snapshot captures current (buggy) state
+    insta::assert_snapshot!("bug_horizontal_scroll_no_effect", scrolled_output);
+
+    // BUG: After scrolling right 50 chars, we should see content that was hidden
+    // The MARKER_END_OF_LINE should now be visible, but rendering ignores horizontal_offset
+    assert!(
+        scrolled_output.contains("MARKER_END_OF_LINE"),
+        "BUG: Horizontal scroll has no visual effect.\n\
+         After pressing Right 50 times, content should shift left to reveal MARKER_END_OF_LINE.\n\
+         Expected: MARKER_END_OF_LINE visible after scrolling right\n\
+         Actual: Content unchanged, horizontal_offset state updates but rendering ignores it.\n\n\
+         Initial output:\n{initial_output}\n\n\
+         Scrolled output:\n{scrolled_output}"
+    );
+}
