@@ -27,7 +27,6 @@ unicode-width = "0.2"
 toml = "0.8"
 dirs = "6.0"
 fenwick = "1"
-lru = "0.12"
 
 [features]
 e2e-tests = []  # Feature flag to enable E2E smoke tests

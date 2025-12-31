@@ -58,15 +58,6 @@ impl Default for EntryLayout {
     }
 }
 
-/// Height calculator function type.
-///
-/// Computes rendered height for an entry accounting for:
-/// - Malformed entries return fixed height (~5 lines for error display)
-/// - Collapsed entries return fixed small height (2-3 lines)
-/// - Expanded entries compute actual rendered height based on content
-/// - Width: viewport width for text wrapping calculations
-pub type HeightCalculator = fn(&ConversationEntry, bool, WrapMode, u16) -> LineHeight;
-
 /// Calculate the rendered height of an entry in terminal lines.
 ///
 /// This is THE canonical implementation. The view layer delegates to this function.

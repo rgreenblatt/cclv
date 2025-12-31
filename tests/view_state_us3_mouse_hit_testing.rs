@@ -90,7 +90,7 @@ fn us3_scenario1_click_specific_entry_not_adjacent() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.recompute_layout(params, fixed_height);
+    state.relayout_from(EntryIndex::new(0), params, fixed_height);
 
     // Layout: Each entry is 10 lines
     // Entry 0: lines 0..10
@@ -144,7 +144,7 @@ fn us3_scenario2_click_expand_collapse_indicator() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.recompute_layout(params, fixed_height);
+    state.relayout_from(EntryIndex::new(0), params, fixed_height);
 
     // WHEN: Click on expand/collapse indicator (assumed to be at column 0-2)
     // First, we need to hit-test to identify which entry
@@ -188,7 +188,7 @@ fn us3_scenario3_scrolled_middle_hit_test_correct() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.recompute_layout(params, fixed_height);
+    state.relayout_from(EntryIndex::new(0), params, fixed_height);
 
     // Total height: 20 entries * 10 lines = 200 lines
     // Entry 10: lines 100..110
@@ -235,7 +235,7 @@ fn us3_scenario4_variable_heights_boundary_clicks() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.recompute_layout(params, variable_height);
+    state.relayout_from(EntryIndex::new(0), params, variable_height);
 
     // Heights: 5, 10, 15, 20, 5, 10, 15, 20
     // Entry 0: lines 0..5   (height 5)
@@ -310,7 +310,7 @@ fn us3_performance_hit_test_o_log_n() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.recompute_layout(params, fixed_height);
+    state.relayout_from(EntryIndex::new(0), params, fixed_height);
 
     // Total height: 10,000 entries * 10 lines = 100,000 lines
 

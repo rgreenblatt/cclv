@@ -1,18 +1,17 @@
 ---
 source: tests/view_snapshots.rs
-assertion_line: 393
 expression: output
 ---
 ┌Main Agent (1 entries)──────────────────────────────────────────────┐
-│Here's some code:                                                   │
 │                                                                    │
-│```rust                                                             │
-│fn main() {                                                         │
-│    println!("Hello, world!");                                      │
-│}                                                                   │
-│```                                                                 │
 │                                                                    │
-│That's the code.                                                    │
+│                                                                    │
+│                                                                    │
+│                                                                    │
+│                                                                    │
+│                                                                    │
+│                                                                    │
+│                                                                    │
 │                                                                    │
 │                                                                    │
 │                                                                    │

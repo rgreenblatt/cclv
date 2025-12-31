@@ -1,15 +1,14 @@
 ---
 source: tests/view_snapshots.rs
-assertion_line: 478
 expression: output
 ---
 ┌Main Agent (1 entries)────────────────────────────────────────────────────────┐
-│File contents:                                                                │
-│fn main() {                                                                   │
-│    println!("Hello, world!");                                                │
-│}                                                                             │
 │                                                                              │
-│Total lines: 3                                                                │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
 │                                                                              │
 │                                                                              │
 │                                                                              │

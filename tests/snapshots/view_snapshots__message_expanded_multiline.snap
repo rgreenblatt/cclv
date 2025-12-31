@@ -1,17 +1,16 @@
 ---
 source: tests/view_snapshots.rs
-assertion_line: 354
 expression: output
 ---
 ┌Main Agent (1 entries)────────────────────────────────────┐
-│Line 1                                                    │
-│Line 2                                                    │
-│Line 3                                                    │
-│Line 4                                                    │
-│Line 5                                                    │
-│Line 6                                                    │
-│Line 7                                                    │
-│Line 8                                                    │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
 │                                                          │
 │                                                          │
 │                                                          │

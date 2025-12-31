@@ -16,12 +16,12 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │                                                                              │
 │I'll start by loading the required skill and then following the coordinator pr│
 │                                                                              │
-│🔧  Tool: Skill                                                                │
+│Tool: Skill                                                                   │
 │  {                                                                           │
 │    "skill": "efficient-subagent-orchestration"                               │
 │  }                                                                           │
 │                                                                              │
-│🔧  Tool: Skill                                                                │
+│Tool: Skill                                                                   │
 │  {                                                                           │
 │    "skill": "beads-project-tracking"                                         │
 └──────────────────────────────────────────────────────────────────────────────┘

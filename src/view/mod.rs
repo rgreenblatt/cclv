@@ -1,7 +1,5 @@
 //! TUI rendering and terminal management (impure shell)
 
-#[cfg(test)]
-mod height_calculator_tests;
 mod help;
 mod layout;
 pub mod live_indicator;
@@ -40,44 +38,6 @@ use std::io::{self, Stdout};
 use std::time::Duration;
 use thiserror::Error;
 use tracing::{debug, warn};
-
-// Height calculator for layout computation
-use crate::model::ConversationEntry;
-use crate::state::WrapMode;
-use crate::view_state::layout_params::LayoutParams;
-use crate::view_state::types::LineHeight;
-
-/// Calculate the rendered height of an entry in terminal lines.
-///
-/// **This function delegates to the canonical implementation in `view_state::layout`.**
-/// All height calculation logic lives there to maintain single source of truth.
-///
-/// Computes actual line count accounting for:
-/// - Text wrapping at viewport width (when wrap mode is Wrap)
-/// - Markdown rendering (headers, lists, code blocks)
-/// - Expanded vs collapsed state
-/// - Malformed entries (return 5 lines for error display)
-///
-/// # Arguments
-/// - `entry`: The conversation entry to calculate height for
-/// - `expanded`: Whether entry is expanded (true) or collapsed (false)
-/// - `wrap`: Text wrapping mode (Wrap or NoWrap)
-/// - `width`: Viewport width in characters for wrapping calculations
-///
-/// # Contract (from data-model.md HeightCalculator)
-/// - MUST return `LineHeight` with at least 1 for valid entries
-/// - MUST return fixed height (5 lines) for malformed entries
-/// - MUST be deterministic (same inputs → same output)
-/// - SHOULD be fast (called for every entry during layout)
-pub fn calculate_entry_height(
-    entry: &ConversationEntry,
-    expanded: bool,
-    wrap: WrapMode,
-    width: u16,
-) -> LineHeight {
-    // Delegate to canonical implementation in view_state layer
-    crate::view_state::layout::calculate_height(entry, expanded, wrap, width)
-}
 
 /// Errors that can occur during TUI operations
 #[derive(Debug, Error)]
@@ -152,18 +112,18 @@ impl TuiApp<CrosstermBackend<Stdout>> {
         // Recompute layout after adding entries (cclv-5ur.7)
         // Get terminal dimensions for layout params
         let width = terminal.size().map(|r| r.width).unwrap_or(80);
-        let params = LayoutParams::new(width, app_state.global_wrap);
+        let wrap = app_state.global_wrap;
 
         // Recompute layout for main conversation
         if let Some(main_view) = app_state.main_conversation_view_mut() {
-            main_view.recompute_layout(params, calculate_entry_height);
+            main_view.relayout(width, wrap);
         }
 
         // Recompute layout for all subagent conversations
         let subagent_count = app_state.session_view().subagent_ids().count();
         for idx in 0..subagent_count {
             if let Some(sub_view) = app_state.subagent_conversation_view_mut(idx) {
-                sub_view.recompute_layout(params, calculate_entry_height);
+                sub_view.relayout(width, wrap);
             }
         }
 
@@ -268,18 +228,18 @@ where
         // Recompute layout after test harness has added entries (matches production new())
         // Get terminal dimensions for layout params
         let width = terminal.size().map(|r| r.width).unwrap_or(80);
-        let params = LayoutParams::new(width, app_state.global_wrap);
+        let wrap = app_state.global_wrap;
 
         // Recompute layout for main conversation
         if let Some(main_view) = app_state.main_conversation_view_mut() {
-            main_view.recompute_layout(params, calculate_entry_height);
+            main_view.relayout(width, wrap);
         }
 
         // Recompute layout for all subagent conversations
         let subagent_count = app_state.session_view().subagent_ids().count();
         for idx in 0..subagent_count {
             if let Some(sub_view) = app_state.subagent_conversation_view_mut(idx) {
-                sub_view.recompute_layout(params, calculate_entry_height);
+                sub_view.relayout(width, wrap);
             }
         }
 
@@ -766,18 +726,18 @@ where
 
         // Recompute layout after adding streaming entries (cclv-5ur.7)
         let width = self.terminal.size().map(|r| r.width).unwrap_or(80);
-        let params = LayoutParams::new(width, self.app_state.global_wrap);
+        let wrap = self.app_state.global_wrap;
 
         // Recompute layout for main conversation
         if let Some(main_view) = self.app_state.main_conversation_view_mut() {
-            main_view.recompute_layout(params, calculate_entry_height);
+            main_view.relayout(width, wrap);
         }
 
         // Recompute layout for all subagent conversations
         let subagent_count = self.app_state.session_view().subagent_ids().count();
         for idx in 0..subagent_count {
             if let Some(sub_view) = self.app_state.subagent_conversation_view_mut(idx) {
-                sub_view.recompute_layout(params, calculate_entry_height);
+                sub_view.relayout(width, wrap);
             }
         }
     }

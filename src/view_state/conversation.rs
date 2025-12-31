@@ -3,7 +3,6 @@
 #![allow(dead_code)] // Will be used by tests and other modules
 
 use super::{
-    cache::{RenderCache, RenderCacheConfig},
     entry_view::EntryView,
     height_index::HeightIndex,
     hit_test::HitTestResult,
@@ -14,7 +13,6 @@ use super::{
 };
 use crate::model::ConversationEntry;
 use crate::state::app_state::WrapMode;
-use std::cell::RefCell;
 
 /// View-state for a single conversation.
 ///
@@ -23,7 +21,6 @@ use std::cell::RefCell;
 /// - Current scroll position
 /// - Cached total height
 /// - Layout validity tracking
-/// - Render cache for expensive markdown/syntax rendering (FR-050 to FR-054)
 ///
 /// # Layout Computation (FR-020 to FR-024)
 /// Layout is computed lazily on first render or explicitly.
@@ -35,10 +32,6 @@ use std::cell::RefCell;
 ///
 /// # Hit Testing (FR-040 to FR-043)
 /// `hit_test()` uses binary search on cumulative_y for O(log n) lookup.
-///
-/// # Render Caching (FR-050 to FR-054)
-/// `render_cache` stores recently rendered entry output to avoid re-rendering.
-/// Cache invalidates when viewport width, expand state, or wrap mode changes.
 #[derive(Debug, Clone)]
 pub struct ConversationViewState {
     /// Agent ID (None for main agent, Some(id) for subagents).
@@ -71,32 +64,15 @@ pub struct ConversationViewState {
     /// Only relevant when line wrapping is disabled (FR-040).
     /// 0 means viewing from the leftmost column.
     horizontal_offset: u16,
-    /// LRU cache for rendered entry output (FR-050 to FR-054).
-    /// Keyed by (uuid, width, expanded, wrap_mode).
-    /// Bounded capacity with automatic eviction.
-    /// Wrapped in RefCell to allow interior mutability during rendering.
-    /// DEPRECATED: Will be removed in future task.
-    /// Kept temporarily for compatibility during migration.
-    render_cache: RefCell<RenderCache>,
 }
 
 impl ConversationViewState {
-    /// Create new conversation view-state from entries with default cache config.
+    /// Create new conversation view-state from entries.
     /// Layout is not computed until `recompute_layout` is called.
     pub fn new(
         agent_id: Option<crate::model::AgentId>,
         model: Option<crate::model::ModelInfo>,
         entries: Vec<ConversationEntry>,
-    ) -> Self {
-        Self::with_cache_config(agent_id, model, entries, &RenderCacheConfig::default())
-    }
-
-    /// Create new conversation view-state with custom cache configuration.
-    pub fn with_cache_config(
-        agent_id: Option<crate::model::AgentId>,
-        model: Option<crate::model::ModelInfo>,
-        entries: Vec<ConversationEntry>,
-        cache_config: &RenderCacheConfig,
     ) -> Self {
         let entry_views: Vec<EntryView> = entries
             .into_iter()
@@ -116,7 +92,6 @@ impl ConversationViewState {
             focused_message: None,
             last_layout_params: None,
             horizontal_offset: 0,
-            render_cache: RefCell::new(RenderCache::from_config(cache_config)),
         }
     }
 
@@ -554,24 +529,7 @@ impl ConversationViewState {
             .unwrap_or(false)
     }
 
-    // === Render Cache Access ===
-
-    /// Get reference to render cache.
-    ///
-    /// Allows rendering code to check cache and populate on misses.
-    /// Uses RefCell for interior mutability during rendering.
-    pub fn render_cache(&self) -> &RefCell<RenderCache> {
-        &self.render_cache
-    }
-
-    /// Clear the render cache.
-    ///
-    /// Called when global viewport width changes or on explicit invalidation.
-    pub fn clear_render_cache(&mut self) {
-        self.render_cache.borrow_mut().clear();
-    }
-
-    // === NEW HEIGHT INDEX INTEGRATION METHODS ===
+    // === HEIGHT INDEX INTEGRATION METHODS ===
 
     /// Full relayout when width or global wrap changes. O(n log n).
     ///

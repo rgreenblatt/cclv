@@ -4,7 +4,7 @@ expression: bottom_output
 ---
 Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
-│🔧  Tool: Bash                                                                 │
+│Tool: Bash                                                                    │
 │  {                                                                           │
 │    "command": "bd show cclv-07v --json 2>/dev/null | head -100",             │
 │    "description": "Show epic details"                                        │

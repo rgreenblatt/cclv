@@ -82,7 +82,7 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
     let viewport = ViewportDimensions::new(80, 24);
 
     // Initial layout - all collapsed
-    view_state.recompute_layout(params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
 
     // Each entry is 3 lines when collapsed
     // Total height = 5 * 3 = 15 lines
@@ -176,7 +176,7 @@ fn us2_scenario2_collapse_expanded_entry_smooth_shift() {
     let viewport = ViewportDimensions::new(80, 24);
 
     // Initial layout
-    view_state.recompute_layout(params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
 
     // Expand entry 1 first
     view_state.toggle_expand(
@@ -258,7 +258,7 @@ fn us2_scenario3_toggle_response_under_16ms() {
     let viewport = ViewportDimensions::new(80, 24);
 
     // Initial layout
-    view_state.recompute_layout(params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
 
     // Measure toggle time
     let start = Instant::now();
@@ -305,7 +305,7 @@ fn us2_scenario4_entries_above_viewport_toggle_visible_stable() {
     let viewport = ViewportDimensions::new(80, 24);
 
     // Initial layout - all collapsed (3 lines each)
-    view_state.recompute_layout(params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
 
     // Scroll to show entry 6 at top of viewport
     // Entry 6 is at line 18 (6 * 3)
@@ -385,7 +385,7 @@ fn toggle_nonexistent_entry_returns_none() {
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
-    view_state.recompute_layout(params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
 
     // Try to toggle entry 999 (doesn't exist)
     let result = view_state.toggle_expand(
@@ -411,7 +411,7 @@ fn multiple_toggles_preserve_idempotence() {
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
-    view_state.recompute_layout(params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
 
     // Initial state: collapsed
     let initial = view_state.get(EntryIndex::new(0)).unwrap().is_expanded();

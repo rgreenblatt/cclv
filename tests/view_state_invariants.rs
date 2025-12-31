@@ -185,7 +185,7 @@ proptest! {
 
         let mut state = ConversationViewState::new(None, None, entries);
         let params = LayoutParams::new(80, WrapMode::Wrap);
-        state.recompute_layout(params, simple_height_calculator);
+        state.relayout_from(EntryIndex::new(0), params, simple_height_calculator);
 
         // Check monotonicity: forall i < j: entries[i].cumulative_y <= entries[j].cumulative_y
         for i in 0..state.len() {
@@ -215,7 +215,7 @@ proptest! {
 
         let mut state = ConversationViewState::new(None, None, entries);
         let params = LayoutParams::new(80, WrapMode::Wrap);
-        state.recompute_layout(params, simple_height_calculator);
+        state.relayout_from(EntryIndex::new(0), params, simple_height_calculator);
 
         // Check: forall i: entries[i].cumulative_y == sum(entries[0..i].height)
         let mut cumulative = 0usize;
@@ -240,7 +240,7 @@ proptest! {
     fn total_height_equals_sum_of_all_heights(entries in arb_entry_list(50)) {
         let mut state = ConversationViewState::new(None, None, entries);
         let params = LayoutParams::new(80, WrapMode::Wrap);
-        state.recompute_layout(params, simple_height_calculator);
+        state.relayout_from(EntryIndex::new(0), params, simple_height_calculator);
 
         let expected_total: usize = (0..state.len())
             .map(|i| {
@@ -272,7 +272,7 @@ proptest! {
     ) {
         let mut state = ConversationViewState::new(None, None, entries);
         let params = LayoutParams::new(viewport.width, WrapMode::Wrap);
-        state.recompute_layout(params, simple_height_calculator);
+        state.relayout_from(EntryIndex::new(0), params, simple_height_calculator);
 
         let total_height = state.total_height();
         let viewport_height = viewport.height as usize;
@@ -304,7 +304,7 @@ proptest! {
     ) {
         let mut state = ConversationViewState::new(None, None, entries.clone());
         let params = LayoutParams::new(viewport.width, WrapMode::Wrap);
-        state.recompute_layout(params, simple_height_calculator);
+        state.relayout_from(EntryIndex::new(0), params, simple_height_calculator);
 
         let visible = state.visible_range(viewport);
 
@@ -340,7 +340,7 @@ proptest! {
 
         let mut state = ConversationViewState::new(None, None, entries.clone());
         let params = LayoutParams::new(80, WrapMode::Wrap);
-        state.recompute_layout(params, simple_height_calculator);
+        state.relayout_from(EntryIndex::new(0), params, simple_height_calculator);
 
         let result = state.hit_test(screen_y, screen_x, scroll_offset);
 
@@ -540,7 +540,7 @@ proptest! {
         let params = LayoutParams::new(80, WrapMode::Wrap);
         let viewport = ViewportDimensions::new(80, 24);
 
-        state.recompute_layout(params, simple_height_calculator);
+        state.relayout_from(EntryIndex::new(0), params, simple_height_calculator);
 
         // Get initial expanded state
         let original = state.get(EntryIndex::new(0)).unwrap().is_expanded();
@@ -576,7 +576,7 @@ proptest! {
 
         let mut state = ConversationViewState::new(None, None, entries);
         let params = LayoutParams::new(80, WrapMode::Wrap);
-        state.recompute_layout(params, simple_height_calculator);
+        state.relayout_from(EntryIndex::new(0), params, simple_height_calculator);
 
         // Pick a valid relayout index
         let from_index = EntryIndex::new(relayout_from_idx.min(state.len().saturating_sub(1)));
