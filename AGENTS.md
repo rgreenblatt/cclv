@@ -106,3 +106,10 @@ git status             # Verify all changes committed
 - `specs/001-claude-code-log-viewer/research.md` - Technology decisions
 - `specs/001-claude-code-log-viewer/contracts/cli.md` - CLI interface contract
 - `.specify/memory/constitution.md` - Design principles
+
+## Active Technologies
+- Rust 1.75+ (2021 edition) + ratatui 0.29, crossterm 0.28, serde_json, chrono, tui-markdown, syntect (002-view-state-layer)
+- N/A (in-memory view-state, no persistence) (002-view-state-layer)
+
+## Recent Changes
+- 002-view-state-layer: Added Rust 1.75+ (2021 edition) + ratatui 0.29, crossterm 0.28, serde_json, chrono, tui-markdown, syntect
