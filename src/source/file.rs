@@ -258,7 +258,10 @@ impl FileSource {
         // If no valid entries were found, create default session
         let session = session.unwrap_or_else(|| {
             // SAFETY: "unknown-session" is a valid non-empty string constant
-            Session::new(SessionId::new("unknown-session").unwrap())
+            Session::new(
+                SessionId::new("unknown-session")
+                    .expect("BUG: constant 'unknown-session' is valid non-empty string"),
+            )
         });
 
         Ok(session)

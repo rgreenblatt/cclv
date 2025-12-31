@@ -226,14 +226,6 @@ impl PricingConfig {
         &self.default_pricing
     }
 
-    /// Merge pricing from a file configuration section.
-    ///
-    /// This is used when loading pricing from config files.
-    /// Not part of the public API - used by config module.
-    #[allow(dead_code)]
-    fn merge(&mut self, _other: HashMap<String, ModelPricing>) {
-        todo!("PricingConfig::merge")
-    }
 }
 
 // ===== ModelPricing =====
