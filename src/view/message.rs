@@ -587,6 +587,24 @@ fn render_entry_lines(
 /// * `styles` - Message styling configuration
 /// * `collapse_threshold` - Number of lines before a message is collapsed
 /// * `summary_lines` - Number of lines shown when collapsed
+/// Detect if markdown content contains code blocks.
+///
+/// Code blocks are detected as:
+/// - Fenced code blocks: lines starting with ``` or ~~~
+/// - Indented code blocks: lines with 4+ leading spaces (after list markers)
+///
+/// FR-053: Code blocks must never wrap, always using horizontal scroll.
+///
+/// # Arguments
+/// * `content` - Markdown text to scan for code blocks
+///
+/// # Returns
+/// `true` if any code block (fenced or indented) is present, `false` otherwise
+#[allow(unused_variables)]
+fn has_code_blocks(content: &str) -> bool {
+    todo!("has_code_blocks: not implemented")
+}
+
 /// * `wrap_mode` - Wrap mode for this specific entry
 ///
 /// # Returns
@@ -5714,5 +5732,176 @@ And here is more prose text that will wrap and show indicators."#;
         // Code block line should NOT have indicator
         // (This is harder to verify without parsing the rendered output more carefully,
         // but the visual test will make it obvious)
+    }
+
+    // ===== has_code_blocks Tests (FR-053) =====
+
+    #[test]
+    fn has_code_blocks_returns_false_for_plain_text() {
+        // ARRANGE: Plain prose with no code blocks
+        let content = "This is just plain text.\nNo code blocks here.";
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            !result,
+            "Plain prose should not be detected as containing code blocks"
+        );
+    }
+
+    #[test]
+    fn has_code_blocks_returns_true_for_fenced_code_block() {
+        // ARRANGE: Markdown with fenced code block (```)
+        let content = r#"Some text here.
+
+```rust
+let x = 42;
+```
+
+More text."#;
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            result,
+            "Fenced code block (```) should be detected"
+        );
+    }
+
+    #[test]
+    fn has_code_blocks_returns_true_for_tilde_fenced_code_block() {
+        // ARRANGE: Markdown with tilde-fenced code block (~~~)
+        let content = r#"Introduction.
+
+~~~python
+def hello():
+    print("world")
+~~~
+
+Conclusion."#;
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            result,
+            "Tilde-fenced code block (~~~) should be detected"
+        );
+    }
+
+    #[test]
+    fn has_code_blocks_returns_true_for_indented_code_block() {
+        // ARRANGE: Markdown with indented code block (4+ spaces)
+        let content = r#"Regular paragraph.
+
+    fn main() {
+        println!("Hello");
+    }
+
+Another paragraph."#;
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            result,
+            "Indented code block (4+ leading spaces) should be detected"
+        );
+    }
+
+    #[test]
+    fn has_code_blocks_returns_false_for_less_than_four_spaces() {
+        // ARRANGE: Text with 1-3 spaces (not a code block)
+        let content = r#"Regular line.
+  Two spaces.
+   Three spaces.
+Still not code."#;
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            !result,
+            "Lines with <4 leading spaces should not be detected as code blocks"
+        );
+    }
+
+    #[test]
+    fn has_code_blocks_handles_mixed_content() {
+        // ARRANGE: Mixed prose and code
+        let content = r#"Here is an explanation:
+
+```bash
+cargo test
+```
+
+And some prose, then indented code:
+
+    let result = compute();
+
+Done."#;
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            result,
+            "Mixed content with any code blocks should return true"
+        );
+    }
+
+    #[test]
+    fn has_code_blocks_returns_false_for_empty_string() {
+        // ARRANGE: Empty content
+        let content = "";
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            !result,
+            "Empty content should not contain code blocks"
+        );
+    }
+
+    #[test]
+    fn has_code_blocks_returns_true_for_code_block_at_start() {
+        // ARRANGE: Code block as first line
+        let content = r#"```rust
+fn test() {}
+```"#;
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            result,
+            "Code block at document start should be detected"
+        );
+    }
+
+    #[test]
+    fn has_code_blocks_ignores_code_fence_in_middle_of_line() {
+        // ARRANGE: Backticks not at line start (inline code, not block)
+        let content = "Use the `println!` macro for output.\nNot a ```code block```.";
+
+        // ACT
+        let result = has_code_blocks(content);
+
+        // ASSERT
+        assert!(
+            !result,
+            "Inline code (backticks mid-line) should not be detected as code blocks"
+        );
     }
 }
