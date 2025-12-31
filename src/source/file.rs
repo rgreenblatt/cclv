@@ -5,6 +5,8 @@
 
 use crate::model::error::InputError;
 use crate::model::LogEntry;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 // ===== FileSource =====
@@ -25,8 +27,39 @@ impl FileSource {
     ///
     /// Returns `InputError::FileNotFound` if file does not exist.
     /// Returns `InputError::Io` for I/O errors during reading.
-    pub fn new(_path: impl AsRef<Path>) -> Result<Vec<LogEntry>, InputError> {
-        todo!("FileSource::new - read-once implementation")
+    pub fn read(path: impl AsRef<Path>) -> Result<Vec<LogEntry>, InputError> {
+        let path = path.as_ref();
+
+        // Verify file exists
+        if !path.exists() {
+            return Err(InputError::FileNotFound {
+                path: path.to_path_buf(),
+            });
+        }
+
+        // Open file for reading
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        // Parse entries in single pass
+        let mut entries = Vec::new();
+
+        for line in reader.lines() {
+            let line = line?;
+
+            // Skip empty lines
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            // Parse entry and add to collection
+            // Malformed lines are silently skipped (FR-010)
+            if let Ok(entry) = LogEntry::parse(&line) {
+                entries.push(entry);
+            }
+        }
+
+        Ok(entries)
     }
 }
 
@@ -35,15 +68,15 @@ mod tests {
     use super::*;
     use std::fs;
 
-    // ===== FileSource::new() Tests =====
+    // ===== FileSource::read() Tests =====
     // Tests for read-once, synchronous file loading
 
     #[test]
-    fn new_fails_for_missing_file() {
+    fn read_fails_for_missing_file() {
         let temp_dir = std::env::temp_dir();
         let missing_file = temp_dir.join("nonexistent_file_source_12345.jsonl");
 
-        let result = FileSource::new(&missing_file);
+        let result = FileSource::read(&missing_file);
 
         assert!(
             matches!(result, Err(InputError::FileNotFound { .. })),
@@ -52,13 +85,13 @@ mod tests {
     }
 
     #[test]
-    fn new_returns_empty_vec_for_empty_file() {
+    fn read_returns_empty_vec_for_empty_file() {
         let temp_dir = std::env::temp_dir();
         let test_file = temp_dir.join("test_file_source_empty.jsonl");
 
         fs::write(&test_file, "").unwrap();
 
-        let result = FileSource::new(&test_file);
+        let result = FileSource::read(&test_file);
 
         // Cleanup
         let _ = fs::remove_file(&test_file);
@@ -69,7 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn new_parses_valid_jsonl_entries() {
+    fn read_parses_valid_jsonl_entries() {
         let temp_dir = std::env::temp_dir();
         let test_file = temp_dir.join("test_file_source_valid_entries.jsonl");
 
@@ -79,7 +112,7 @@ mod tests {
 "#;
         fs::write(&test_file, content).unwrap();
 
-        let result = FileSource::new(&test_file);
+        let result = FileSource::read(&test_file);
 
         // Cleanup
         let _ = fs::remove_file(&test_file);
@@ -90,7 +123,7 @@ mod tests {
     }
 
     #[test]
-    fn new_skips_malformed_lines_per_fr_010() {
+    fn read_skips_malformed_lines_per_fr_010() {
         let temp_dir = std::env::temp_dir();
         let test_file = temp_dir.join("test_file_source_malformed.jsonl");
 
@@ -103,7 +136,7 @@ malformed line without braces
 "#;
         fs::write(&test_file, content).unwrap();
 
-        let result = FileSource::new(&test_file);
+        let result = FileSource::read(&test_file);
 
         // Cleanup
         let _ = fs::remove_file(&test_file);
@@ -118,7 +151,7 @@ malformed line without braces
     }
 
     #[test]
-    fn new_skips_empty_lines() {
+    fn read_skips_empty_lines() {
         let temp_dir = std::env::temp_dir();
         let test_file = temp_dir.join("test_file_source_empty_lines.jsonl");
 
@@ -130,7 +163,7 @@ malformed line without braces
 "#;
         fs::write(&test_file, content).unwrap();
 
-        let result = FileSource::new(&test_file);
+        let result = FileSource::read(&test_file);
 
         // Cleanup
         let _ = fs::remove_file(&test_file);
@@ -141,7 +174,7 @@ malformed line without braces
     }
 
     #[test]
-    fn new_returns_entries_in_file_order() {
+    fn read_returns_entries_in_file_order() {
         let temp_dir = std::env::temp_dir();
         let test_file = temp_dir.join("test_file_source_ordering.jsonl");
 
@@ -152,7 +185,7 @@ malformed line without braces
 "#;
         fs::write(&test_file, content).unwrap();
 
-        let result = FileSource::new(&test_file);
+        let result = FileSource::read(&test_file);
 
         // Cleanup
         let _ = fs::remove_file(&test_file);
