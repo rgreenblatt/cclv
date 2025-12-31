@@ -109,11 +109,12 @@ pub fn prev_match(mut state: AppState) -> AppState {
 /// Find the tab index for a given agent_id.
 /// Returns None if agent_id is not found in subagents.
 fn find_tab_for_agent(state: &AppState, agent_id: &AgentId) -> Option<usize> {
-    state
-        .session_view()
-        .subagent_ids()
+    let mut agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
+    agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+    agent_ids
+        .iter()
         .enumerate()
-        .find(|(_, aid)| *aid == agent_id)
+        .find(|(_, aid)| **aid == agent_id)
         .map(|(idx, _)| idx)
 }
 

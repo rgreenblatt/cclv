@@ -235,7 +235,9 @@ fn render_conversation_pane(
     let content_area = chunks[1];
 
     // Build tab list: Main Agent (tab 0) + Subagents (tabs 1..N)
-    let subagent_ids: Vec<_> = state.session_view().subagent_ids().collect();
+    // Sort subagent IDs for deterministic tab ordering (HashMap iteration is non-deterministic)
+    let mut subagent_ids: Vec<_> = state.session_view().subagent_ids().collect();
+    subagent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
 
     // FR-086: Build ConversationTab list with Main Agent at position 0
     let mut conversation_tabs = vec![tabs::ConversationTab::Main];
@@ -449,11 +451,19 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
 /// - Agent identifier based on selected tab (Main Agent vs subagent ID)
 fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
     // Determine which conversation to show based on selected_tab
-    let (agent_label, conversation_view) = if let Some(selected_idx) = state.selected_tab {
-        // Get selected subagent conversation (read-only access)
-        let agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
+    // Tab 0 = Main Agent, Tabs 1+ = Subagents
+    let selected_tab_index = state.selected_tab.unwrap_or(0);
 
-        if let Some(&agent_id) = agent_ids.get(selected_idx) {
+    let (agent_label, conversation_view) = if selected_tab_index == 0 {
+        // Tab 0: Main Agent
+        ("Main Agent".to_string(), state.session_view().main())
+    } else {
+        // Tabs 1+: Subagents (index - 1 in subagent list)
+        let subagent_index = selected_tab_index - 1;
+        let mut agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
+        agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+
+        if let Some(&agent_id) = agent_ids.get(subagent_index) {
             // Try to get initialized subagent, but show subagent label even if pending
             let conv = state
                 .session_view()
@@ -461,12 +471,9 @@ fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
                 .unwrap_or_else(|| state.session_view().main());
             (format!("Subagent {}", agent_id.as_str()), conv)
         } else {
-            // selected_tab out of bounds, fallback to main
+            // subagent_index out of bounds, fallback to main
             ("Main Agent".to_string(), state.session_view().main())
         }
-    } else {
-        // No tab selected, show main agent
-        ("Main Agent".to_string(), state.session_view().main())
     };
 
     // Get model name from conversation view-state

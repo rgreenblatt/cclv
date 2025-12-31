@@ -252,14 +252,15 @@ fn next_match_selects_correct_subagent_tab() {
 
     let result = next_match(state);
 
-    // Agent order in Session::subagents() is deterministic (BTreeMap/sorted)
+    // Agent order in tabs is sorted alphabetically
     // We need to find which tab index agent2 is at
     // Use subagent_ids() which includes both initialized and pending subagents
-    let expected_tab = result
-        .session_view()
-        .subagent_ids()
+    let mut agent_ids: Vec<_> = result.session_view().subagent_ids().collect();
+    agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+    let expected_tab = agent_ids
+        .iter()
         .enumerate()
-        .find(|(_, aid)| *aid == &agent2)
+        .find(|(_, aid)| **aid == &agent2)
         .map(|(idx, _)| idx)
         .expect("agent2 should exist in subagent_ids");
 

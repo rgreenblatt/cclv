@@ -528,7 +528,7 @@ fn render_header_shows_subagent_id_when_subagent_focused() {
     let mut state = AppState::new();
     state.add_entries(entries);
     state.focus = FocusPane::Subagent;
-    state.selected_tab = Some(0); // First subagent
+    state.selected_tab = Some(1); // First subagent (tab 0 is Main Agent, tab 1+ are subagents)
 
     terminal
         .draw(|frame| {
@@ -561,7 +561,7 @@ fn render_header_uses_selected_tab_not_focus() {
     // but we've selected a subagent tab.
     // Header should show "Subagent X", not "Main Agent"
     state.focus = FocusPane::Stats;
-    state.selected_tab = Some(0); // First subagent tab selected
+    state.selected_tab = Some(1); // First subagent tab selected (tab 0 is Main Agent, tab 1+ are subagents)
 
     terminal
         .draw(|frame| {

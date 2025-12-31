@@ -1,11 +1,10 @@
 ---
 source: tests/view_snapshots.rs
-assertion_line: 2262
 expression: output.clone()
 ---
-Model: Unknown | Subagent toolu_subagent2 | /test | 0 tools, 0 agents, 0 skills
+Model: claude-opus-4-5-20251101 | Main Agent | /test | 0 tools, 0 agents, 0 skills
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ Main Agent │ toolu_subagent2 │ toolu_subagent1                                                                       │
+│ Main Agent │ toolu_subagent1 │ toolu_subagent2                                                                       │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ┌Main Agent (2 entries)────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                                                      │

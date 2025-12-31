@@ -142,7 +142,8 @@ pub fn detect_entry_click(
                 // Use hit_test from ConversationViewState for accurate entry detection
                 if let Some(tab_index) = state.selected_tab {
                     let session_view = state.session_view();
-                    let agent_ids: Vec<_> = session_view.subagent_ids().cloned().collect();
+                    let mut agent_ids: Vec<_> = session_view.subagent_ids().cloned().collect();
+                    agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
                     if let Some(agent_id) = agent_ids.get(tab_index) {
                         if let Some(conv_view) = session_view.get_subagent(agent_id) {
                             use crate::view_state::hit_test::HitTestResult;
@@ -259,7 +260,8 @@ pub fn handle_entry_click(
             // Toggle expand via selected subagent's ConversationViewState
             if let Some(tab_index) = state.selected_tab {
                 // Convert tab index to agent ID
-                let agent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+                let mut agent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+                agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
                 let agent_id_opt = agent_ids.get(tab_index).cloned();
 
                 if let (Some(agent_id), Some(session_view)) =
@@ -297,7 +299,8 @@ pub fn handle_mouse_click(
     tab_area: ratatui::layout::Rect,
 ) -> AppState {
     // Get agent IDs from the session view-state
-    let agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
+    let mut agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
+    agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
 
     // Detect which tab was clicked
     let click_result = detect_tab_click(click_x, click_y, tab_area, &agent_ids);

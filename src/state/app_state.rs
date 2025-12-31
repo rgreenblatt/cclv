@@ -254,7 +254,8 @@ impl AppState {
         tab_index: usize,
     ) -> Option<&crate::view_state::conversation::ConversationViewState> {
         let session = self.log_view.get_session_mut(0)?;
-        let agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
+        let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
+        agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
         let agent_id = agent_ids.get(tab_index)?;
         Some(session.subagent(agent_id))
     }
@@ -267,7 +268,8 @@ impl AppState {
         tab_index: usize,
     ) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
         let session = self.log_view.get_session_mut(0)?;
-        let agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
+        let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
+        agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
         let agent_id = agent_ids.get(tab_index).cloned()?;
         Some(session.subagent_mut(&agent_id))
     }

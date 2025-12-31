@@ -45,7 +45,8 @@ pub fn handle_scroll_action(
         let subagent_index = selected_tab_index - 1;
 
         // Get agent ID at subagent_index and clone to avoid borrow conflicts
-        let agent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+        let mut agent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+        agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
         let agent_id = agent_ids.get(subagent_index).cloned();
 
         if let Some(agent_id) = agent_id {

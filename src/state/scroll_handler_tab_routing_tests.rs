@@ -127,8 +127,9 @@ fn scroll_routes_to_selected_tab_1_subagent() {
     state.selected_tab = Some(1);
     state.focus = FocusPane::Main;
 
-    // Get the first subagent ID
-    let subagent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+    // Get the first subagent ID (sorted to match tab ordering)
+    let mut subagent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+    subagent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
     let first_subagent_id = subagent_ids[0].clone();
 
     // Set first subagent scroll to line 5
@@ -170,8 +171,9 @@ fn scroll_routes_to_selected_tab_2_second_subagent() {
     state.selected_tab = Some(2);
     state.focus = FocusPane::Main;
 
-    // Get the second subagent ID (index 1 in subagent list)
-    let subagent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+    // Get the second subagent ID (index 1 in subagent list, sorted to match tab ordering)
+    let mut subagent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+    subagent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
     let second_subagent_id = subagent_ids[1].clone();
 
     // Set second subagent scroll to line 8
@@ -223,7 +225,8 @@ fn scrolling_tab_0_does_not_affect_tab_1() {
         .main_mut()
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(10)));
 
-    let subagent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+    let mut subagent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+    subagent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
     let first_subagent_id = subagent_ids[0].clone();
 
     state
@@ -285,7 +288,8 @@ fn scrolling_tab_1_does_not_affect_tab_0() {
         .main_mut()
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(15)));
 
-    let subagent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+    let mut subagent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+    subagent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
     let first_subagent_id = subagent_ids[0].clone();
 
     state

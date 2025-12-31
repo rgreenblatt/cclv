@@ -243,8 +243,9 @@ fn us5_scenario3_navigate_to_match() {
                         );
 
                         // Verify the correct tab is selected
-                        let subagent_ids_list: Vec<_> =
+                        let mut subagent_ids_list: Vec<_> =
                             state_after_n.session_view().subagent_ids().collect();
+                        subagent_ids_list.sort_by(|a, b| a.as_str().cmp(b.as_str()));
                         let expected_tab_index = subagent_ids_list
                             .iter()
                             .position(|id| *id == agent_id)

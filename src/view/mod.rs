@@ -483,12 +483,13 @@ where
             KeyAction::FilterSubagent => {
                 // Filter to current subagent tab if selected
                 if let Some(tab_index) = self.app_state.selected_tab {
-                    let subagent_ids: Vec<_> = self
+                    let mut subagent_ids: Vec<_> = self
                         .app_state
                         .session_view()
                         .subagent_ids()
                         .cloned()
                         .collect();
+                    subagent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
                     if let Some(agent_id) = subagent_ids.get(tab_index) {
                         self.app_state.stats_filter =
                             crate::model::StatsFilter::Subagent(agent_id.clone());

@@ -2212,7 +2212,6 @@ fn bug_tab_keypress_does_not_change_conversation_content() {
 ///
 /// Fixture: tests/fixtures/tab_header_mismatch_repro.jsonl
 #[test]
-#[ignore = "cclv-5ur.41: header shows wrong agent for selected_tab=0"]
 fn bug_header_shows_wrong_agent_for_tab_zero() {
     use cclv::config::keybindings::KeyBindings;
     use cclv::source::{FileSource, InputSource, StdinSource};
