@@ -2,9 +2,11 @@
 
 mod layout;
 mod message;
+mod styles;
 pub mod tabs;
 
 pub use message::ConversationView;
+pub use styles::MessageStyles;
 
 use crate::integration;
 use crate::model::{AppError, SessionId};
