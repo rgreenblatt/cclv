@@ -157,7 +157,7 @@ A developer is looking for a specific piece of information in a long session. Th
 
 **Core Viewing**
 - **FR-001**: System MUST display the main agent's conversation in a dedicated pane
-- **FR-002**: System MUST show the model name being used by each agent in a visible header
+- **FR-002**: System MUST show the model name being used by each agent in the conversation pane title, formatted as 'Agent Label [Model Display Name] (N entries)'. Example: 'Main Agent [Opus] (15 entries)' or 'Subagent toolu_abc [Haiku] (8 entries)'. Tab bar labels display only the agent identifier without model information.
 - **FR-003**: System MUST display subagent conversations in a tabbed pane, one tab per subagent
 - **FR-004**: System MUST create a new tab when a subagent spawn event is detected in the log
 - **FR-005**: System MUST keep subagent tabs open after the subagent completes
