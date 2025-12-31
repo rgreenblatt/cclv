@@ -1,0 +1,28 @@
+---
+source: src/tests/acceptance_scroll.rs
+expression: second_page_output
+---
+Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Conversations─────────────────────────────────────────────────────────────────┐
+│ Main Agent                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+┌Main Agent (20 entries) ▶─────────────────────────────────────────────────────┐
+││    3. **Check checklists**: Check if there are any checklists               │
+││    4. **Load implementation context**: Read the spec files                  │
+││    5. **Find ready work**: Use bd ready to find available work              │
+││    6. **Execute implementation loop**: Delegate to subagents                │
+││                                                                             │
+││    Let me start with steps 1-3 in parallel.                                 │
+│── 8 in / 1 out / $0.06 | Context: 191.4k (95%) ──                            │
+││ 12 Now let me follow the coordinator protocol. Starting with setup, branch/e│
+││    pic verification, and checking for ready work:                           │
+│── 8 in / 1 out / $0.06 | Context: 233.1k (100%) ──                           │
+││ 13 🔧a Tool: Bash                                                            │
+││      {                                                                      │
+││        "command": "./.specify/scripts/bash/check-prerequisites.sh --json 2>/│
+││        "description": "Check prerequisites for spec setup"                  │
+││      }                                                                      │
+│── 8 in / 1 out / $0.06 | Context: 274.8k (100%) ──                           │
+││ 14 🔧  Tool: Bash                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

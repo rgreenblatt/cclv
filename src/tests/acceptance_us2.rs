@@ -3,9 +3,7 @@
 //! Tests the 7 acceptance scenarios from spec.md lines 68-77.
 //! Each test verifies actual runtime behavior for completed session analysis.
 
-mod acceptance_harness;
-
-use acceptance_harness::AcceptanceTestHarness;
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::KeyCode;
 
 // ===== Test Fixtures =====
@@ -97,7 +95,7 @@ fn us2_scenario2_switch_subagent_tabs() {
     let state_after_tab = harness.state();
     assert_eq!(
         state_after_tab.focus,
-        cclv::state::FocusPane::Subagent,
+        crate::state::FocusPane::Subagent,
         "Should switch focus to subagent pane"
     );
 
@@ -141,7 +139,7 @@ fn us2_scenario3_search_highlight() {
     // VERIFY: Initial search state is inactive
     let initial_state = harness.state();
     assert!(
-        matches!(initial_state.search, cclv::state::SearchState::Inactive),
+        matches!(initial_state.search, crate::state::SearchState::Inactive),
         "Search should start inactive"
     );
 
@@ -151,7 +149,7 @@ fn us2_scenario3_search_highlight() {
     // VERIFY: Search enters typing mode
     let typing_state = harness.state();
     assert!(
-        matches!(typing_state.search, cclv::state::SearchState::Typing { .. }),
+        matches!(typing_state.search, crate::state::SearchState::Typing { .. }),
         "Search should enter typing mode after '/'"
     );
 
@@ -167,7 +165,7 @@ fn us2_scenario3_search_highlight() {
     // VERIFY: Search becomes active with matches
     let active_state = harness.state();
     match &active_state.search {
-        cclv::state::SearchState::Active { matches, .. } => {
+        crate::state::SearchState::Active { matches, .. } => {
             assert!(
                 !matches.is_empty(),
                 "Should find matches for 'Read' in tool_calls.jsonl"

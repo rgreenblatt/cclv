@@ -1,12 +1,13 @@
+#![cfg(test)]
 //! Acceptance Test Harness for TUI testing
 //!
 //! Provides a high-level API for acceptance testing user stories by wrapping
 //! TuiApp<TestBackend> with convenient methods for simulating user interactions.
 
-use cclv::config::keybindings::KeyBindings;
-use cclv::source::{FileSource, StdinSource};
-use cclv::state::AppState;
-use cclv::view::{TuiApp, TuiError};
+use crate::config::keybindings::KeyBindings;
+use crate::source::{FileSource, StdinSource};
+use crate::state::AppState;
+use crate::view::{TuiApp, TuiError};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
@@ -86,9 +87,9 @@ impl AcceptanceTestHarness {
         let entry_count = log_entries.len();
 
         // Convert LogEntry to ConversationEntry
-        let entries: Vec<cclv::model::ConversationEntry> = log_entries
+        let entries: Vec<crate::model::ConversationEntry> = log_entries
             .into_iter()
-            .map(|e| cclv::model::ConversationEntry::Valid(Box::new(e)))
+            .map(|e| crate::model::ConversationEntry::Valid(Box::new(e)))
             .collect();
 
         // Create app state and populate with entries
@@ -100,7 +101,7 @@ impl AcceptanceTestHarness {
         // Use empty buffer for stdin
         let data = b"";
         let stdin_source = StdinSource::from_reader(&data[..]);
-        let input_source = cclv::source::InputSource::Stdin(stdin_source);
+        let input_source = crate::source::InputSource::Stdin(stdin_source);
 
         // Create TuiApp using test constructor
         let app =

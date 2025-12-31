@@ -3,9 +3,7 @@
 //! Tests the 8 acceptance scenarios from spec.md lines 49-56.
 //! Each test verifies actual runtime behavior, not just compilation.
 
-mod acceptance_harness;
-
-use acceptance_harness::AcceptanceTestHarness;
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::KeyCode;
 
 // ===== Test Fixtures =====

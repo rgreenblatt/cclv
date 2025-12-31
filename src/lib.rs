@@ -22,4 +22,7 @@ pub mod view_state;
 pub mod integration;
 
 #[cfg(test)]
+mod test_harness;
+
+#[cfg(test)]
 mod tests;

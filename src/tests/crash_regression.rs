@@ -8,9 +8,7 @@
 //! Each test verifies that the app remains running after potentially
 //! crash-inducing operations.
 
-mod acceptance_harness;
-
-use acceptance_harness::AcceptanceTestHarness;
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::KeyCode;
 
 // ===== Test Fixtures =====

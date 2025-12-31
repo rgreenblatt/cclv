@@ -3,9 +3,7 @@
 //! Tests the 8 acceptance scenarios from spec.md lines 107-114.
 //! Each test verifies actual keyboard navigation behavior.
 
-mod acceptance_harness;
-
-use acceptance_harness::AcceptanceTestHarness;
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::KeyCode;
 
 // ===== Test Fixtures =====
@@ -35,7 +33,7 @@ fn us4_scenario1_tab_cycles_focus() {
     // Verify initial focus is Main pane
     assert_eq!(
         initial_focus,
-        cclv::state::FocusPane::Main,
+        crate::state::FocusPane::Main,
         "Initial focus should be Main pane"
     );
 
@@ -69,12 +67,12 @@ fn us4_scenario1_tab_cycles_focus() {
     let state_after_third = harness.state();
 
     // Should either be back at Main or need one more Tab
-    if state_after_third.focus != cclv::state::FocusPane::Main {
+    if state_after_third.focus != crate::state::FocusPane::Main {
         harness.send_key(KeyCode::Tab);
         let state_after_fourth = harness.state();
         assert_eq!(
             state_after_fourth.focus,
-            cclv::state::FocusPane::Main,
+            crate::state::FocusPane::Main,
             "Focus should cycle back to Main pane after cycling through all panes"
         );
     }
@@ -104,14 +102,14 @@ fn us4_scenario2_arrow_keys_switch_tabs() {
     let state_after_tab = harness.state();
     assert_eq!(
         state_after_tab.focus,
-        cclv::state::FocusPane::Subagent,
+        crate::state::FocusPane::Subagent,
         "Should focus subagent pane after Tab"
     );
 
     // VERIFY: A subagent tab is selected
     let initial_selection = state_after_tab.selected_conversation.clone();
     assert!(
-        !matches!(initial_selection, cclv::state::ConversationSelection::Main),
+        !matches!(initial_selection, crate::state::ConversationSelection::Main),
         "Should have a subagent selected when focused on subagent pane"
     );
 
@@ -218,7 +216,7 @@ fn us4_scenario4_search_activation() {
     // IF YES: Session loaded
     let initial_state = harness.state();
     assert!(
-        matches!(initial_state.search, cclv::state::SearchState::Inactive),
+        matches!(initial_state.search, crate::state::SearchState::Inactive),
         "Search should start inactive"
     );
 
@@ -230,7 +228,7 @@ fn us4_scenario4_search_activation() {
     assert!(
         matches!(
             state_after_slash.search,
-            cclv::state::SearchState::Typing { .. }
+            crate::state::SearchState::Typing { .. }
         ),
         "Pressing '/' should activate search input (Typing mode)"
     );
@@ -241,7 +239,7 @@ fn us4_scenario4_search_activation() {
     // VERIFY: Search returns to inactive
     let state_after_esc = harness.state();
     assert!(
-        matches!(state_after_esc.search, cclv::state::SearchState::Inactive),
+        matches!(state_after_esc.search, crate::state::SearchState::Inactive),
         "Esc should cancel search back to Inactive"
     );
 
@@ -253,7 +251,7 @@ fn us4_scenario4_search_activation() {
     assert!(
         matches!(
             state_after_ctrlf.search,
-            cclv::state::SearchState::Typing { .. }
+            crate::state::SearchState::Typing { .. }
         ),
         "Pressing Ctrl+F should activate search input (Typing mode)"
     );
@@ -291,7 +289,7 @@ fn us4_scenario5_navigate_search_results() {
     // VERIFY: Search is active with matches
     let state_after_search = harness.state();
     match &state_after_search.search {
-        cclv::state::SearchState::Active {
+        crate::state::SearchState::Active {
             matches,
             current_match,
             ..
@@ -309,7 +307,7 @@ fn us4_scenario5_navigate_search_results() {
             // VERIFY: Current match advanced
             let state_after_n = harness.state();
             match &state_after_n.search {
-                cclv::state::SearchState::Active {
+                crate::state::SearchState::Active {
                     current_match: new_match,
                     ..
                 } => {
@@ -327,7 +325,7 @@ fn us4_scenario5_navigate_search_results() {
             // VERIFY: Current match went back
             let state_after_shift_n = harness.state();
             match &state_after_shift_n.search {
-                cclv::state::SearchState::Active {
+                crate::state::SearchState::Active {
                     current_match: final_match,
                     ..
                 } => {

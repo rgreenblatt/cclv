@@ -3,9 +3,7 @@
 //! Tests the 4 acceptance scenarios from spec.md lines 128-131.
 //! Each test verifies actual search behavior across conversations.
 
-mod acceptance_harness;
-
-use acceptance_harness::AcceptanceTestHarness;
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::KeyCode;
 
 // ===== Test Fixtures =====
@@ -29,7 +27,7 @@ fn us5_scenario1_search_highlights() {
     // IF YES: Session loaded
     let initial_state = harness.state();
     assert!(
-        matches!(initial_state.search, cclv::state::SearchState::Inactive),
+        matches!(initial_state.search, crate::state::SearchState::Inactive),
         "Search should start inactive"
     );
 
@@ -41,7 +39,7 @@ fn us5_scenario1_search_highlights() {
     assert!(
         matches!(
             state_after_slash.search,
-            cclv::state::SearchState::Typing { .. }
+            crate::state::SearchState::Typing { .. }
         ),
         "Pressing '/' should activate search input (Typing mode)"
     );
@@ -59,7 +57,7 @@ fn us5_scenario1_search_highlights() {
     // VERIFY: Search is active with matches
     let state_after_search = harness.state();
     match &state_after_search.search {
-        cclv::state::SearchState::Active { query, matches, .. } => {
+        crate::state::SearchState::Active { query, matches, .. } => {
             assert_eq!(query.as_str(), "help", "Query should be stored as 'help'");
             assert!(
                 !matches.is_empty(),
@@ -131,14 +129,14 @@ fn us5_scenario2_tab_indicators() {
     // VERIFY: Search is active with matches in subagents
     let state_after_search = harness.state();
     match &state_after_search.search {
-        cclv::state::SearchState::Active { matches, .. } => {
+        crate::state::SearchState::Active { matches, .. } => {
             assert!(
                 !matches.is_empty(),
                 "Search for 'Implemented' should find matches in search_with_subagents.jsonl"
             );
 
             // VERIFY: Extract agent IDs containing matches for tab indicators
-            let agent_ids_with_matches = cclv::state::agent_ids_with_matches(matches);
+            let agent_ids_with_matches = crate::state::agent_ids_with_matches(matches);
 
             assert!(
                 !agent_ids_with_matches.is_empty(),
@@ -202,7 +200,7 @@ fn us5_scenario3_navigate_to_match() {
     // VERIFY: Search is active with matches
     let state_after_search = harness.state();
     match &state_after_search.search {
-        cclv::state::SearchState::Active {
+        crate::state::SearchState::Active {
             matches,
             current_match,
             ..
@@ -220,7 +218,7 @@ fn us5_scenario3_navigate_to_match() {
             // VERIFY: Current match advanced
             let state_after_n = harness.state();
             match &state_after_n.search {
-                cclv::state::SearchState::Active {
+                crate::state::SearchState::Active {
                     current_match: new_match_index,
                     matches: new_matches,
                     ..
@@ -238,7 +236,7 @@ fn us5_scenario3_navigate_to_match() {
                         // Match is in a subagent - verify focus switched to Subagent pane
                         assert_eq!(
                             state_after_n.focus,
-                            cclv::state::FocusPane::Subagent,
+                            crate::state::FocusPane::Subagent,
                             "Focus should auto-switch to Subagent pane when match is in subagent"
                         );
 
@@ -262,7 +260,7 @@ fn us5_scenario3_navigate_to_match() {
                         // Match is in main agent - verify focus is on Main pane
                         assert_eq!(
                             state_after_n.focus,
-                            cclv::state::FocusPane::Main,
+                            crate::state::FocusPane::Main,
                             "Focus should be on Main pane when match is in main agent"
                         );
                     }
@@ -275,7 +273,7 @@ fn us5_scenario3_navigate_to_match() {
 
             let state_after_shift_n = harness.state();
             match &state_after_shift_n.search {
-                cclv::state::SearchState::Active {
+                crate::state::SearchState::Active {
                     current_match: final_match_index,
                     ..
                 } => {
@@ -327,7 +325,7 @@ fn us5_scenario4_clear_search() {
     assert!(
         matches!(
             state_with_search.search,
-            cclv::state::SearchState::Active { .. }
+            crate::state::SearchState::Active { .. }
         ),
         "Search should be active before clearing"
     );
@@ -338,7 +336,7 @@ fn us5_scenario4_clear_search() {
     // VERIFY: Search returns to inactive
     let state_after_clear = harness.state();
     assert!(
-        matches!(state_after_clear.search, cclv::state::SearchState::Inactive),
+        matches!(state_after_clear.search, crate::state::SearchState::Inactive),
         "Pressing Esc should clear search and return to Inactive state"
     );
 
@@ -348,7 +346,7 @@ fn us5_scenario4_clear_search() {
 
     let state_typing = harness.state();
     assert!(
-        matches!(state_typing.search, cclv::state::SearchState::Typing { .. }),
+        matches!(state_typing.search, crate::state::SearchState::Typing { .. }),
         "Search should be in Typing mode"
     );
 
@@ -360,7 +358,7 @@ fn us5_scenario4_clear_search() {
     assert!(
         matches!(
             state_after_cancel.search,
-            cclv::state::SearchState::Inactive
+            crate::state::SearchState::Inactive
         ),
         "Pressing Esc in Typing mode should cancel search"
     );

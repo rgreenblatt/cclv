@@ -2,10 +2,8 @@
 //!
 //! Verifies that pressing '?' toggles the help overlay and Escape dismisses it.
 
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::{KeyCode, KeyModifiers};
-
-mod acceptance_harness;
-use acceptance_harness::AcceptanceTestHarness;
 
 #[test]
 fn test_question_mark_shows_help_overlay() {
@@ -107,7 +105,7 @@ fn test_escape_with_search_active_doesnt_close_help() {
     harness.send_key(KeyCode::Esc);
 
     // THEN: Search is closed, focus returns to main
-    use cclv::state::{FocusPane, SearchState};
+    use crate::state::{FocusPane, SearchState};
     let state = harness.state();
     assert!(
         matches!(state.search, SearchState::Inactive),

@@ -3,9 +3,7 @@
 //! Tests the 4 acceptance scenarios from spec.md lines 88-93.
 //! Each test verifies actual runtime behavior for stats panel functionality.
 
-mod acceptance_harness;
-
-use acceptance_harness::AcceptanceTestHarness;
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::KeyCode;
 
 // ===== Test Helpers =====
@@ -13,9 +11,9 @@ use crossterm::event::KeyCode;
 /// Build SessionStats from SessionViewState by iterating all entries.
 /// Matches the approach used in view/layout.rs until stats are integrated into Session.
 fn build_session_stats(
-    session_view: &cclv::view_state::session::SessionViewState,
-) -> cclv::model::SessionStats {
-    use cclv::model::{ConversationEntry, SessionStats};
+    session_view: &crate::view_state::session::SessionViewState,
+) -> crate::model::SessionStats {
+    use crate::model::{ConversationEntry, SessionStats};
 
     let mut stats = SessionStats::default();
 
@@ -141,7 +139,7 @@ fn us3_scenario2_filter_main_agent() {
     // Verify initial filter is Global
     assert_eq!(
         *initial_filter,
-        cclv::model::StatsFilter::Global,
+        crate::model::StatsFilter::Global,
         "Default stats filter should be Global"
     );
 
@@ -152,7 +150,7 @@ fn us3_scenario2_filter_main_agent() {
     let state_after_filter = harness.state();
     assert_eq!(
         state_after_filter.stats_filter,
-        cclv::model::StatsFilter::MainAgent,
+        crate::model::StatsFilter::MainAgent,
         "Stats filter should change to MainAgent after pressing 'm'"
     );
 
@@ -160,8 +158,8 @@ fn us3_scenario2_filter_main_agent() {
     // The SessionStats.filtered_usage() method should return main agent usage only
     let session = state_after_filter.session_view();
     let stats = build_session_stats(session);
-    let main_usage = stats.filtered_usage(&cclv::model::StatsFilter::MainAgent);
-    let global_usage = stats.filtered_usage(&cclv::model::StatsFilter::Global);
+    let main_usage = stats.filtered_usage(&crate::model::StatsFilter::MainAgent);
+    let global_usage = stats.filtered_usage(&crate::model::StatsFilter::Global);
 
     // Main agent usage should be <= global usage (subset)
     assert!(
@@ -197,7 +195,7 @@ fn us3_scenario3_tool_breakdown() {
     let stats = build_session_stats(state.session_view());
 
     // Verify fixture has tool calls recorded
-    let tool_counts = stats.filtered_tool_counts(&cclv::model::StatsFilter::Global);
+    let tool_counts = stats.filtered_tool_counts(&crate::model::StatsFilter::Global);
     assert!(
         !tool_counts.is_empty(),
         "Fixture should contain tool usage data"
@@ -268,7 +266,7 @@ fn us3_scenario4_filter_subagent() {
     let state_after_tab = harness.state();
     assert_eq!(
         state_after_tab.focus,
-        cclv::state::FocusPane::Subagent,
+        crate::state::FocusPane::Subagent,
         "Focus should switch to subagent pane"
     );
 
@@ -284,7 +282,7 @@ fn us3_scenario4_filter_subagent() {
     // VERIFY: Filter changed to specific Subagent
     let state_after_filter = harness.state();
     match &state_after_filter.stats_filter {
-        cclv::model::StatsFilter::Subagent(agent_id) => {
+        crate::model::StatsFilter::Subagent(agent_id) => {
             // Verify the agent_id corresponds to the selected tab
             // Unified tab model (FR-086): tab 0 = main, tab 1+ = subagents
             let subagent_ids: Vec<_> = state_after_filter.session_view().subagent_ids().collect();
@@ -312,7 +310,7 @@ fn us3_scenario4_filter_subagent() {
     // VERIFY: Filtered stats show only this subagent's data
     let stats = build_session_stats(state_after_filter.session_view());
     let subagent_usage = stats.filtered_usage(&state_after_filter.stats_filter);
-    let global_usage = stats.filtered_usage(&cclv::model::StatsFilter::Global);
+    let global_usage = stats.filtered_usage(&crate::model::StatsFilter::Global);
 
     // Subagent usage should be <= global usage (subset)
     assert!(

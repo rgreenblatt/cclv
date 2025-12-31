@@ -11,9 +11,7 @@
 //! 5. User can page down with Page Down
 //! 6. User can page up with Page Up
 
-mod acceptance_harness;
-
-use acceptance_harness::AcceptanceTestHarness;
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::KeyCode;
 
 // ===== Test Fixtures =====

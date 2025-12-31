@@ -3,9 +3,7 @@
 //! These tests verify the harness itself works correctly before using it
 //! for user story acceptance tests.
 
-mod acceptance_harness;
-
-use acceptance_harness::AcceptanceTestHarness;
+use crate::test_harness::AcceptanceTestHarness;
 use crossterm::event::{KeyCode, KeyModifiers};
 
 // ===== Test Helpers =====

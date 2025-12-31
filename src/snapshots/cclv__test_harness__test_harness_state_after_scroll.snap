@@ -1,0 +1,28 @@
+---
+source: src/test_harness.rs
+expression: output
+---
+Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
+┌Conversations─────────────────────────────────────────────────────────────────┐
+│ Main Agent                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+┌Main Agent (6 entries)────────────────────────────────────────────────────────┐
+│                                                                              │
+││  2 Hello                                                                    │
+│                                                                              │
+││  3 Hi there!                                                                │
+│                                                                              │
+││  4 Can you help?                                                            │
+│                                                                              │
+││  5 Of course, I'd be happy to help.                                         │
+│                                                                              │
+││  6 Thanks                                                                   │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
