@@ -521,7 +521,183 @@ pub fn render_conversation_view_with_search(
     styles: &MessageStyles,
     focused: bool,
 ) {
-    todo!("render_conversation_view_with_search")
+    use ratatui::text::Span;
+
+    let entry_count = conversation.entries().len();
+
+    // Build title
+    let title = if let Some(agent_id) = conversation.agent_id() {
+        let model_info = conversation
+            .model()
+            .map(|m| format!(" [{}]", m.display_name()))
+            .unwrap_or_default();
+        format!(
+            "Subagent {}{} ({} entries)",
+            agent_id, model_info, entry_count
+        )
+    } else {
+        let model_info = conversation
+            .model()
+            .map(|m| format!(" [{}]", m.display_name()))
+            .unwrap_or_default();
+        format!("Main Agent{} ({} entries)", model_info, entry_count)
+    };
+
+    let border_color = if focused { Color::Cyan } else { Color::Gray };
+
+    let mut lines = Vec::new();
+
+    if entry_count == 0 {
+        lines.push(Line::from("No messages yet..."));
+    } else {
+        // Extract match information if search is active
+        let match_info = match search {
+            crate::state::SearchState::Active {
+                matches,
+                current_match,
+                ..
+            } => Some((matches, *current_match)),
+            _ => None,
+        };
+
+        // Render entries with highlighting
+        for entry in conversation.entries() {
+            match entry {
+                ConversationEntry::Valid(log_entry) => {
+                    let role = log_entry.message().role();
+                    let role_style = styles.style_for_role(role);
+
+                    match log_entry.message().content() {
+                        MessageContent::Text(text) => {
+                            // Get matches for this entry
+                            let entry_matches = if let Some((matches, current_idx)) = &match_info {
+                                let mut entry_m = Vec::new();
+                                for (idx, m) in matches.iter().enumerate() {
+                                    if m.entry_uuid == *log_entry.uuid() && m.block_index == 0 {
+                                        entry_m.push((m.char_offset, m.length, idx == *current_idx));
+                                    }
+                                }
+                                entry_m
+                            } else {
+                                Vec::new()
+                            };
+
+                            // Render text with highlighting
+                            for line_text in text.lines() {
+                                if entry_matches.is_empty() {
+                                    // No highlighting
+                                    lines.push(Line::from(vec![Span::styled(
+                                        line_text.to_string(),
+                                        role_style,
+                                    )]));
+                                } else {
+                                    // Apply highlighting
+                                    let highlighted_line =
+                                        apply_highlights_to_text(line_text, &entry_matches, role_style);
+                                    lines.push(highlighted_line);
+                                }
+                            }
+                        }
+                        MessageContent::Blocks(blocks) => {
+                            // For blocks, delegate to existing render logic (no highlighting yet)
+                            for block in blocks {
+                                let block_lines = render_content_block(
+                                    block,
+                                    log_entry.uuid(),
+                                    scroll,
+                                    styles,
+                                    role_style,
+                                    10,
+                                    3,
+                                );
+                                lines.extend(block_lines);
+                            }
+                        }
+                    }
+                }
+                ConversationEntry::Malformed(malformed) => {
+                    lines.push(Line::from(vec![Span::styled(
+                        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                        Style::default().fg(Color::Red),
+                    )]));
+                    lines.push(Line::from(vec![Span::styled(
+                        format!("⚠ Parse Error (line {})", malformed.line_number()),
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    )]));
+                    for error_line in malformed.error_message().lines() {
+                        lines.push(Line::from(vec![Span::styled(
+                            error_line.to_string(),
+                            Style::default().fg(Color::Red),
+                        )]));
+                    }
+                }
+            }
+            lines.push(Line::from(""));
+        }
+    }
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(title)
+        .style(Style::default().fg(border_color));
+
+    let paragraph = Paragraph::new(lines).block(block);
+    frame.render_widget(paragraph, area);
+}
+
+/// Apply highlighting to a text string based on match offsets.
+/// Returns a Line with spans that have highlight styling applied.
+fn apply_highlights_to_text(
+    text: &str,
+    matches: &[(usize, usize, bool)], // (offset, length, is_current)
+    base_style: Style,
+) -> Line<'static> {
+    use ratatui::text::Span;
+
+    if matches.is_empty() {
+        return Line::from(vec![Span::styled(text.to_string(), base_style)]);
+    }
+
+    let mut spans = Vec::new();
+    let mut last_pos = 0;
+
+    // Sort matches by offset
+    let mut sorted_matches = matches.to_vec();
+    sorted_matches.sort_by_key(|(offset, _, _)| *offset);
+
+    for (offset, length, is_current) in sorted_matches {
+        // Add text before match
+        if offset > last_pos {
+            spans.push(Span::styled(
+                text[last_pos..offset].to_string(),
+                base_style,
+            ));
+        }
+
+        // Add highlighted match
+        let end = offset + length;
+        if end <= text.len() {
+            let match_style = if is_current {
+                // Current match: reversed/inverted
+                base_style
+                    .bg(Color::Yellow)
+                    .add_modifier(Modifier::REVERSED)
+            } else {
+                // Other matches: yellow background
+                base_style.bg(Color::Yellow)
+            };
+
+            spans.push(Span::styled(text[offset..end].to_string(), match_style));
+            last_pos = end;
+        }
+    }
+
+    // Add remaining text after last match
+    if last_pos < text.len() {
+        spans.push(Span::styled(text[last_pos..].to_string(), base_style));
+    }
+
+    Line::from(spans)
 }
 
 // ===== Horizontal Scrolling Helpers =====
