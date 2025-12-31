@@ -25,4 +25,4 @@ Model: Opus | Main Agent | /workspace/project | 3 tools, 0 agents, 0 skills
 │                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
-Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
