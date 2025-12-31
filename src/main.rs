@@ -54,6 +54,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
 
+    // Set NO_COLOR env var if --no-color flag is passed
+    // This ensures consistent color handling throughout the application
+    if args.no_color {
+        std::env::set_var("NO_COLOR", "1");
+    }
+
     info!(version = env!("CARGO_PKG_VERSION"), "cclv starting");
 
     // Detect input source (file or stdin)
