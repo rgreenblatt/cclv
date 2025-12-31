@@ -1427,8 +1427,8 @@ fn bug_jerky_scroll_line_by_line() {
     let params = LayoutParams::new(80, WrapMode::NoWrap);
     state.recompute_layout(params, calculate_entry_height);
 
-    // Use a tall viewport so we can see multiple entries
-    let viewport = ViewportDimensions::new(80, 20);
+    // Use a small viewport to force scrolling (content is ~17 lines)
+    let viewport = ViewportDimensions::new(80, 10);
 
     // Helper to render and get content lines
     let render = |s: &ConversationViewState| -> Vec<String> {

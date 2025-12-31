@@ -61,58 +61,127 @@ impl Default for EntryLayout {
 /// Height calculator function type.
 ///
 /// Computes rendered height for an entry accounting for:
-/// - Malformed entries return LineHeight::ZERO
+/// - Malformed entries return fixed height (~5 lines for error display)
 /// - Collapsed entries return fixed small height (2-3 lines)
 /// - Expanded entries compute actual rendered height based on content
 pub type HeightCalculator = fn(&ConversationEntry, bool, WrapMode) -> LineHeight;
 
 /// Calculate the rendered height of an entry in terminal lines.
 ///
-/// # Arguments
-/// - `entry`: The conversation entry to measure
-/// - `expanded`: Whether the entry is currently expanded
-/// - `_wrap_mode`: The effective wrap mode for this entry (currently unused)
+/// This is THE canonical implementation. The view layer delegates to this function.
 ///
-/// # Returns
-/// - `LineHeight::ZERO` for malformed entries
-/// - At least `LineHeight::ONE` for valid entries
+/// Computes actual line count accounting for:
+/// - Text wrapping at viewport width (when wrap mode is Wrap)
+/// - Markdown rendering (headers, lists, code blocks)
+/// - Expanded vs collapsed state
+/// - Malformed entries (return 5 lines for error display)
 ///
-/// # Contract Requirements
-/// - MUST return `LineHeight::ZERO` for malformed entries
-/// - MUST return at least `LineHeight::ONE` for valid entries
+/// # Contract (from data-model.md HeightCalculator)
+/// - MUST return `LineHeight` with at least 1 for valid entries
+/// - MUST return fixed height (5 lines) for malformed entries
 /// - MUST be deterministic (same inputs → same output)
 /// - SHOULD be fast (called for every entry during layout)
-///
-/// # Implementation Notes
-/// This is a simplified initial implementation that counts newlines.
-/// Future enhancements may include:
-/// - Text wrapping based on viewport width
-/// - Markdown rendering line count
-/// - Syntax highlighting effects
 pub fn calculate_height(
     entry: &ConversationEntry,
     expanded: bool,
-    _wrap_mode: WrapMode,
+    wrap_mode: WrapMode,
 ) -> LineHeight {
+    use crate::model::MessageContent;
+
     match entry {
-        ConversationEntry::Malformed(_) => LineHeight::ZERO,
+        ConversationEntry::Malformed(_) => {
+            // Malformed entries render as:
+            // - Separator line (1)
+            // - Header line "⚠ Parse Error (line N)" (1)
+            // - Error message lines (varies, estimate 2)
+            // - Separator line (1)
+            // Total: ~5 lines
+            LineHeight::new(5).unwrap()
+        }
         ConversationEntry::Valid(log_entry) => {
-            if !expanded {
-                // Collapsed: fixed height showing summary
-                // Type indicator + truncated preview = 2 lines
-                LineHeight::new(2).expect("2 is valid line height")
-            } else {
-                // Expanded: count actual lines in content
-                let content = log_entry.message().text();
-                let line_count = if content.is_empty() {
-                    1
-                } else {
-                    // Count lines by splitting on newlines
-                    // Number of lines = number of newlines + 1
-                    content.lines().count().max(1)
-                };
-                LineHeight::new(line_count as u16).expect("line_count >= 1")
+            let message = log_entry.message();
+
+            // Count content lines
+            let mut content_lines = 0u16;
+            match message.content() {
+                MessageContent::Text(text) => {
+                    content_lines = count_text_lines(text, wrap_mode);
+                }
+                MessageContent::Blocks(blocks) => {
+                    for block in blocks {
+                        content_lines += count_block_lines(block, wrap_mode);
+                    }
+                }
             }
+
+            // Collapsed entries are truncated if they exceed threshold (default: 10 lines)
+            // Rendering constants from ConversationView defaults (message.rs:385-386)
+            const COLLAPSE_THRESHOLD: u16 = 10;
+            const SUMMARY_LINES: u16 = 3;
+
+            let should_collapse = content_lines > COLLAPSE_THRESHOLD && !expanded;
+
+            let displayed_lines = if should_collapse {
+                // Collapsed: summary_lines + collapse indicator
+                SUMMARY_LINES + 1
+            } else {
+                // Show all content
+                content_lines
+            };
+
+            // Add separator line (always present at end of entry)
+            let total_lines = displayed_lines + 1;
+
+            // Return at least LineHeight::ONE
+            LineHeight::new(total_lines.max(1)).unwrap()
+        }
+    }
+}
+
+/// Count lines in a text string accounting for newlines and wrapping.
+///
+/// NOTE: Empty text returns 0 to match renderer behavior where `"".lines()`
+/// produces zero iterations. The separator line is added separately.
+fn count_text_lines(text: &str, wrap: WrapMode) -> u16 {
+    if text.is_empty() {
+        return 0; // Empty text produces 0 content lines (matches "".lines() behavior)
+    }
+
+    let lines: Vec<&str> = text.lines().collect();
+    let line_count = lines.len().max(1);
+
+    match wrap {
+        WrapMode::NoWrap => line_count as u16,
+        WrapMode::Wrap => {
+            // Estimate wrapped lines at 80 column width
+            const WRAP_WIDTH: usize = 80;
+            let mut wrapped_lines = 0;
+            for line in lines {
+                let line_width = line.chars().count();
+                if line_width == 0 {
+                    wrapped_lines += 1;
+                } else {
+                    // Calculate how many lines this wraps to
+                    wrapped_lines += line_width.div_ceil(WRAP_WIDTH).max(1);
+                }
+            }
+            wrapped_lines as u16
+        }
+    }
+}
+
+/// Count lines in a content block.
+fn count_block_lines(block: &crate::model::ContentBlock, wrap: WrapMode) -> u16 {
+    use crate::model::ContentBlock;
+
+    match block {
+        ContentBlock::Text { text } => count_text_lines(text, wrap),
+        ContentBlock::Thinking { thinking } => count_text_lines(thinking, wrap),
+        ContentBlock::ToolResult { content, .. } => count_text_lines(content, wrap),
+        ContentBlock::ToolUse(tool_call) => {
+            // Tool use renders as: tool name + input (typically 2-3 lines)
+            let input_str = tool_call.input().to_string();
+            2 + count_text_lines(&input_str, wrap)
         }
     }
 }
@@ -250,17 +319,22 @@ mod tests {
         use super::*;
 
         #[test]
-        fn malformed_entry_returns_zero_height() {
+        fn malformed_entry_returns_nonzero_height() {
             let entry = make_malformed_entry();
             let height = calculate_height(&entry, false, WrapMode::Wrap);
-            assert_eq!(height, LineHeight::ZERO);
+            // Malformed entries now return ~5 lines to account for error display
+            assert!(!height.is_zero(), "Malformed entries should have height > 0");
+            assert_eq!(height.get(), 5, "Malformed entries render with 5 lines");
         }
 
         #[test]
-        fn malformed_entry_returns_zero_when_expanded() {
+        fn malformed_entry_height_independent_of_expand() {
             let entry = make_malformed_entry();
-            let height = calculate_height(&entry, true, WrapMode::Wrap);
-            assert_eq!(height, LineHeight::ZERO);
+            let collapsed = calculate_height(&entry, false, WrapMode::Wrap);
+            let expanded = calculate_height(&entry, true, WrapMode::Wrap);
+            // Malformed entries always render the same height
+            assert_eq!(collapsed, expanded);
+            assert_eq!(collapsed.get(), 5);
         }
 
         #[test]
@@ -284,11 +358,13 @@ mod tests {
         }
 
         #[test]
-        fn empty_content_expanded_returns_at_least_one() {
+        fn empty_content_expanded_includes_separator() {
             let entry = make_valid_entry("");
             let height = calculate_height(&entry, true, WrapMode::Wrap);
 
-            assert_eq!(height, LineHeight::ONE);
+            // Empty content = 0 content lines + 1 separator = 1 line total
+            // (matches renderer where "".lines() produces 0 iterations)
+            assert_eq!(height, LineHeight::new(1).unwrap());
         }
 
         #[test]

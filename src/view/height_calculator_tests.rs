@@ -9,7 +9,6 @@ use crate::model::{
     MessageContent, Role, SessionId,
 };
 use crate::state::WrapMode;
-use crate::view_state::types::LineHeight;
 use chrono::Utc;
 
 // ===== Test Helpers =====
@@ -41,27 +40,24 @@ fn make_malformed_entry() -> ConversationEntry {
 // ===== Malformed Entry Tests =====
 
 #[test]
-fn malformed_entry_returns_zero_height() {
+fn malformed_entry_returns_nonzero_height() {
     let entry = make_malformed_entry();
     let height = calculate_entry_height(&entry, false, WrapMode::Wrap);
-    assert_eq!(
-        height,
-        LineHeight::ZERO,
-        "Malformed entries must return LineHeight::ZERO"
+    assert!(
+        height.get() > 0,
+        "Malformed entries must return non-zero height for rendering"
     );
 }
 
 #[test]
-fn malformed_entry_returns_zero_regardless_of_expanded() {
+fn malformed_entry_height_same_regardless_of_expanded() {
     let entry = make_malformed_entry();
     let collapsed = calculate_entry_height(&entry, false, WrapMode::Wrap);
     let expanded = calculate_entry_height(&entry, true, WrapMode::Wrap);
     assert_eq!(
-        collapsed,
-        LineHeight::ZERO,
-        "Malformed collapsed must be ZERO"
+        collapsed, expanded,
+        "Malformed entry height should be same whether expanded or not"
     );
-    assert_eq!(expanded, LineHeight::ZERO, "Malformed expanded must be ZERO");
 }
 
 // ===== Valid Entry Minimum Height Tests =====
