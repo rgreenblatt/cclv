@@ -105,11 +105,23 @@ fn us1_scenario3_subagent_tab_appears() {
     let mut harness = AcceptanceTestHarness::from_fixture(WITH_SUBAGENTS_FIXTURE)
         .expect("Should load session with subagents");
 
-    // IF YES: Session loaded with entries
+    // IF YES: Session loaded with entries (could be in main or subagent conversations)
     let state = harness.state();
-    let entry_count = state.session_view().main().entries().len();
+    let main_entry_count = state.session_view().main().entries().len();
+    let subagent_entry_count: usize = state
+        .session_view()
+        .subagents()
+        .values()
+        .map(|conv| conv.entries().len())
+        .sum();
+    let total_entry_count = main_entry_count + subagent_entry_count;
 
-    assert!(entry_count > 0, "Should have loaded entries from fixture");
+    assert!(
+        total_entry_count > 0,
+        "Should have loaded entries from fixture (main: {}, subagent: {})",
+        main_entry_count,
+        subagent_entry_count
+    );
 
     // VERIFY: Subagents detected from fixture
     let subagent_count = state.session_view().subagent_ids().count();

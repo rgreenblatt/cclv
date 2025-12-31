@@ -202,20 +202,20 @@ impl AppState {
         }
     }
 
-    /// Get immutable reference to session view-state.
+    /// Get immutable reference to current session view-state.
     ///
-    /// Assumes single session (current limitation).
+    /// Returns the last/active session in the log.
     /// Panics if no sessions exist (shouldn't happen in normal operation).
     pub fn session_view(&self) -> &crate::view_state::session::SessionViewState {
         self.log_view
-            .get_session(0)
+            .current_session()
             .expect("No session view-state - this is a bug")
     }
 
-    /// Get mutable reference to session view-state.
+    /// Get mutable reference to current session view-state.
     pub fn session_view_mut(&mut self) -> &mut crate::view_state::session::SessionViewState {
         self.log_view
-            .get_session_mut(0)
+            .current_session_mut()
             .expect("No session view-state - this is a bug")
     }
 

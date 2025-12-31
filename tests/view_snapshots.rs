@@ -331,7 +331,13 @@ fn snapshot_message_collapsed_multiline() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     view_state.relayout(60, WrapMode::Wrap);
     let styles = MessageStyles::new();
 
@@ -361,7 +367,13 @@ fn snapshot_message_expanded_multiline() {
 
     let conversation = create_test_conversation(vec![entry.clone()]);
     // Create view state and expand the message
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -403,7 +415,13 @@ That's the code."#;
 
     let conversation = create_test_conversation(vec![entry.clone()]);
     // Expand to see full code block
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -445,7 +463,13 @@ That's the code."#;
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -496,7 +520,13 @@ fn main() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -590,7 +620,13 @@ fn snapshot_message_with_tool_use() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -634,7 +670,13 @@ Total lines: 3"#;
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -676,7 +718,13 @@ fn snapshot_message_with_thinking_block() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -724,7 +772,13 @@ fn bug_entry_indices_not_visible_in_rendered_output() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     view_state.relayout(60, WrapMode::Wrap);
     let styles = MessageStyles::new();
 
@@ -1598,7 +1652,8 @@ fn bug_jerky_scroll_line_by_line() {
     ];
 
     // Create view state
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
+    let mut state =
+        ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::NoWrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -1715,7 +1770,8 @@ fn bug_collapsed_entry_height_mismatch() {
         .collect();
 
     // Create view state with entries NOT expanded (collapsed by default)
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
+    let mut state =
+        ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(211, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -1822,7 +1878,13 @@ fn bug_scroll_stuck_with_thinking_blocks() {
 
     // Create view state with entries COLLAPSED (default state)
     // This is how entries appear initially in the TUI
-    let mut state = ConversationViewState::new(None, None, entries.clone(), 200_000, PricingConfig::default());
+    let mut state = ConversationViewState::new(
+        None,
+        None,
+        entries.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
     let params = LayoutParams::new(80, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -1919,7 +1981,13 @@ fn snapshot_wrap_mode_global_wrap() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
 
     // Use narrow viewport (60 chars) to force wrapping
     view_state.relayout(60, WrapMode::Wrap);
@@ -1965,7 +2033,13 @@ fn snapshot_wrap_mode_global_nowrap() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
 
     // Use narrow viewport (60 chars) but disable wrapping
     view_state.relayout(60, WrapMode::NoWrap);
@@ -2014,7 +2088,13 @@ fn snapshot_wrap_mode_per_entry_override() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        conversation.clone(),
+        200_000,
+        PricingConfig::default(),
+    );
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);
@@ -2138,9 +2218,8 @@ fn bug_tab_keypress_does_not_change_conversation_content() {
     use std::path::PathBuf;
 
     // Load fixture with subagent entries
-    let mut file_source =
-        FileSource::new(PathBuf::from("tests/fixtures/subagent_tab_repro.jsonl"))
-            .expect("Should load fixture");
+    let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/subagent_tab_repro.jsonl"))
+        .expect("Should load fixture");
     let log_entries = file_source.drain_entries().expect("Should parse entries");
     let entry_count = log_entries.len();
 
@@ -2174,7 +2253,8 @@ fn bug_tab_keypress_does_not_change_conversation_content() {
     // Press '2' to switch to first subagent tab (tab index 1)
     let key_2 = KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE);
     app.handle_key_test(key_2);
-    app.render_test().expect("Render after pressing 2 should succeed");
+    app.render_test()
+        .expect("Render after pressing 2 should succeed");
     let output_after_tab = buffer_to_string(app.terminal().backend().buffer());
     insta::assert_snapshot!("bug_tab_keypress_after", output_after_tab.clone());
 
@@ -2220,9 +2300,10 @@ fn bug_header_shows_wrong_agent_for_tab_zero() {
     use std::path::PathBuf;
 
     // Load fixture with subagent entries
-    let mut file_source =
-        FileSource::new(PathBuf::from("tests/fixtures/tab_header_mismatch_repro.jsonl"))
-            .expect("Should load fixture");
+    let mut file_source = FileSource::new(PathBuf::from(
+        "tests/fixtures/tab_header_mismatch_repro.jsonl",
+    ))
+    .expect("Should load fixture");
     let log_entries = file_source.drain_entries().expect("Should parse entries");
     let entry_count = log_entries.len();
 
@@ -2278,23 +2359,20 @@ fn bug_header_shows_wrong_agent_for_tab_zero() {
     );
 }
 
-/// Bug reproduction: Tab cycling limited to 3 subagents despite more being available
+/// Bug reproduction: Tab cycling was counting subagents from wrong session
 ///
-/// EXPECTED: Pressing ']' should cycle through ALL visible subagent tabs (6+ in this fixture)
-/// ACTUAL: Tab cycling only reaches 3 subagents before returning to Main Agent
+/// EXPECTED: Pressing ']' should cycle through ALL subagent tabs in the current session
+/// ACTUAL: Tab cycling counted subagents from session 0, but next_tab() used current_session()
 ///
-/// Steps to reproduce manually:
-/// 1. cargo run --release -- tests/fixtures/cc-session-log.jsonl
-/// 2. Press ']' 4 times from Main Agent
-/// 3. Observe: Returns to Main Agent after only 3 subagents
-/// 4. Tab bar shows 6 subagent tabs but only 3 are accessible
+/// ROOT CAUSE: session_view() returned get_session(0) instead of current_session().
+/// In multi-session logs (122 sessions in fixture), this caused mismatch:
+/// - Test counted subagents from session 0 (6 subagents)
+/// - Tab cycling used current_session() (3 subagents)
 ///
-/// Root cause hypothesis: selected_tab increment uses wrong count (perhaps
-/// session_view.subagent_count() vs actual tab count, or lazy initialization issue)
+/// FIX: Changed session_view() to use current_session() for consistency.
 ///
-/// Fixture: tests/fixtures/cc-session-log.jsonl (31k lines, 7 subagents)
+/// Fixture: tests/fixtures/cc-session-log.jsonl (31k lines, 122 sessions)
 #[test]
-#[ignore = "cclv-5ur.42: Tab cycling limited to 3 subagents despite 7 being available"]
 fn bug_tab_cycling_limited_to_three_subagents() {
     use cclv::config::keybindings::KeyBindings;
     use cclv::source::{FileSource, InputSource, StdinSource};
@@ -2304,9 +2382,8 @@ fn bug_tab_cycling_limited_to_three_subagents() {
     use std::path::PathBuf;
 
     // Load fixture with multiple subagents
-    let mut file_source =
-        FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
-            .expect("Should load fixture");
+    let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
+        .expect("Should load fixture");
     let log_entries = file_source.drain_entries().expect("Should parse entries");
     let entry_count = log_entries.len();
 
@@ -2326,11 +2403,13 @@ fn bug_tab_cycling_limited_to_three_subagents() {
     let mut app =
         TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
 
-    // Verify precondition: multiple subagents exist
+    // Verify precondition: multiple subagents exist in current session
+    // NOTE: The fixture has 122 sessions. We view the current/last session,
+    // which should have at least 2 subagents to test tab cycling.
     let subagent_count = app.app_state().session_view().subagent_ids().count();
     assert!(
-        subagent_count >= 4,
-        "Test precondition: need at least 4 subagents, got {}",
+        subagent_count >= 2,
+        "Test precondition: need at least 2 subagents, got {}",
         subagent_count
     );
 
@@ -2371,23 +2450,18 @@ fn bug_tab_cycling_limited_to_three_subagents() {
     );
 }
 
-/// Bug reproduction: Subagent conversations cannot be scrolled
+/// Bug reproduction: Subagent scroll worked on wrong session
 ///
 /// EXPECTED: Pressing 'j' in a subagent tab should scroll its conversation down
-/// ACTUAL: Scrolling only works for Main Agent; subagent conversations stay fixed
+/// ACTUAL: Scroll events routed to session 0 subagent, not current session subagent
 ///
-/// Steps to reproduce manually:
-/// 1. cargo run --release -- tests/fixtures/cc-session-log.jsonl
-/// 2. Press ']' to switch to first subagent
-/// 3. Press 'j' multiple times to scroll down
-/// 4. Observe: Content doesn't move (scroll has no effect)
+/// ROOT CAUSE: session_view() returned get_session(0) instead of current_session().
+/// In multi-session logs, scroll events were routed to the wrong session's subagent.
 ///
-/// Root cause hypothesis: Scroll events may not be routed to the correct
-/// ConversationViewState for the selected subagent tab.
+/// FIX: Changed session_view() to use current_session() for consistency.
 ///
 /// Fixture: tests/fixtures/cc-session-log.jsonl
 #[test]
-#[ignore = "cclv-5ur.42: Subagent conversations cannot be scrolled independently"]
 fn bug_subagent_scroll_does_not_work() {
     use cclv::config::keybindings::KeyBindings;
     use cclv::source::{FileSource, InputSource, StdinSource};
@@ -2397,9 +2471,8 @@ fn bug_subagent_scroll_does_not_work() {
     use std::path::PathBuf;
 
     // Load fixture with subagent entries
-    let mut file_source =
-        FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
-            .expect("Should load fixture");
+    let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
+        .expect("Should load fixture");
     let log_entries = file_source.drain_entries().expect("Should parse entries");
     let entry_count = log_entries.len();
 
@@ -2433,7 +2506,8 @@ fn bug_subagent_scroll_does_not_work() {
     );
 
     // Render after tab switch
-    app.render_test().expect("Render after tab switch should succeed");
+    app.render_test()
+        .expect("Render after tab switch should succeed");
     let output_before = buffer_to_string(app.terminal().backend().buffer());
     insta::assert_snapshot!("bug_subagent_scroll_before", output_before.clone());
 
@@ -2460,7 +2534,8 @@ fn bug_subagent_scroll_does_not_work() {
     }
 
     // Render after scroll attempts
-    app.render_test().expect("Render after scroll should succeed");
+    app.render_test()
+        .expect("Render after scroll should succeed");
     let output_after = buffer_to_string(app.terminal().backend().buffer());
     insta::assert_snapshot!("bug_subagent_scroll_after", output_after.clone());
 
