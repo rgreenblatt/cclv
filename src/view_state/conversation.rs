@@ -49,51 +49,65 @@ pub struct ConversationViewState {
 impl ConversationViewState {
     /// Create new conversation view-state from entries.
     /// Layout is not computed until `recompute_layout` is called.
-    pub fn new(_entries: Vec<ConversationEntry>) -> Self {
-        todo!("ConversationViewState::new")
+    pub fn new(entries: Vec<ConversationEntry>) -> Self {
+        let entry_views: Vec<EntryView> = entries
+            .into_iter()
+            .enumerate()
+            .map(|(idx, entry)| EntryView::new(entry, EntryIndex::new(idx)))
+            .collect();
+        Self {
+            entries: entry_views,
+            scroll: ScrollPosition::Top,
+            total_height: 0,
+            focused_message: None,
+            last_layout_params: None,
+        }
     }
 
     /// Create empty conversation view-state.
     pub fn empty() -> Self {
-        todo!("ConversationViewState::empty")
+        Self::new(Vec::new())
     }
 
     // === Focus Management ===
 
     /// Get focused entry index.
     pub fn focused_message(&self) -> Option<EntryIndex> {
-        todo!("ConversationViewState::focused_message")
+        self.focused_message
     }
 
     /// Set focused entry index.
     /// Clamps to valid range if index >= len.
-    pub fn set_focused_message(&mut self, _index: Option<EntryIndex>) {
-        todo!("ConversationViewState::set_focused_message")
+    pub fn set_focused_message(&mut self, index: Option<EntryIndex>) {
+        self.focused_message = index.map(|i| {
+            let max_idx = self.entries.len().saturating_sub(1);
+            EntryIndex::new(i.get().min(max_idx))
+        });
     }
 
     /// Get focused entry view, if any.
     pub fn focused_entry(&self) -> Option<&EntryView> {
-        todo!("ConversationViewState::focused_entry")
+        self.focused_message.and_then(|i| self.entries.get(i.get()))
     }
 
     /// Get mutable focused entry view, if any.
     pub fn focused_entry_mut(&mut self) -> Option<&mut EntryView> {
-        todo!("ConversationViewState::focused_entry_mut")
+        self.focused_message.and_then(|i| self.entries.get_mut(i.get()))
     }
 
     /// Number of entries.
     pub fn len(&self) -> usize {
-        todo!("ConversationViewState::len")
+        self.entries.len()
     }
 
     /// Check if empty.
     pub fn is_empty(&self) -> bool {
-        todo!("ConversationViewState::is_empty")
+        self.entries.is_empty()
     }
 
     /// Get entry at index.
-    pub fn get(&self, _index: EntryIndex) -> Option<&EntryView> {
-        todo!("ConversationViewState::get")
+    pub fn get(&self, index: EntryIndex) -> Option<&EntryView> {
+        self.entries.get(index.get())
     }
 
     /// Iterate over all entries.
@@ -103,30 +117,35 @@ impl ConversationViewState {
 
     /// Current scroll position.
     pub fn scroll(&self) -> &ScrollPosition {
-        todo!("ConversationViewState::scroll")
+        &self.scroll
     }
 
     /// Set scroll position.
-    pub fn set_scroll(&mut self, _position: ScrollPosition) {
-        todo!("ConversationViewState::set_scroll")
+    pub fn set_scroll(&mut self, position: ScrollPosition) {
+        self.scroll = position;
     }
 
     /// Total height in lines.
     pub fn total_height(&self) -> usize {
-        todo!("ConversationViewState::total_height")
+        self.total_height
     }
 
     /// Check if global layout params changed (width, global_wrap).
     /// Note: Per-entry state changes (expand, wrap_override) require
     /// targeted relayout via `relayout_entry` or `relayout_from`.
-    pub fn needs_relayout(&self, _params: &LayoutParams) -> bool {
-        todo!("ConversationViewState::needs_relayout")
+    pub fn needs_relayout(&self, params: &LayoutParams) -> bool {
+        self.last_layout_params.as_ref() != Some(params)
     }
 
     /// Append new entries (streaming mode).
     /// New entries have default layout; call `recompute_layout` to update.
-    pub fn append(&mut self, _entries: Vec<ConversationEntry>) {
-        todo!("ConversationViewState::append")
+    pub fn append(&mut self, entries: Vec<ConversationEntry>) {
+        let start_idx = self.entries.len();
+        for (offset, entry) in entries.into_iter().enumerate() {
+            self.entries.push(EntryView::new(entry, EntryIndex::new(start_idx + offset)));
+        }
+        // Invalidate layout
+        self.last_layout_params = None;
     }
 
     /// Recompute layout for all entries.
@@ -135,11 +154,25 @@ impl ConversationViewState {
     /// - `params`: Current global layout parameters
     /// - `height_calculator`: Function to compute height for an entry
     ///   Receives: entry, expanded state, effective wrap mode
-    pub fn recompute_layout<F>(&mut self, _params: LayoutParams, _height_calculator: F)
+    pub fn recompute_layout<F>(&mut self, params: LayoutParams, height_calculator: F)
     where
         F: Fn(&ConversationEntry, bool, WrapMode) -> LineHeight,
     {
-        todo!("ConversationViewState::recompute_layout")
+        use super::layout::EntryLayout;
+
+        let mut cumulative_y = 0usize;
+
+        for entry_view in &mut self.entries {
+            let expanded = entry_view.is_expanded();
+            let wrap = entry_view.effective_wrap(params.global_wrap);
+            let height = height_calculator(entry_view.entry(), expanded, wrap);
+            let layout = EntryLayout::new(height, LineOffset::new(cumulative_y));
+            entry_view.set_layout(layout);
+            cumulative_y += height.get() as usize;
+        }
+
+        self.total_height = cumulative_y;
+        self.last_layout_params = Some(params);
     }
 
     /// Relayout from a specific entry index onward.
@@ -150,35 +183,65 @@ impl ConversationViewState {
     /// - `from_index`: Index of first entry to relayout
     /// - `params`: Current global layout parameters
     /// - `height_calculator`: Function to compute height
-    pub fn relayout_from<F>(&mut self, _from_index: EntryIndex, _params: LayoutParams, _height_calculator: F)
+    pub fn relayout_from<F>(&mut self, from_index: EntryIndex, params: LayoutParams, height_calculator: F)
     where
         F: Fn(&ConversationEntry, bool, WrapMode) -> LineHeight,
     {
-        todo!("ConversationViewState::relayout_from")
+        use super::layout::EntryLayout;
+
+        let idx = from_index.get();
+        if idx >= self.entries.len() {
+            return;
+        }
+
+        // Get cumulative_y from previous entry (or 0 if from_index is 0)
+        let mut cumulative_y = if idx == 0 {
+            0
+        } else {
+            self.entries[idx - 1].layout().bottom_y().get()
+        };
+
+        for entry_view in &mut self.entries[idx..] {
+            let expanded = entry_view.is_expanded();
+            let wrap = entry_view.effective_wrap(params.global_wrap);
+            let height = height_calculator(entry_view.entry(), expanded, wrap);
+            let layout = EntryLayout::new(height, LineOffset::new(cumulative_y));
+            entry_view.set_layout(layout);
+            cumulative_y += height.get() as usize;
+        }
+
+        self.total_height = cumulative_y;
     }
 
     /// Toggle expand state for entry at index and relayout.
     /// Returns new expanded state, or None if index out of bounds.
-    pub fn toggle_expand<F>(&mut self, _index: EntryIndex, _params: LayoutParams, _height_calculator: F) -> Option<bool>
+    pub fn toggle_expand<F>(&mut self, index: EntryIndex, params: LayoutParams, height_calculator: F) -> Option<bool>
     where
         F: Fn(&ConversationEntry, bool, WrapMode) -> LineHeight,
     {
-        todo!("ConversationViewState::toggle_expand")
+        let entry = self.entries.get_mut(index.get())?;
+        let new_state = entry.toggle_expanded();
+        self.relayout_from(index, params, height_calculator);
+        Some(new_state)
     }
 
     /// Set wrap override for entry at index and relayout.
     /// Returns previous wrap override, or None if index out of bounds.
     pub fn set_wrap_override<F>(
         &mut self,
-        _index: EntryIndex,
-        _wrap: Option<WrapMode>,
-        _params: LayoutParams,
-        _height_calculator: F,
+        index: EntryIndex,
+        wrap: Option<WrapMode>,
+        params: LayoutParams,
+        height_calculator: F,
     ) -> Option<Option<WrapMode>>
     where
         F: Fn(&ConversationEntry, bool, WrapMode) -> LineHeight,
     {
-        todo!("ConversationViewState::set_wrap_override")
+        let entry = self.entries.get_mut(index.get())?;
+        let previous = entry.wrap_override();
+        entry.set_wrap_override(wrap);
+        self.relayout_from(index, params, height_calculator);
+        Some(previous)
     }
 
     /// Compute visible range using binary search.
@@ -189,8 +252,38 @@ impl ConversationViewState {
     ///
     /// # Returns
     /// Range of entry indices that are visible.
-    pub fn visible_range(&self, _viewport: ViewportDimensions) -> VisibleRange {
-        todo!("ConversationViewState::visible_range")
+    pub fn visible_range(&self, viewport: ViewportDimensions) -> VisibleRange {
+        if self.entries.is_empty() {
+            return VisibleRange::default();
+        }
+
+        let scroll_offset = self.scroll.resolve(
+            self.total_height,
+            viewport.height as usize,
+            |idx| self.entries.get(idx.get()).map(|e| e.layout().cumulative_y()),
+        );
+
+        let scroll_line = scroll_offset.get();
+        let viewport_bottom = scroll_line + viewport.height as usize;
+
+        // Binary search for first visible entry
+        // Find first entry whose bottom_y > scroll_line
+        let start_index = self.entries.partition_point(|e| {
+            e.layout().bottom_y().get() <= scroll_line
+        });
+
+        // Binary search for first entry past viewport
+        // Find first entry whose cumulative_y >= viewport_bottom
+        let end_index = self.entries.partition_point(|e| {
+            e.layout().cumulative_y().get() < viewport_bottom
+        });
+
+        VisibleRange::new(
+            EntryIndex::new(start_index),
+            EntryIndex::new(end_index),
+            scroll_offset,
+            viewport.height,
+        )
     }
 
     /// Hit-test a screen coordinate.
@@ -203,13 +296,38 @@ impl ConversationViewState {
     ///
     /// # Returns
     /// What entry (if any) was hit.
-    pub fn hit_test(&self, _screen_y: u16, _screen_x: u16, _scroll_offset: LineOffset) -> HitTestResult {
-        todo!("ConversationViewState::hit_test")
+    pub fn hit_test(&self, screen_y: u16, screen_x: u16, scroll_offset: LineOffset) -> HitTestResult {
+        if self.entries.is_empty() {
+            return HitTestResult::miss();
+        }
+
+        let absolute_y = scroll_offset.get() + screen_y as usize;
+
+        // Binary search for entry containing absolute_y
+        // Find first entry whose bottom_y > absolute_y
+        let index = self.entries.partition_point(|e| {
+            e.layout().bottom_y().get() <= absolute_y
+        });
+
+        if index >= self.entries.len() {
+            return HitTestResult::miss();
+        }
+
+        let entry = &self.entries[index];
+        let entry_y = entry.layout().cumulative_y().get();
+
+        if absolute_y < entry_y {
+            return HitTestResult::miss();
+        }
+
+        let line_in_entry = absolute_y - entry_y;
+
+        HitTestResult::hit(EntryIndex::new(index), line_in_entry, screen_x)
     }
 
     /// Get cumulative_y for entry at index (for scroll resolution).
-    pub fn entry_cumulative_y(&self, _index: EntryIndex) -> Option<LineOffset> {
-        todo!("ConversationViewState::entry_cumulative_y")
+    pub fn entry_cumulative_y(&self, index: EntryIndex) -> Option<LineOffset> {
+        self.entries.get(index.get()).map(|e| e.layout().cumulative_y())
     }
 }
 
