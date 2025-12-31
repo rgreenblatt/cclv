@@ -108,7 +108,7 @@ impl EntryView {
             Self::COLLAPSE_THRESHOLD,
             Self::SUMMARY_LINES,
             &styles,
-            None, // TODO: Pass entry index when implemented
+            Some(index.get()), // Pass entry index for prefixing
         );
         Self {
             entry,
@@ -184,7 +184,7 @@ impl EntryView {
             Self::COLLAPSE_THRESHOLD,
             Self::SUMMARY_LINES,
             &styles,
-            None, // TODO: Pass entry index when implemented
+            Some(self.index.get()), // Pass entry index for prefixing
         );
     }
 
