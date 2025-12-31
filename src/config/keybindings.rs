@@ -167,6 +167,16 @@ impl Default for KeyBindings {
             KeyAction::CollapseMessage,
         );
 
+        // Entry navigation (keyboard focus)
+        bindings.insert(
+            KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL),
+            KeyAction::NextEntry,
+        );
+        bindings.insert(
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL),
+            KeyAction::PrevEntry,
+        );
+
         // Search
         bindings.insert(
             KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE),

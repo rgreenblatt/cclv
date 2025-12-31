@@ -1383,6 +1383,236 @@ mod tests {
         );
     }
 
+    // ===== Entry navigation (keyboard focus) tests =====
+
+    #[test]
+    fn handle_key_ctrl_j_moves_focus_to_next_entry() {
+        let mut app = create_test_app();
+
+        // Add multiple entries
+        let entry1 = create_test_entry("first");
+        let entry2 = create_test_entry("second");
+        let entry3 = create_test_entry("third");
+        app.app_state.add_entries(vec![entry1, entry2, entry3]);
+
+        // Focus on Main pane and select first entry (index 0)
+        app.app_state.focus = FocusPane::Main;
+        if let Some(view) = app.app_state.main_conversation_view_mut() {
+            view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(0)));
+        }
+
+        // Press Ctrl+j to move to next entry
+        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "Ctrl+j should not trigger quit");
+        let focused_idx = app
+            .app_state
+            .main_conversation_view()
+            .and_then(|v| v.focused_message())
+            .map(|idx| idx.get());
+        assert_eq!(
+            focused_idx,
+            Some(1),
+            "Ctrl+j should move focus from entry 0 to entry 1"
+        );
+    }
+
+    #[test]
+    fn handle_key_ctrl_k_moves_focus_to_previous_entry() {
+        let mut app = create_test_app();
+
+        // Add multiple entries
+        let entry1 = create_test_entry("first");
+        let entry2 = create_test_entry("second");
+        let entry3 = create_test_entry("third");
+        app.app_state.add_entries(vec![entry1, entry2, entry3]);
+
+        // Focus on Main pane and select second entry (index 1)
+        app.app_state.focus = FocusPane::Main;
+        if let Some(view) = app.app_state.main_conversation_view_mut() {
+            view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(1)));
+        }
+
+        // Press Ctrl+k to move to previous entry
+        let key = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "Ctrl+k should not trigger quit");
+        let focused_idx = app
+            .app_state
+            .main_conversation_view()
+            .and_then(|v| v.focused_message())
+            .map(|idx| idx.get());
+        assert_eq!(
+            focused_idx,
+            Some(0),
+            "Ctrl+k should move focus from entry 1 to entry 0"
+        );
+    }
+
+    #[test]
+    fn handle_key_ctrl_j_wraps_at_end_of_conversation() {
+        let mut app = create_test_app();
+
+        // Add two entries
+        let entry1 = create_test_entry("first");
+        let entry2 = create_test_entry("second");
+        app.app_state.add_entries(vec![entry1, entry2]);
+
+        // Focus on Main pane and select last entry (index 1)
+        app.app_state.focus = FocusPane::Main;
+        if let Some(view) = app.app_state.main_conversation_view_mut() {
+            view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(1)));
+        }
+
+        // Press Ctrl+j - should wrap to first entry
+        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL);
+        app.handle_key(key);
+
+        let focused_idx = app
+            .app_state
+            .main_conversation_view()
+            .and_then(|v| v.focused_message())
+            .map(|idx| idx.get());
+        assert_eq!(
+            focused_idx,
+            Some(0),
+            "Ctrl+j should wrap from last entry to first entry"
+        );
+    }
+
+    #[test]
+    fn handle_key_ctrl_k_wraps_at_beginning_of_conversation() {
+        let mut app = create_test_app();
+
+        // Add two entries
+        let entry1 = create_test_entry("first");
+        let entry2 = create_test_entry("second");
+        app.app_state.add_entries(vec![entry1, entry2]);
+
+        // Focus on Main pane and select first entry (index 0)
+        app.app_state.focus = FocusPane::Main;
+        if let Some(view) = app.app_state.main_conversation_view_mut() {
+            view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(0)));
+        }
+
+        // Press Ctrl+k - should wrap to last entry
+        let key = KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL);
+        app.handle_key(key);
+
+        let focused_idx = app
+            .app_state
+            .main_conversation_view()
+            .and_then(|v| v.focused_message())
+            .map(|idx| idx.get());
+        assert_eq!(
+            focused_idx,
+            Some(1),
+            "Ctrl+k should wrap from first entry to last entry"
+        );
+    }
+
+    #[test]
+    fn handle_key_ctrl_j_does_nothing_when_no_entries() {
+        let mut app = create_test_app();
+
+        // Main pane has only the initial entry from create_test_app
+        app.app_state.focus = FocusPane::Main;
+        if let Some(view) = app.app_state.main_conversation_view_mut() {
+            view.set_focused_message(None);
+        }
+
+        // Press Ctrl+j
+        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL);
+        app.handle_key(key);
+
+        let focused_idx = app
+            .app_state
+            .main_conversation_view()
+            .and_then(|v| v.focused_message());
+        // Should remain None or set to first entry if entries exist
+        // Behavior: if no focused entry, Ctrl+j should focus first entry
+        assert!(
+            focused_idx.is_some(),
+            "Ctrl+j should focus first entry when no entry was focused"
+        );
+        assert_eq!(
+            focused_idx.unwrap().get(),
+            0,
+            "Ctrl+j should focus entry 0"
+        );
+    }
+
+    #[test]
+    fn handle_key_ctrl_j_operates_on_correct_pane() {
+        use crate::model::{
+            AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId, TokenUsage,
+        };
+        use chrono::Utc;
+
+        let mut app = create_test_app();
+
+        // Add entry to main pane
+        let main_entry1 = create_test_entry("main1");
+        let main_entry2 = create_test_entry("main2");
+        app.app_state.add_entries(vec![main_entry1, main_entry2]);
+
+        // Add entries to subagent pane
+        let agent_id = AgentId::new("test-agent").unwrap();
+        for i in 0..2 {
+            let message =
+                Message::new(Role::Assistant, MessageContent::Text(format!("sub{}", i)))
+                    .with_usage(TokenUsage::default());
+            let entry = LogEntry::new(
+                EntryUuid::new(format!("sub-uuid-{}", i)).unwrap(),
+                None,
+                SessionId::new("test-session").unwrap(),
+                Some(agent_id.clone()),
+                Utc::now(),
+                EntryType::Assistant,
+                message,
+                EntryMetadata::default(),
+            );
+            app.app_state
+                .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
+        }
+
+        // Focus on Subagent pane and select first entry
+        app.app_state.focus = FocusPane::Subagent;
+        app.app_state.selected_tab = Some(0);
+        if let Some(view) = app.app_state.subagent_conversation_view_mut(0) {
+            view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(0)));
+        }
+
+        // Press Ctrl+j - should move focus in subagent view, not main
+        let key = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL);
+        app.handle_key(key);
+
+        // Check subagent has moved to entry 1
+        let sub_focused = app
+            .app_state
+            .subagent_conversation_view(0)
+            .and_then(|v| v.focused_message())
+            .map(|idx| idx.get());
+        assert_eq!(
+            sub_focused,
+            Some(1),
+            "Ctrl+j should move focus in subagent view when Subagent pane is focused"
+        );
+
+        // Check main view was unaffected (should still have no focused message)
+        let main_focused = app
+            .app_state
+            .main_conversation_view()
+            .and_then(|v| v.focused_message());
+        assert!(
+            main_focused.is_none(),
+            "Ctrl+j should not affect main view when Subagent pane is focused"
+        );
+    }
+
     // Helper function to create a test LogEntry
     fn create_test_entry(content: &str) -> crate::model::ConversationEntry {
         use crate::model::{

@@ -52,6 +52,12 @@ pub enum KeyAction {
     /// Toggle current message between expanded and collapsed (FR-032, FR-033). Default: Enter/Space
     ToggleExpand,
 
+    // Entry navigation (keyboard focus)
+    /// Move focus to next entry in conversation. Default: Ctrl+j
+    NextEntry,
+    /// Move focus to previous entry in conversation. Default: Ctrl+k
+    PrevEntry,
+
     // Search
     /// Activate search input (FR-011). Default: //Ctrl+f
     StartSearch,
