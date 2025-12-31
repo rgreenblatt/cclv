@@ -14,6 +14,30 @@ use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use std::path::PathBuf;
 
+/// Convert a ratatui buffer to a string representation for snapshot testing.
+///
+/// Captures the visual output character by character, preserving layout.
+/// Empty trailing lines are removed to keep snapshots clean.
+#[allow(dead_code)]
+fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
+    let area = buffer.area();
+    let mut lines = Vec::new();
+
+    for y in area.top()..area.bottom() {
+        let mut line = String::new();
+        for x in area.left()..area.right() {
+            let cell = &buffer[(x, y)];
+            line.push_str(cell.symbol());
+        }
+        let trimmed = line.trim_end();
+        if !trimmed.is_empty() {
+            lines.push(trimmed.to_string());
+        }
+    }
+
+    lines.join("\n")
+}
+
 /// Test harness for acceptance testing
 ///
 /// Wraps TuiApp<TestBackend> to provide a clean API for simulating user
@@ -182,5 +206,40 @@ impl AcceptanceTestHarness {
     /// * `false` - App has quit or crashed
     pub fn is_running(&self) -> bool {
         self.running
+    }
+
+    /// Render the current frame to a string
+    ///
+    /// Renders the app state to the TestBackend and returns the buffer
+    /// contents as a string representation.
+    ///
+    /// # Panics
+    /// Panics if rendering fails (should never happen with TestBackend)
+    ///
+    /// # Returns
+    /// The rendered terminal buffer as a string
+    #[allow(dead_code)]
+    pub fn render_to_string(&mut self) -> String {
+        // Render the current frame to the TestBackend
+        self.app
+            .render_test()
+            .expect("Rendering should succeed in test harness");
+
+        // Access the buffer from the TestBackend and convert to string
+        let buffer = self.app.terminal().backend().buffer();
+        buffer_to_string(buffer)
+    }
+
+    /// Assert that the current render matches a snapshot
+    ///
+    /// Renders the current state and uses insta to verify against
+    /// a stored snapshot. Useful for regression testing UI output.
+    ///
+    /// # Arguments
+    /// * `snapshot_name` - Name for the snapshot file
+    #[allow(dead_code)]
+    pub fn assert_snapshot(&mut self, snapshot_name: &str) {
+        let output = self.render_to_string();
+        insta::assert_snapshot!(snapshot_name, output);
     }
 }

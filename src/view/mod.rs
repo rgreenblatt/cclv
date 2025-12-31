@@ -214,6 +214,28 @@ where
         self.handle_key(key)
     }
 
+    /// Render a single frame (test-only accessor)
+    ///
+    /// Calls the internal draw() method to render the current state
+    /// to the TestBackend. Useful for snapshot testing.
+    ///
+    /// **WARNING**: This is for testing only. Do not use in production code.
+    #[doc(hidden)]
+    pub fn render_test(&mut self) -> Result<(), TuiError> {
+        self.draw()
+    }
+
+    /// Get reference to terminal (test-only accessor)
+    ///
+    /// Provides access to the terminal backend for buffer inspection.
+    /// Useful for snapshot testing with TestBackend.
+    ///
+    /// **WARNING**: This is for testing only. Do not use in production code.
+    #[doc(hidden)]
+    pub fn terminal(&self) -> &Terminal<B> {
+        &self.terminal
+    }
+
     /// Poll input source for new lines and process them
     ///
     /// Accumulates entries to pending buffer instead of adding directly to session.

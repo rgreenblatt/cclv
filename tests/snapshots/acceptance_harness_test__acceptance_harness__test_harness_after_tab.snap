@@ -1,0 +1,28 @@
+---
+source: tests/acceptance_harness.rs
+expression: output
+---
+Model: Opus | Main Agent | /workspace/project | 3 tools, 0 agents, 0 skills
+┌Main Agent [Opus] (6 entries)─────────────────────────────────────────────────┐
+│                                                                              │
+│Hello                                                                         │
+│                                                                              │
+│Hi there!                                                                     │
+│                                                                              │
+│Can you help?                                                                 │
+│                                                                              │
+│Of course, I'd be happy to help.                                              │
+│                                                                              │
+│Thanks                                                                        │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+Wrap: On | q: Quit | ?: Help | [ ]: Tabs | 1-9: Select tab | Tab: Cycle panes
