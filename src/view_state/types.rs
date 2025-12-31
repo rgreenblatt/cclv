@@ -18,24 +18,28 @@ impl LineHeight {
     pub const ONE: Self = Self(1);
 
     /// Smart constructor that validates line height is >= 1.
-    pub fn new(_height: u16) -> Result<Self, InvalidLineHeight> {
-        todo!("LineHeight::new")
+    pub fn new(height: u16) -> Result<Self, InvalidLineHeight> {
+        if height == 0 {
+            Err(InvalidLineHeight(height))
+        } else {
+            Ok(Self(height))
+        }
     }
 
     /// Get the raw u16 value.
     pub fn get(&self) -> u16 {
-        todo!("LineHeight::get")
+        self.0
     }
 
     /// Check if this is the ZERO sentinel value.
     pub fn is_zero(&self) -> bool {
-        todo!("LineHeight::is_zero")
+        self.0 == 0
     }
 }
 
 impl Default for LineHeight {
     fn default() -> Self {
-        todo!("LineHeight::default")
+        Self::ONE
     }
 }
 
@@ -45,23 +49,23 @@ pub struct LineOffset(usize);
 
 impl LineOffset {
     /// Create a new LineOffset from a raw value.
-    pub fn new(_offset: usize) -> Self {
-        todo!("LineOffset::new")
+    pub fn new(offset: usize) -> Self {
+        Self(offset)
     }
 
     /// Get the raw usize value.
     pub fn get(&self) -> usize {
-        todo!("LineOffset::get")
+        self.0
     }
 
     /// Add an amount to this offset, saturating at usize::MAX.
-    pub fn saturating_add(&self, _amount: usize) -> Self {
-        todo!("LineOffset::saturating_add")
+    pub fn saturating_add(&self, amount: usize) -> Self {
+        Self(self.0.saturating_add(amount))
     }
 
     /// Subtract an amount from this offset, saturating at 0.
-    pub fn saturating_sub(&self, _amount: usize) -> Self {
-        todo!("LineOffset::saturating_sub")
+    pub fn saturating_sub(&self, amount: usize) -> Self {
+        Self(self.0.saturating_sub(amount))
     }
 }
 
@@ -71,34 +75,34 @@ pub struct EntryIndex(usize);
 
 impl EntryIndex {
     /// Create a new EntryIndex from a raw 0-based value.
-    pub fn new(_index: usize) -> Self {
-        todo!("EntryIndex::new")
+    pub fn new(index: usize) -> Self {
+        Self(index)
     }
 
     /// Get the raw 0-based index value.
     pub fn get(&self) -> usize {
-        todo!("EntryIndex::get")
+        self.0
     }
 
     /// Get the 1-based index for display purposes.
     pub fn display(&self) -> usize {
-        todo!("EntryIndex::display")
+        self.0 + 1
     }
 
     /// Get the next entry index.
     pub fn next(&self) -> Self {
-        todo!("EntryIndex::next")
+        Self(self.0 + 1)
     }
 
     /// Get the previous entry index, saturating at 0.
     pub fn prev(&self) -> Self {
-        todo!("EntryIndex::prev")
+        Self(self.0.saturating_sub(1))
     }
 }
 
 impl From<usize> for EntryIndex {
-    fn from(_index: usize) -> Self {
-        todo!("EntryIndex::from")
+    fn from(index: usize) -> Self {
+        Self(index)
     }
 }
 
@@ -113,8 +117,8 @@ pub struct ViewportDimensions {
 
 impl ViewportDimensions {
     /// Create new viewport dimensions.
-    pub fn new(_width: u16, _height: u16) -> Self {
-        todo!("ViewportDimensions::new")
+    pub fn new(width: u16, height: u16) -> Self {
+        Self { width, height }
     }
 }
 
