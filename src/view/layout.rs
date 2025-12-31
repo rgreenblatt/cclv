@@ -4,7 +4,7 @@
 //! placeholder widgets for main agent, subagent tabs, and status bar.
 
 use crate::state::{AppState, FocusPane};
-use crate::view::{message, tabs};
+use crate::view::{message, tabs, MessageStyles};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -19,6 +19,9 @@ use ratatui::{
 /// When session has no subagents, right pane is hidden and left pane takes full width.
 pub fn render_layout(frame: &mut Frame, state: &AppState) {
     let has_subagents = !state.session().subagents().is_empty();
+
+    // Create message styles for consistent coloring across panes
+    let styles = MessageStyles::new();
 
     // Split screen vertically: header + main content area + status bar
     let vertical_chunks = Layout::default()
@@ -44,10 +47,10 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
         .split(content_area);
 
     // Render panes
-    render_main_pane(frame, horizontal_chunks[0], state);
+    render_main_pane(frame, horizontal_chunks[0], state, &styles);
 
     if has_subagents {
-        render_subagent_pane(frame, horizontal_chunks[1], state);
+        render_subagent_pane(frame, horizontal_chunks[1], state, &styles);
     }
 
     render_status_bar(frame, status_area, state);
@@ -67,12 +70,13 @@ fn calculate_horizontal_constraints(has_subagents: bool) -> (Constraint, Constra
 }
 
 /// Render the main agent pane using shared ConversationView widget.
-fn render_main_pane(frame: &mut Frame, area: Rect, state: &AppState) {
+fn render_main_pane(frame: &mut Frame, area: Rect, state: &AppState, styles: &MessageStyles) {
     message::render_conversation_view(
         frame,
         area,
         state.session().main_agent(),
         &state.main_scroll,
+        styles,
         state.focus == FocusPane::Main,
     );
 }
@@ -81,7 +85,7 @@ fn render_main_pane(frame: &mut Frame, area: Rect, state: &AppState) {
 ///
 /// Layout: Tab bar (top 3 lines) + conversation content (remainder).
 /// Uses state.selected_tab to determine which subagent conversation to display.
-fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState) {
+fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState, styles: &MessageStyles) {
     // Split area vertically: tab bar + conversation content
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -116,6 +120,7 @@ fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState) {
             content_area,
             conversation,
             &state.subagent_scroll,
+            styles,
             state.focus == FocusPane::Subagent,
         );
     }

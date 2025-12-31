@@ -5,6 +5,7 @@
 
 use crate::model::{AgentConversation, ContentBlock, MessageContent, ToolCall};
 use crate::state::ScrollState;
+use crate::view::MessageStyles;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -24,6 +25,7 @@ use tui_markdown::from_str;
 pub struct ConversationView<'a> {
     conversation: &'a AgentConversation,
     scroll_state: &'a ScrollState,
+    styles: &'a MessageStyles,
     focused: bool,
     collapse_threshold: usize,
     summary_lines: usize,
@@ -36,15 +38,18 @@ impl<'a> ConversationView<'a> {
     /// # Arguments
     /// * `conversation` - The agent conversation to display
     /// * `scroll_state` - Scroll state (for expansion tracking and scrolling)
+    /// * `styles` - Message styling configuration
     /// * `focused` - Whether this pane currently has focus (affects border color)
     pub fn new(
         conversation: &'a AgentConversation,
         scroll_state: &'a ScrollState,
+        styles: &'a MessageStyles,
         focused: bool,
     ) -> Self {
         Self {
             conversation,
             scroll_state,
+            styles,
             focused,
             collapse_threshold: 10,
             summary_lines: 3,
@@ -88,11 +93,16 @@ impl<'a> ConversationView<'a> {
             }
             MessageContent::Blocks(blocks) => {
                 let mut total_height = 0;
+                let role = entry.message().role();
+                let role_style = self.styles.style_for_role(role);
+
                 for block in blocks {
                     let block_lines = render_content_block(
                         block,
                         entry.uuid(),
                         self.scroll_state,
+                        self.styles,
+                        role_style,
                         self.collapse_threshold,
                         self.summary_lines,
                     );
@@ -202,11 +212,17 @@ impl<'a> Widget for ConversationView<'a> {
 
             // Render only the visible range
             for entry in self.conversation.entries()[start_index..end_index].iter() {
+                let role = entry.message().role();
+                let role_style = self.styles.style_for_role(role);
+
                 match entry.message().content() {
                     MessageContent::Text(text) => {
-                        // Simple text message - render each line
+                        // Simple text message - render each line with role-based styling
                         for line in text.lines() {
-                            lines.push(Line::from(line.to_string()));
+                            lines.push(Line::from(vec![ratatui::text::Span::styled(
+                                line.to_string(),
+                                role_style,
+                            )]));
                         }
                     }
                     MessageContent::Blocks(blocks) => {
@@ -216,6 +232,8 @@ impl<'a> Widget for ConversationView<'a> {
                                 block,
                                 entry.uuid(),
                                 self.scroll_state,
+                                self.styles,
+                                role_style,
                                 self.collapse_threshold,
                                 self.summary_lines,
                             );
@@ -243,12 +261,14 @@ impl<'a> Widget for ConversationView<'a> {
 /// * `area` - The area to render within
 /// * `conversation` - The agent conversation to display
 /// * `scroll` - Scroll state (for expansion tracking and scrolling)
+/// * `styles` - Message styling configuration
 /// * `focused` - Whether this pane currently has focus (affects border color)
 pub fn render_conversation_view(
     frame: &mut Frame,
     area: Rect,
     conversation: &AgentConversation,
     scroll: &ScrollState,
+    styles: &MessageStyles,
     focused: bool,
 ) {
     let entry_count = conversation.entries().len();
@@ -286,9 +306,12 @@ pub fn render_conversation_view(
     } else {
         // Iterate through all entries and render their content blocks
         for entry in conversation.entries() {
+            let role = entry.message().role();
+            let role_style = styles.style_for_role(role);
+
             match entry.message().content() {
                 MessageContent::Text(text) => {
-                    // Simple text message - apply collapse/expand logic
+                    // Simple text message - apply collapse/expand logic with role-based styling
                     let text_lines: Vec<_> = text.lines().collect();
                     let total_lines = text_lines.len();
                     let collapse_threshold = 10;
@@ -298,9 +321,12 @@ pub fn render_conversation_view(
                     let should_collapse = total_lines > collapse_threshold && !is_expanded;
 
                     if should_collapse {
-                        // Show summary lines
+                        // Show summary lines with role styling
                         for line in text_lines.iter().take(summary_lines) {
-                            lines.push(Line::from(line.to_string()));
+                            lines.push(Line::from(vec![ratatui::text::Span::styled(
+                                line.to_string(),
+                                role_style,
+                            )]));
                         }
                         // Add collapse indicator
                         let remaining = total_lines - summary_lines;
@@ -311,9 +337,12 @@ pub fn render_conversation_view(
                                 .add_modifier(Modifier::DIM),
                         )]));
                     } else {
-                        // Show all lines
+                        // Show all lines with role styling
                         for line in text_lines {
-                            lines.push(Line::from(line.to_string()));
+                            lines.push(Line::from(vec![ratatui::text::Span::styled(
+                                line.to_string(),
+                                role_style,
+                            )]));
                         }
                     }
                 }
@@ -324,6 +353,8 @@ pub fn render_conversation_view(
                             block,
                             entry.uuid(),
                             scroll,
+                            styles,
+                            role_style,
                             10, // Default collapse threshold
                             3,  // Default summary lines
                         );
@@ -342,36 +373,33 @@ pub fn render_conversation_view(
 
 // ===== Markdown Rendering =====
 
-/// Render markdown text as formatted lines.
+/// Render markdown text with role-based styling applied to unstyled spans.
 ///
-/// Converts markdown content to styled ratatui Lines with:
-/// - Headings styled with bold and different colors
-/// - Bold/italic text styled appropriately
-/// - Code blocks preserved for display
-/// - Lists rendered with bullets
-/// - Links visible
+/// Markdown styling (bold, italic, code highlighting) takes precedence,
+/// but plain text inherits the role's color.
 ///
 /// # Arguments
 /// * `markdown_text` - The markdown content to render
+/// * `base_style` - Base style to apply to unstyled text (typically role-based color)
 ///
 /// # Returns
 /// Vector of ratatui `Line` objects representing the rendered markdown
-fn render_markdown(markdown_text: &str) -> Vec<Line<'static>> {
-    // Use tui-markdown to parse and render markdown with styling
+fn render_markdown_with_style(markdown_text: &str, base_style: Style) -> Vec<Line<'static>> {
     let text = from_str(markdown_text);
 
-    
-    // Convert Text<'_> to Vec<Line<'static>> by deeply cloning to owned data
     text.lines
         .into_iter()
         .map(|line| {
-            // Clone each span to make it 'static
             let owned_spans: Vec<_> = line
                 .spans
                 .into_iter()
-                .map(|span| ratatui::text::Span {
-                    content: span.content.into_owned().into(),
-                    style: span.style,
+                .map(|span| {
+                    // Apply base_style as default, then overlay markdown styling
+                    let combined_style = base_style.patch(span.style);
+                    ratatui::text::Span {
+                        content: span.content.into_owned().into(),
+                        style: combined_style,
+                    }
                 })
                 .collect();
             Line::from(owned_spans)
@@ -384,7 +412,7 @@ fn render_markdown(markdown_text: &str) -> Vec<Line<'static>> {
 /// Render a ContentBlock::ToolUse as formatted lines with collapse/expand support.
 ///
 /// Displays:
-/// - Tool name as header (always visible)
+/// - Tool name as header (always visible, styled with tool_style)
 /// - Tool input/parameters (collapsible if exceeds threshold)
 /// - When collapsed: Shows first `summary_lines` + "(+N more lines)" indicator
 /// - When expanded: Shows all parameter lines
@@ -393,6 +421,7 @@ fn render_markdown(markdown_text: &str) -> Vec<Line<'static>> {
 /// * `tool_call` - The tool call to render
 /// * `entry_uuid` - UUID of the entry (for expansion state lookup)
 /// * `scroll_state` - Scroll state containing expansion tracking
+/// * `tool_style` - Style to apply to tool call content
 /// * `collapse_threshold` - Number of lines before collapsing (default: 10)
 /// * `summary_lines` - Number of lines to show when collapsed (default: 3)
 ///
@@ -402,6 +431,7 @@ pub fn render_tool_use(
     tool_call: &ToolCall,
     entry_uuid: &crate::model::EntryUuid,
     scroll_state: &ScrollState,
+    tool_style: Style,
     collapse_threshold: usize,
     summary_lines: usize,
 ) -> Vec<Line<'static>> {
@@ -409,14 +439,12 @@ pub fn render_tool_use(
 
     let mut lines = Vec::new();
 
-    // Tool name header (always visible)
+    // Tool name header (always visible, with tool_style + bold)
     let tool_name = tool_call.name().as_str();
     let header = format!("🔧 Tool: {}", tool_name);
     lines.push(Line::from(vec![Span::styled(
         header,
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD),
+        tool_style.add_modifier(Modifier::BOLD),
     )]));
 
     // Tool input/parameters - collapsible
@@ -454,7 +482,7 @@ pub fn render_tool_use(
 ///
 /// Displays:
 /// - Output content (collapsible if exceeds threshold)
-/// - Error styling (red) when is_error=true
+/// - Styled with result_style (which may be error red or default)
 /// - When collapsed: Shows first `summary_lines` + "(+N more lines)" indicator
 /// - When expanded: Shows all output lines
 ///
@@ -463,6 +491,7 @@ pub fn render_tool_use(
 /// * `is_error` - Whether this result represents an error
 /// * `entry_uuid` - UUID of the entry (for expansion state lookup)
 /// * `scroll_state` - Scroll state containing expansion tracking
+/// * `result_style` - Style to apply to result content (red for errors)
 /// * `collapse_threshold` - Number of lines before collapsing (default: 10)
 /// * `summary_lines` - Number of lines to show when collapsed (default: 3)
 ///
@@ -473,6 +502,7 @@ pub fn render_tool_result(
     is_error: bool,
     entry_uuid: &crate::model::EntryUuid,
     scroll_state: &ScrollState,
+    result_style: Style,
     collapse_threshold: usize,
     summary_lines: usize,
 ) -> Vec<Line<'static>> {
@@ -492,12 +522,12 @@ pub fn render_tool_result(
         total_lines
     };
 
-    // Render the visible lines with error styling if needed
+    // Render the visible lines with styling
     for line in content_lines.iter().take(lines_to_show) {
         let rendered_line = if is_error {
             Line::from(vec![Span::styled(
                 line.to_string(),
-                Style::default().fg(Color::Red),
+                result_style,
             )])
         } else {
             Line::from(line.to_string())
@@ -527,6 +557,8 @@ pub fn render_tool_result(
 /// * `block` - The content block to render
 /// * `entry_uuid` - UUID of the entry (for expansion state lookup)
 /// * `scroll_state` - Scroll state containing expansion tracking
+/// * `styles` - Message styling configuration
+/// * `role_style` - Default style for this message's role
 /// * `collapse_threshold` - Number of lines before collapsing (default: 10)
 /// * `summary_lines` - Number of lines to show when collapsed (default: 3)
 ///
@@ -536,15 +568,20 @@ pub fn render_content_block(
     block: &ContentBlock,
     entry_uuid: &crate::model::EntryUuid,
     scroll_state: &ScrollState,
+    styles: &MessageStyles,
+    role_style: Style,
     collapse_threshold: usize,
     summary_lines: usize,
 ) -> Vec<Line<'static>> {
     use ratatui::text::Span;
 
+    // Check if this block has specific styling (tool calls, errors)
+    let block_style = styles.style_for_content_block(block);
+
     match block {
         ContentBlock::Text { text } => {
-            // Render markdown text with styling
-            let markdown_lines = render_markdown(text);
+            // Render markdown text with role-based styling
+            let markdown_lines = render_markdown_with_style(text, role_style);
             let total_lines = markdown_lines.len();
 
             let is_expanded = scroll_state.is_expanded(entry_uuid);
@@ -571,20 +608,32 @@ pub fn render_content_block(
             lines
         }
         ContentBlock::ToolUse(tool_call) => {
-            render_tool_use(tool_call, entry_uuid, scroll_state, collapse_threshold, summary_lines)
+            let tool_style = block_style.unwrap_or(role_style);
+            render_tool_use(
+                tool_call,
+                entry_uuid,
+                scroll_state,
+                tool_style,
+                collapse_threshold,
+                summary_lines,
+            )
         }
         ContentBlock::ToolResult {
             tool_use_id: _,
             content,
             is_error,
-        } => render_tool_result(
-            content,
-            *is_error,
-            entry_uuid,
-            scroll_state,
-            collapse_threshold,
-            summary_lines,
-        ),
+        } => {
+            let result_style = block_style.unwrap_or(role_style);
+            render_tool_result(
+                content,
+                *is_error,
+                entry_uuid,
+                scroll_state,
+                result_style,
+                collapse_threshold,
+                summary_lines,
+            )
+        }
         ContentBlock::Thinking { thinking } => thinking
             .lines()
             .map(|line| {
@@ -618,6 +667,16 @@ mod tests {
         state
     }
 
+    // ===== Helper: Create test message styles =====
+
+    fn create_test_styles() -> MessageStyles {
+        MessageStyles::new()
+    }
+
+    fn get_test_role_style() -> Style {
+        create_test_styles().style_for_role(crate::model::Role::Assistant)
+    }
+
     // ===== render_tool_use Tests =====
 
     #[test]
@@ -631,7 +690,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-1").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_tool_use(&tool_call, &uuid, &scroll_state, 10, 3);
+        let lines = render_tool_use(&tool_call, &uuid, &scroll_state, get_test_role_style(), 10, 3);
 
         // Tool name should be visible in the output
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -668,7 +727,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-2").expect("valid uuid");
         let scroll_state = create_test_scroll_state(); // NOT expanded
 
-        let lines = render_tool_use(&tool_call, &uuid, &scroll_state, 10, 3);
+        let lines = render_tool_use(&tool_call, &uuid, &scroll_state, get_test_role_style(), 10, 3);
 
         // Should show collapse indicator
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -707,7 +766,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-3").expect("valid uuid");
         let scroll_state = create_expanded_scroll_state(&uuid); // IS expanded
 
-        let lines = render_tool_use(&tool_call, &uuid, &scroll_state, 10, 3);
+        let lines = render_tool_use(&tool_call, &uuid, &scroll_state, get_test_role_style(), 10, 3);
 
         // Should NOT show collapse indicator when expanded
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -731,7 +790,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-4").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_tool_result(content, false, &uuid, &scroll_state, 10, 3);
+        let lines = render_tool_result(content, false, &uuid, &scroll_state, get_test_role_style(), 10, 3);
 
         // Output content should be visible
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -755,7 +814,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-5").expect("valid uuid");
         let scroll_state = create_test_scroll_state(); // NOT expanded
 
-        let lines = render_tool_result(content, false, &uuid, &scroll_state, 10, 3);
+        let lines = render_tool_result(content, false, &uuid, &scroll_state, get_test_role_style(), 10, 3);
 
         // Should show first 3 lines + collapse indicator
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -785,7 +844,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-6").expect("valid uuid");
         let scroll_state = create_expanded_scroll_state(&uuid); // IS expanded
 
-        let lines = render_tool_result(content, false, &uuid, &scroll_state, 10, 3);
+        let lines = render_tool_result(content, false, &uuid, &scroll_state, get_test_role_style(), 10, 3);
 
         // Should NOT show collapse indicator when expanded
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -808,7 +867,9 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-7").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_tool_result(content, true, &uuid, &scroll_state, 10, 3);
+        // For errors, pass red style
+        let error_style = Style::default().fg(Color::Red);
+        let lines = render_tool_result(content, true, &uuid, &scroll_state, error_style, 10, 3);
 
         // Error results should have red styling
         let has_red_style = lines.iter().any(|line| {
@@ -829,7 +890,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-8").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_tool_result(content, false, &uuid, &scroll_state, 10, 3);
+        let lines = render_tool_result(content, false, &uuid, &scroll_state, get_test_role_style(), 10, 3);
 
         // Non-error results should not have red styling
         let has_red_style = lines.iter().any(|line| {
@@ -854,7 +915,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-9").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+        let lines = render_content_block(&block, &uuid, &scroll_state, &create_test_styles(), get_test_role_style(), 10, 3);
 
         // Should render tool name
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -875,7 +936,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-10").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+        let lines = render_content_block(&block, &uuid, &scroll_state, &create_test_styles(), get_test_role_style(), 10, 3);
 
         // Should render result content
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -893,7 +954,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-11").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+        let lines = render_content_block(&block, &uuid, &scroll_state, &create_test_styles(), get_test_role_style(), 10, 3);
 
         // Should render text content
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -911,7 +972,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-12").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+        let lines = render_content_block(&block, &uuid, &scroll_state, &create_test_styles(), get_test_role_style(), 10, 3);
 
         // Should render thinking content
         let text: String = lines.iter().map(|l| l.to_string()).collect();
@@ -932,7 +993,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-13").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+        let lines = render_content_block(&block, &uuid, &scroll_state, &create_test_styles(), get_test_role_style(), 10, 3);
 
         // Should show all lines for short content
         assert_eq!(
@@ -959,7 +1020,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-14").expect("valid uuid");
         let scroll_state = create_test_scroll_state(); // NOT expanded
 
-        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+        let lines = render_content_block(&block, &uuid, &scroll_state, &create_test_styles(), get_test_role_style(), 10, 3);
 
         // Should show first 3 lines + collapse indicator
         assert_eq!(
@@ -995,7 +1056,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-15").expect("valid uuid");
         let scroll_state = create_expanded_scroll_state(&uuid); // IS expanded
 
-        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+        let lines = render_content_block(&block, &uuid, &scroll_state, &create_test_styles(), get_test_role_style(), 10, 3);
 
         // Should show all 15 lines when expanded
         assert_eq!(
@@ -1025,7 +1086,7 @@ mod tests {
         let uuid = crate::model::EntryUuid::new("entry-16").expect("valid uuid");
         let scroll_state = create_test_scroll_state();
 
-        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+        let lines = render_content_block(&block, &uuid, &scroll_state, &create_test_styles(), get_test_role_style(), 10, 3);
 
         // Exactly at threshold should NOT collapse (must exceed threshold)
         assert_eq!(
@@ -1086,7 +1147,7 @@ mod tests {
         terminal
             .draw(|frame| {
                 let area = frame.area();
-                render_conversation_view(frame, area, &conversation, &scroll_state, false);
+                render_conversation_view(frame, area, &conversation, &scroll_state, &create_test_styles(), false);
             })
             .expect("Failed to draw");
 
@@ -1152,7 +1213,7 @@ mod tests {
         terminal
             .draw(|frame| {
                 let area = frame.area();
-                render_conversation_view(frame, area, &conversation, &scroll_state, false);
+                render_conversation_view(frame, area, &conversation, &scroll_state, &create_test_styles(), false);
             })
             .expect("Failed to draw");
 
@@ -1182,7 +1243,8 @@ mod tests {
         let conversation = AgentConversation::new(None);
         let scroll_state = ScrollState::default();
 
-        let widget = ConversationView::new(&conversation, &scroll_state, false);
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
@@ -1218,7 +1280,8 @@ mod tests {
 
         let conversation = AgentConversation::new(None);
         let scroll_state = ScrollState::default();
-        let widget = ConversationView::new(&conversation, &scroll_state, false);
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         // Create entry with multi-line text content (15 lines)
         let text = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n\
@@ -1263,7 +1326,8 @@ mod tests {
         // Expand this entry
         scroll_state.toggle_expand(&entry_uuid);
 
-        let widget = ConversationView::new(&conversation, &scroll_state, false);
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         // Create entry with multi-line text content (15 lines)
         let text = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n\
@@ -1294,7 +1358,8 @@ mod tests {
 
         let conversation = AgentConversation::new(None);
         let scroll_state = ScrollState::default();
-        let widget = ConversationView::new(&conversation, &scroll_state, false);
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         // Viewport shows 10 lines, buffer_size=20
         let (start, end) = widget.calculate_visible_range(10);
@@ -1337,7 +1402,8 @@ mod tests {
             ..Default::default()
         };
 
-        let widget = ConversationView::new(&conversation, &scroll_state, false);
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         let (start, end) = widget.calculate_visible_range(10);
 
@@ -1389,7 +1455,8 @@ mod tests {
         }
 
         let scroll_state = ScrollState::default();
-        let widget = ConversationView::new(&conversation, &scroll_state, false);
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
@@ -1428,7 +1495,8 @@ mod tests {
         let conversation = AgentConversation::new(None);
         let scroll_state = ScrollState::default();
 
-        let widget = ConversationView::new(&conversation, &scroll_state, false)
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
             .collapse_threshold(15)
             .summary_lines(5)
             .buffer_size(30);
@@ -1452,7 +1520,7 @@ mod tests {
     #[test]
     fn render_markdown_with_plain_text_returns_unchanged() {
         let text = "This is plain text\nAnother line";
-        let lines = render_markdown(text);
+        let lines = render_markdown_with_style(text, Style::default());
 
         // Plain text should be rendered as-is
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
@@ -1469,7 +1537,7 @@ mod tests {
     #[test]
     fn render_markdown_with_heading_preserves_structure() {
         let markdown = "# Heading 1\n## Heading 2\nPlain text";
-        let lines = render_markdown(markdown);
+        let lines = render_markdown_with_style(markdown, Style::default());
 
         // Should have lines for headings and plain text
         assert!(
@@ -1497,7 +1565,7 @@ mod tests {
     #[test]
     fn render_markdown_with_code_block_preserves_content() {
         let markdown = "Some text\n```rust\nfn main() {}\n```\nMore text";
-        let lines = render_markdown(markdown);
+        let lines = render_markdown_with_style(markdown, Style::default());
 
         // Code content should be visible
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
@@ -1510,7 +1578,7 @@ mod tests {
     #[test]
     fn render_markdown_with_bold_applies_styling() {
         let markdown = "Normal text **bold text** more normal";
-        let lines = render_markdown(markdown);
+        let lines = render_markdown_with_style(markdown, Style::default());
 
             // Should have bold styling somewhere
         let has_bold = lines.iter().any(|line| {
@@ -1534,7 +1602,7 @@ mod tests {
     #[test]
     fn render_markdown_with_italic_applies_styling() {
         let markdown = "Normal text *italic text* more normal";
-        let lines = render_markdown(markdown);
+        let lines = render_markdown_with_style(markdown, Style::default());
 
         // Should have italic styling somewhere
         let has_italic = lines.iter().any(|line| {
@@ -1558,7 +1626,7 @@ mod tests {
     #[test]
     fn render_markdown_with_list_shows_items() {
         let markdown = "List:\n- Item 1\n- Item 2\n- Item 3";
-        let lines = render_markdown(markdown);
+        let lines = render_markdown_with_style(markdown, Style::default());
 
         // List items should be visible
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
@@ -1579,7 +1647,7 @@ mod tests {
     #[test]
     fn render_markdown_with_link_shows_url() {
         let markdown = "Check [this link](https://example.com) out";
-        let lines = render_markdown(markdown);
+        let lines = render_markdown_with_style(markdown, Style::default());
 
         // Link text or URL should be visible
         let rendered: String = lines.iter().map(|l| l.to_string()).collect();
@@ -1593,7 +1661,7 @@ mod tests {
     fn render_markdown_with_code_block_applies_syntax_highlighting() {
         // FR-022: System MUST apply syntax highlighting to code blocks
         let markdown = "```rust\nfn main() {\n    println!(\"Hello\");\n}\n```";
-        let lines = render_markdown(markdown);
+        let lines = render_markdown_with_style(markdown, Style::default());
 
         // Should have syntax highlighting (foreground colors) on code content
         let has_syntax_colors = lines.iter().any(|line| {
@@ -1655,7 +1723,7 @@ mod tests {
         terminal
             .draw(|frame| {
                 let area = frame.area();
-                render_conversation_view(frame, area, &conversation, &scroll_state, false);
+                render_conversation_view(frame, area, &conversation, &scroll_state, &create_test_styles(), false);
             })
             .expect("Failed to draw");
 
@@ -1732,7 +1800,7 @@ mod tests {
         terminal
             .draw(|frame| {
                 let area = frame.area();
-                render_conversation_view(frame, area, &conversation, &scroll_state, false);
+                render_conversation_view(frame, area, &conversation, &scroll_state, &create_test_styles(), false);
             })
             .expect("Failed to draw");
 
@@ -1795,7 +1863,7 @@ mod tests {
         terminal
             .draw(|frame| {
                 let area = frame.area();
-                render_conversation_view(frame, area, &conversation, &scroll_state, false);
+                render_conversation_view(frame, area, &conversation, &scroll_state, &create_test_styles(), false);
             })
             .expect("Failed to draw");
 
