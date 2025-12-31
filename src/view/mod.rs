@@ -126,7 +126,7 @@ fn count_text_lines(text: &str, wrap: WrapMode) -> u16 {
                     wrapped_lines += 1;
                 } else {
                     // Calculate how many lines this wraps to
-                    wrapped_lines += ((line_width + WRAP_WIDTH - 1) / WRAP_WIDTH).max(1);
+                    wrapped_lines += line_width.div_ceil(WRAP_WIDTH).max(1);
                 }
             }
             wrapped_lines as u16
