@@ -157,11 +157,11 @@ fn merge_config_overrides_with_config_file_values() {
     let resolved = merge_config(Some(config_file));
 
     assert_eq!(resolved.theme, "solarized-light");
-    assert_eq!(resolved.follow, false);
-    assert_eq!(resolved.show_stats, true);
+    assert!(!resolved.follow);
+    assert!(resolved.show_stats);
     assert_eq!(resolved.collapse_threshold, 15);
     assert_eq!(resolved.summary_lines, 2);
-    assert_eq!(resolved.line_wrap, false);
+    assert!(!resolved.line_wrap);
     assert_eq!(resolved.log_buffer_capacity, 2000);
 }
 
@@ -353,11 +353,11 @@ fn resolved_config_default_has_expected_values() {
     let config = ResolvedConfig::default();
 
     assert_eq!(config.theme, "base16-ocean");
-    assert_eq!(config.follow, true);
-    assert_eq!(config.show_stats, false);
+    assert!(config.follow);
+    assert!(!config.show_stats);
     assert_eq!(config.collapse_threshold, 10);
     assert_eq!(config.summary_lines, 3);
-    assert_eq!(config.line_wrap, true);
+    assert!(config.line_wrap);
     assert_eq!(config.log_buffer_capacity, 1000);
 }
 
@@ -597,7 +597,7 @@ fn apply_cli_overrides_follow_override() {
 
     let result = apply_cli_overrides(base.clone(), None, Some(false), None);
 
-    assert_eq!(result.follow, false, "CLI follow should override");
+    assert!(!result.follow, "CLI follow should override");
     assert_eq!(result.theme, base.theme, "Other fields unchanged");
 }
 
@@ -607,7 +607,7 @@ fn apply_cli_overrides_stats_override() {
 
     let result = apply_cli_overrides(base.clone(), None, None, Some(true));
 
-    assert_eq!(result.show_stats, true, "CLI stats should override");
+    assert!(result.show_stats, "CLI stats should override");
     assert_eq!(result.theme, base.theme, "Other fields unchanged");
 }
 
@@ -631,8 +631,8 @@ fn apply_cli_overrides_multiple_overrides() {
     );
 
     assert_eq!(result.theme, "solarized-dark");
-    assert_eq!(result.follow, false);
-    assert_eq!(result.show_stats, true);
+    assert!(!result.follow);
+    assert!(result.show_stats);
     assert_eq!(
         result.collapse_threshold, base.collapse_threshold,
         "Non-overridden fields unchanged"
@@ -666,7 +666,7 @@ fn precedence_chain_defaults_to_config_file() {
     let resolved = merge_config(Some(config_file));
 
     assert_eq!(resolved.theme, "custom-theme", "Config file overrides default");
-    assert_eq!(resolved.follow, false, "Config file overrides default");
+    assert!(!resolved.follow, "Config file overrides default");
     assert_eq!(
         resolved.show_stats,
         ResolvedConfig::default().show_stats,
@@ -761,13 +761,13 @@ fn precedence_chain_full_defaults_to_cli() {
     // Step 1: Defaults → Config File
     let merged = merge_config(Some(config_file));
     assert_eq!(merged.theme, "config-theme");
-    assert_eq!(merged.follow, false);
+    assert!(!merged.follow);
 
     // Step 2: → Env Vars
     env::set_var("CCLV_THEME", "env-theme");
     let with_env = apply_env_overrides(merged);
     assert_eq!(with_env.theme, "env-theme", "Env overrides config file");
-    assert_eq!(with_env.follow, false, "Follow unchanged by env");
+    assert!(!with_env.follow, "Follow unchanged by env");
 
     // Step 3: → CLI Args
     let with_cli = apply_cli_overrides(
@@ -777,8 +777,8 @@ fn precedence_chain_full_defaults_to_cli() {
         Some(true),
     );
     assert_eq!(with_cli.theme, "cli-theme", "CLI overrides env");
-    assert_eq!(with_cli.follow, true, "CLI overrides config file");
-    assert_eq!(with_cli.show_stats, true, "CLI overrides default");
+    assert!(with_cli.follow, "CLI overrides config file");
+    assert!(with_cli.show_stats, "CLI overrides default");
 
     // Cleanup
     env::remove_var("CCLV_THEME");

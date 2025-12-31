@@ -1054,7 +1054,7 @@ fn render_layout_uses_search_highlighting_when_search_active() {
     // Activate search for "world"
     use crate::state::search::{execute_search, SearchQuery};
     let query = SearchQuery::new("world").unwrap();
-    let matches = execute_search(&state.session(), &query);
+    let matches = execute_search(state.session(), &query);
     state.search = SearchState::Active {
         query,
         matches,

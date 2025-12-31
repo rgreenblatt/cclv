@@ -581,10 +581,8 @@ fn render_entry_lines_with_search(
                     if should_collapse {
                         // Show summary lines with role styling (no search highlighting in collapsed view)
                         for line in text_lines.iter().take(summary_lines) {
-                            lines.push(Line::from(vec![Span::styled(
-                                line.to_string(),
-                                role_style,
-                            )]));
+                            lines
+                                .push(Line::from(vec![Span::styled(line.to_string(), role_style)]));
                         }
                         // Add collapse indicator
                         let remaining = total_lines.saturating_sub(summary_lines);
@@ -658,8 +656,11 @@ fn render_entry_lines_with_search(
                                         .collect();
 
                                     // Render line with highlights
-                                    let highlighted_line =
-                                        apply_highlights_to_text(line_text, &line_matches, role_style);
+                                    let highlighted_line = apply_highlights_to_text(
+                                        line_text,
+                                        &line_matches,
+                                        role_style,
+                                    );
                                     lines.push(highlighted_line);
 
                                     // Update cumulative offset (add line length + newline char)
@@ -988,7 +989,8 @@ pub fn render_conversation_view(
     // (sum of heights of all entries before start_idx)
     let mut first_entry_absolute_y = 0_usize;
     for entry in &all_entries[..start_idx] {
-        first_entry_absolute_y += temp_view.calculate_entry_height(entry, viewport_width, global_wrap);
+        first_entry_absolute_y +=
+            temp_view.calculate_entry_height(entry, viewport_width, global_wrap);
     }
 
     // Render each visible entry as a separate Paragraph
@@ -1200,7 +1202,8 @@ pub fn render_conversation_view_with_search(
     // Calculate absolute cumulative_y for first visible entry
     let mut first_entry_absolute_y = 0_usize;
     for entry in &all_entries[..start_idx] {
-        first_entry_absolute_y += temp_view.calculate_entry_height(entry, viewport_width, global_wrap);
+        first_entry_absolute_y +=
+            temp_view.calculate_entry_height(entry, viewport_width, global_wrap);
     }
 
     // Render each visible entry as a separate Paragraph
@@ -1887,10 +1890,7 @@ mod tests {
 
         let result = calculate_lines_to_skip(cumulative_y, scroll_offset);
 
-        assert_eq!(
-            result, 0,
-            "No scroll means no lines to skip"
-        );
+        assert_eq!(result, 0, "No scroll means no lines to skip");
     }
 
     #[test]
@@ -4797,7 +4797,7 @@ mod tests {
                     buffer.content()[idx].symbol()
                 })
                 .collect();
-            if line.trim().len() > 0 {
+            if !line.trim().is_empty() {
                 lines_with_content.push(line);
             }
         }
@@ -4841,11 +4841,11 @@ mod tests {
         let line1: String = (0..20).map(|x| buffer.content()[20 + x].symbol()).collect();
 
         // Line 0 should have text content (truncated, not wrapped)
-        assert!(line0.trim().len() > 0, "Line 0 should have content");
+        assert!(!line0.trim().is_empty(), "Line 0 should have content");
 
         // The long text should appear on one line only (may be truncated)
         // We verify this by checking that line 1 is either empty or just spacing
-        let line1_is_content = line1.trim().len() > 0 && line1.contains(char::is_alphanumeric);
+        let line1_is_content = !line1.trim().is_empty() && line1.contains(char::is_alphanumeric);
 
         assert!(
             !line1_is_content,
@@ -5388,10 +5388,10 @@ mod tests {
         // Create 5 entries, each 5 lines tall (total 25 lines)
         let mut entries = Vec::new();
         for i in 0..5 {
-            let uuid = EntryUuid::new(&format!("test-uuid-{}", i)).expect("valid uuid");
+            let uuid = EntryUuid::new(format!("test-uuid-{}", i)).expect("valid uuid");
             let message = Message::new(
                 Role::User,
-                MessageContent::Text(format!("Line 1\nLine 2\nLine 3\nLine 4\nLine 5")),
+                MessageContent::Text("Line 1\nLine 2\nLine 3\nLine 4\nLine 5".to_string()),
             );
             let log_entry = LogEntry::new(
                 uuid,
@@ -5423,7 +5423,7 @@ mod tests {
         );
 
         // Verify first entry
-        if layouts.len() >= 1 {
+        if !layouts.is_empty() {
             assert_eq!(
                 layouts[0].y_offset, 0,
                 "First visible entry should start at y=0"
@@ -6744,8 +6744,7 @@ fn test() { println!("Code blocks always NoWrap"); }
     #[test]
     fn test_render_entry_lines_with_search_no_matches_returns_normal_lines() {
         use crate::model::{
-            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
-            SessionId,
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId,
         };
         use chrono::Utc;
 
@@ -6795,8 +6794,7 @@ fn test() { println!("Code blocks always NoWrap"); }
     #[test]
     fn test_render_entry_lines_with_search_highlights_match_in_text() {
         use crate::model::{
-            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
-            SessionId,
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId,
         };
         use crate::state::{SearchMatch, SearchState};
         use chrono::Utc;
@@ -6855,8 +6853,7 @@ fn test() { println!("Code blocks always NoWrap"); }
     #[test]
     fn test_render_entry_lines_with_search_applies_per_entry_wrap() {
         use crate::model::{
-            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
-            SessionId,
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId,
         };
         use chrono::Utc;
 
@@ -6914,7 +6911,10 @@ fn test() { println!("Code blocks always NoWrap"); }
         let mut conversation = AgentConversation::new(None);
 
         let uuid1 = EntryUuid::new("entry-1").expect("valid uuid");
-        let message1 = Message::new(Role::User, MessageContent::Text("First message".to_string()));
+        let message1 = Message::new(
+            Role::User,
+            MessageContent::Text("First message".to_string()),
+        );
         let entry1 = LogEntry::new(
             uuid1.clone(),
             None,
@@ -6928,8 +6928,10 @@ fn test() { println!("Code blocks always NoWrap"); }
         conversation.add_entry(entry1);
 
         let uuid2 = EntryUuid::new("entry-2").expect("valid uuid");
-        let message2 =
-            Message::new(Role::Assistant, MessageContent::Text("Second message".to_string()));
+        let message2 = Message::new(
+            Role::Assistant,
+            MessageContent::Text("Second message".to_string()),
+        );
         let entry2 = LogEntry::new(
             uuid2.clone(),
             None,
@@ -6943,7 +6945,10 @@ fn test() { println!("Code blocks always NoWrap"); }
         conversation.add_entry(entry2);
 
         let uuid3 = EntryUuid::new("entry-3").expect("valid uuid");
-        let message3 = Message::new(Role::User, MessageContent::Text("Third message".to_string()));
+        let message3 = Message::new(
+            Role::User,
+            MessageContent::Text("Third message".to_string()),
+        );
         let entry3 = LogEntry::new(
             uuid3.clone(),
             None,
@@ -7000,22 +7005,13 @@ fn test() { println!("Code blocks always NoWrap"); }
         let content = buffer.content();
 
         // Verify all entries are present
-        let text = content
-            .iter()
-            .map(|cell| cell.symbol())
-            .collect::<String>();
-        assert!(
-            text.contains("First message"),
-            "Should render first entry"
-        );
+        let text = content.iter().map(|cell| cell.symbol()).collect::<String>();
+        assert!(text.contains("First message"), "Should render first entry");
         assert!(
             text.contains("Second message"),
             "Should render second entry with highlighting"
         );
-        assert!(
-            text.contains("Third message"),
-            "Should render third entry"
-        );
+        assert!(text.contains("Third message"), "Should render third entry");
     }
 
     #[test]
@@ -7033,7 +7029,7 @@ fn test() { println!("Code blocks always NoWrap"); }
         let mut conversation = AgentConversation::new(None);
 
         for i in 0..50 {
-            let uuid = EntryUuid::new(&format!("entry-{}", i)).expect("valid uuid");
+            let uuid = EntryUuid::new(format!("entry-{}", i)).expect("valid uuid");
             let message = Message::new(
                 Role::User,
                 MessageContent::Text(format!("Message number {}", i)),
@@ -7084,10 +7080,7 @@ fn test() { println!("Code blocks always NoWrap"); }
         // This tests that virtualization is working with search view
         let buffer = terminal.backend().buffer();
         let content = buffer.content();
-        let text = content
-            .iter()
-            .map(|cell| cell.symbol())
-            .collect::<String>();
+        let text = content.iter().map(|cell| cell.symbol()).collect::<String>();
 
         // Early entries should NOT be visible after scrolling down
         assert!(

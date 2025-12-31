@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn toggle_wrap_clone_equals_original() {
         let action = KeyAction::ToggleWrap;
-        let cloned = action.clone();
+        let cloned = action;
         assert_eq!(action, cloned, "Cloned ToggleWrap should equal original");
     }
 
@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn toggle_global_wrap_clone_equals_original() {
         let action = KeyAction::ToggleGlobalWrap;
-        let cloned = action.clone();
+        let cloned = action;
         assert_eq!(
             action, cloned,
             "Cloned ToggleGlobalWrap should equal original"
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn toggle_log_pane_clone_equals_original() {
         let action = KeyAction::ToggleLogPane;
-        let cloned = action.clone();
+        let cloned = action;
         assert_eq!(action, cloned, "Cloned ToggleLogPane should equal original");
     }
 }

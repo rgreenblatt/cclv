@@ -1235,7 +1235,7 @@ mod tests {
                 Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
                     .with_usage(TokenUsage::default());
             let entry = LogEntry::new(
-                EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
+                EntryUuid::new(format!("uuid-{}", idx)).unwrap(),
                 None,
                 SessionId::new("test-session").unwrap(),
                 Some((*agent_id).clone()),
@@ -1283,7 +1283,7 @@ mod tests {
                 Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
                     .with_usage(TokenUsage::default());
             let entry = LogEntry::new(
-                EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
+                EntryUuid::new(format!("uuid-{}", idx)).unwrap(),
                 None,
                 SessionId::new("test-session").unwrap(),
                 Some((*agent_id).clone()),
@@ -1324,12 +1324,12 @@ mod tests {
 
         // Add 5 subagent entries
         for idx in 0..5 {
-            let agent_id = AgentId::new(&format!("agent-{}", idx)).unwrap();
+            let agent_id = AgentId::new(format!("agent-{}", idx)).unwrap();
             let message =
                 Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
                     .with_usage(TokenUsage::default());
             let entry = LogEntry::new(
-                EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
+                EntryUuid::new(format!("uuid-{}", idx)).unwrap(),
                 None,
                 SessionId::new("test-session").unwrap(),
                 Some(agent_id),
@@ -1414,7 +1414,7 @@ mod tests {
         for i in 0..3 {
             let message = Message::new(Role::User, MessageContent::Text(format!("msg{}", i)));
             let entry = LogEntry::new(
-                EntryUuid::new(&format!("uuid-{}", i)).unwrap(),
+                EntryUuid::new(format!("uuid-{}", i)).unwrap(),
                 None,
                 SessionId::new("test-session").unwrap(),
                 None,
@@ -1463,7 +1463,7 @@ mod tests {
         for i in 0..3 {
             let message = Message::new(Role::User, MessageContent::Text(format!("msg{}", i)));
             let entry = LogEntry::new(
-                EntryUuid::new(&format!("uuid-collapse-{}", i)).unwrap(),
+                EntryUuid::new(format!("uuid-collapse-{}", i)).unwrap(),
                 None,
                 SessionId::new("test-session").unwrap(),
                 None,
