@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::model::{Session, SessionId};
-use crate::state::AppState;
+use crate::state::{AppState, WrapMode};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 
@@ -904,6 +904,118 @@ fn render_status_bar_hints_change_based_on_focus() {
     assert!(
         has_different_hints,
         "Status bar hints should change based on focused pane"
+    );
+}
+
+#[test]
+fn render_status_bar_displays_wrap_on_indicator_when_wrap_enabled() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.global_wrap = WrapMode::Wrap;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let last_line: String = buffer
+        .content
+        .iter()
+        .skip(80 * 23) // Skip to last row (row 23, 0-indexed)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Status bar should contain wrap indicator showing "On" or "Wrap"
+    assert!(
+        last_line.contains("Wrap: On") || last_line.contains("Wrap"),
+        "Status bar should display wrap indicator when wrap is enabled. Got: '{}'",
+        last_line
+    );
+}
+
+#[test]
+fn render_status_bar_displays_wrap_off_indicator_when_wrap_disabled() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.global_wrap = WrapMode::NoWrap;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let last_line: String = buffer
+        .content
+        .iter()
+        .skip(80 * 23) // Skip to last row (row 23, 0-indexed)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Status bar should contain wrap indicator showing "Off" or "NoWrap"
+    assert!(
+        last_line.contains("Wrap: Off") || last_line.contains("NoWrap"),
+        "Status bar should display wrap indicator when wrap is disabled. Got: '{}'",
+        last_line
+    );
+}
+
+#[test]
+fn render_status_bar_wrap_indicator_changes_with_toggle() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+
+    // Render with wrap enabled
+    let mut state_wrap_on = AppState::new(session.clone());
+    state_wrap_on.global_wrap = WrapMode::Wrap;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state_wrap_on);
+        })
+        .unwrap();
+
+    let buffer_wrap_on = terminal.backend().buffer().clone();
+    let status_wrap_on: String = buffer_wrap_on
+        .content
+        .iter()
+        .skip(80 * 23)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Render with wrap disabled
+    let mut state_wrap_off = AppState::new(session);
+    state_wrap_off.global_wrap = WrapMode::NoWrap;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state_wrap_off);
+        })
+        .unwrap();
+
+    let buffer_wrap_off = terminal.backend().buffer().clone();
+    let status_wrap_off: String = buffer_wrap_off
+        .content
+        .iter()
+        .skip(80 * 23)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Status bars should differ when wrap state changes
+    let has_different_indicators = status_wrap_on != status_wrap_off;
+    assert!(
+        has_different_indicators,
+        "Status bar should show different wrap indicators for Wrap vs NoWrap. Wrap On: '{}', Wrap Off: '{}'",
+        status_wrap_on, status_wrap_off
     );
 }
 
