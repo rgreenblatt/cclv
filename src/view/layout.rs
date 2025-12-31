@@ -446,27 +446,27 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
 /// - Model name (from ModelInfo.display_name()) for current conversation
 /// - Session metadata (cwd, tools count, agents count, skills count) from system:init
 /// - [LIVE] indicator when live_mode && auto_scroll are both true
-/// - Agent identifier based on focused pane (Main Agent vs subagent ID)
+/// - Agent identifier based on selected tab (Main Agent vs subagent ID)
 fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
-    // Determine which conversation to show (main or selected subagent)
-    let (agent_label, conversation_view) = match state.focus {
-        FocusPane::Subagent => {
-            // Get selected subagent conversation (read-only access)
-            let agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
-            let selected_idx = state.selected_tab.unwrap_or(0);
+    // Determine which conversation to show based on selected_tab
+    let (agent_label, conversation_view) = if let Some(selected_idx) = state.selected_tab {
+        // Get selected subagent conversation (read-only access)
+        let agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
 
-            if let Some(&agent_id) = agent_ids.get(selected_idx) {
-                // Try to get initialized subagent, but show subagent label even if pending
-                let conv = state
-                    .session_view()
-                    .get_subagent(agent_id)
-                    .unwrap_or_else(|| state.session_view().main());
-                (format!("Subagent {}", agent_id.as_str()), conv)
-            } else {
-                ("Main Agent".to_string(), state.session_view().main())
-            }
+        if let Some(&agent_id) = agent_ids.get(selected_idx) {
+            // Try to get initialized subagent, but show subagent label even if pending
+            let conv = state
+                .session_view()
+                .get_subagent(agent_id)
+                .unwrap_or_else(|| state.session_view().main());
+            (format!("Subagent {}", agent_id.as_str()), conv)
+        } else {
+            // selected_tab out of bounds, fallback to main
+            ("Main Agent".to_string(), state.session_view().main())
         }
-        _ => ("Main Agent".to_string(), state.session_view().main()),
+    } else {
+        // No tab selected, show main agent
+        ("Main Agent".to_string(), state.session_view().main())
     };
 
     // Get model name from conversation view-state
