@@ -40,16 +40,11 @@ struct EntryLayout {
 /// # Arguments
 /// * `cumulative_y` - Absolute position where the entry starts in the document
 /// * `scroll_offset` - Current vertical scroll position (top of viewport)
-/// * `entry_height` - Total height of the entry in lines
 ///
 /// # Returns
 /// Number of lines to skip from the top of the entry (0 if fully visible)
 #[allow(dead_code)]
-fn calculate_lines_to_skip(
-    cumulative_y: usize,
-    scroll_offset: usize,
-    _entry_height: usize,
-) -> usize {
+fn calculate_lines_to_skip(cumulative_y: usize, scroll_offset: usize) -> usize {
     // If entry starts before scroll position, skip the lines above viewport
     // saturating_sub returns 0 if cumulative_y >= scroll_offset (fully visible)
     scroll_offset.saturating_sub(cumulative_y)
@@ -914,11 +909,7 @@ pub fn render_conversation_view(
         // Clip lines that are scrolled off the top of the viewport
         // When y_offset is 0, the entry might be partially above the viewport
         let lines_to_skip = if layout.y_offset == 0 {
-            calculate_lines_to_skip(
-                cumulative_y,
-                scroll.vertical_offset,
-                layout.height as usize,
-            )
+            calculate_lines_to_skip(cumulative_y, scroll.vertical_offset)
         } else {
             0
         };
@@ -1150,13 +1141,26 @@ pub fn render_conversation_view_with_search(
         .title(title)
         .style(Style::default().fg(border_color));
 
+    // Apply viewport clipping: skip lines that are scrolled off the top
+    // This prevents processing all lines when scrolled deep into conversation
+    let vertical_offset = scroll.vertical_offset;
+    let visible_lines: Vec<Line> = if vertical_offset > 0 && vertical_offset < lines.len() {
+        lines.into_iter().skip(vertical_offset).collect()
+    } else if vertical_offset >= lines.len() {
+        // Scrolled past end - show empty
+        Vec::new()
+    } else {
+        // No scroll offset or at top
+        lines
+    };
+
     // Apply wrap mode (FR-039)
     let paragraph = if global_wrap == WrapMode::Wrap {
-        Paragraph::new(lines)
+        Paragraph::new(visible_lines)
             .block(block)
             .wrap(Wrap { trim: false })
     } else {
-        Paragraph::new(lines).block(block)
+        Paragraph::new(visible_lines).block(block)
     };
 
     frame.render_widget(paragraph, area);
@@ -1723,9 +1727,8 @@ mod tests {
         // Entry starts at or after scroll position - fully visible
         let cumulative_y = 10;
         let scroll_offset = 5;
-        let entry_height = 8;
 
-        let result = calculate_lines_to_skip(cumulative_y, scroll_offset, entry_height);
+        let result = calculate_lines_to_skip(cumulative_y, scroll_offset);
 
         assert_eq!(
             result, 0,
@@ -1735,14 +1738,13 @@ mod tests {
 
     #[test]
     fn calculate_lines_to_skip_returns_correct_count_when_partially_above_viewport() {
-        // Entry at position 3, height 10, scroll at 5
+        // Entry at position 3, scroll at 5
         // Lines 0-1 of entry (absolute 3-4) are above viewport
         // Should skip 2 lines
         let cumulative_y = 3;
         let scroll_offset = 5;
-        let entry_height = 10;
 
-        let result = calculate_lines_to_skip(cumulative_y, scroll_offset, entry_height);
+        let result = calculate_lines_to_skip(cumulative_y, scroll_offset);
 
         assert_eq!(
             result, 2,
@@ -1756,9 +1758,8 @@ mod tests {
         // First 7 lines are above viewport
         let cumulative_y = 0;
         let scroll_offset = 7;
-        let entry_height = 15;
 
-        let result = calculate_lines_to_skip(cumulative_y, scroll_offset, entry_height);
+        let result = calculate_lines_to_skip(cumulative_y, scroll_offset);
 
         assert_eq!(
             result, 7,
@@ -1771,9 +1772,8 @@ mod tests {
         // No scrolling, entry at position 0
         let cumulative_y = 0;
         let scroll_offset = 0;
-        let entry_height = 10;
 
-        let result = calculate_lines_to_skip(cumulative_y, scroll_offset, entry_height);
+        let result = calculate_lines_to_skip(cumulative_y, scroll_offset);
 
         assert_eq!(
             result, 0,
@@ -1784,30 +1784,28 @@ mod tests {
     #[test]
     fn calculate_lines_to_skip_handles_entry_barely_visible() {
         // Entry mostly scrolled off, only last line visible
-        // Entry at 0, height 10, scroll at 9
+        // Entry at 0, scroll at 9
         // Should skip first 9 lines, showing only line 9
         let cumulative_y = 0;
         let scroll_offset = 9;
-        let entry_height = 10;
 
-        let result = calculate_lines_to_skip(cumulative_y, scroll_offset, entry_height);
+        let result = calculate_lines_to_skip(cumulative_y, scroll_offset);
 
         assert_eq!(
             result, 9,
-            "Entry with only last line visible should skip 9 out of 10 lines"
+            "Entry with only last line visible should skip 9 lines"
         );
     }
 
     #[test]
     fn calculate_lines_to_skip_edge_case_entry_ends_exactly_at_scroll() {
         // Entry completely above viewport
-        // Entry at 0, height 5, scroll at 5
+        // Entry at 0, scroll at 5
         // Entry ends exactly where viewport starts
         let cumulative_y = 0;
         let scroll_offset = 5;
-        let entry_height = 5;
 
-        let result = calculate_lines_to_skip(cumulative_y, scroll_offset, entry_height);
+        let result = calculate_lines_to_skip(cumulative_y, scroll_offset);
 
         assert_eq!(
             result, 5,
