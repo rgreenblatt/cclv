@@ -7,7 +7,6 @@
 
 #![cfg(feature = "e2e-tests")]
 
-use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -32,19 +31,7 @@ fn find_binary() -> PathBuf {
     panic!("cclv binary not found - run `cargo build` first");
 }
 
-/// Helper to create a test fixture file with sample JSONL data
-fn create_test_fixture(name: &str, content: &str) -> PathBuf {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let fixtures_dir = manifest_dir.join("target/test-fixtures");
-    fs::create_dir_all(&fixtures_dir).unwrap();
-
-    let fixture_path = fixtures_dir.join(name);
-    fs::write(&fixture_path, content).unwrap();
-    fixture_path
-}
-
 #[test]
-#[ignore] // Ignored by default - requires built binary
 fn smoke_help_flag() {
     let binary = find_binary();
 
@@ -67,7 +54,6 @@ fn smoke_help_flag() {
 }
 
 #[test]
-#[ignore] // Ignored by default - requires built binary
 fn smoke_version_flag() {
     let binary = find_binary();
 
@@ -84,16 +70,10 @@ fn smoke_version_flag() {
 }
 
 #[test]
-#[ignore] // Ignored by default - requires built binary
 fn smoke_loads_valid_file() {
     let binary = find_binary();
-
-    // Create a minimal valid JSONL fixture
-    let content = r#"{"type":"session_started","timestamp":"2024-01-01T12:00:00Z","session_id":"test-session-123"}
-{"type":"user_message","timestamp":"2024-01-01T12:00:01Z","session_id":"test-session-123","message_id":"msg-1","content":"Hello"}
-{"type":"assistant_message","timestamp":"2024-01-01T12:00:02Z","session_id":"test-session-123","message_id":"msg-2","content":[{"type":"text","text":"Hi there!"}]}
-"#;
-    let fixture = create_test_fixture("smoke_test.jsonl", content);
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let fixture = manifest_dir.join("tests/fixtures/minimal_session.jsonl");
 
     let mut session =
         spawn(format!("{} {}", binary.display(), fixture.display())).expect("Failed to spawn cclv");
@@ -117,7 +97,6 @@ fn smoke_loads_valid_file() {
 /// Validates that the application can launch with a valid fixture,
 /// initialize its TUI, and cleanly exit when sent the quit command.
 #[test]
-#[ignore] // Ignored by default - requires built binary
 fn smoke_app_starts_and_quits() {
     let binary = find_binary();
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -146,7 +125,6 @@ fn smoke_app_starts_and_quits() {
 /// on a large fixture without crashing. This is a regression test for
 /// scroll-related crashes discovered during acceptance testing.
 #[test]
-#[ignore] // Ignored by default - requires built binary
 fn smoke_scroll_does_not_crash() {
     let binary = find_binary();
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -198,7 +176,6 @@ fn smoke_scroll_does_not_crash() {
 /// submit the search, and continue operating normally. This ensures
 /// the search state machine works in the real application.
 #[test]
-#[ignore] // Ignored by default - requires built binary
 fn smoke_search_works() {
     let binary = find_binary();
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
