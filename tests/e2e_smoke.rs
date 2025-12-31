@@ -50,17 +50,17 @@ fn smoke_help_flag() {
 
     let mut session = spawn(format!("{} --help", binary.display())).expect("Failed to spawn cclv");
 
-    // Should see help output with basic usage
-    let _ = session
-        .expect(Regex("Usage:"))
-        .expect("Failed to find help output");
-
-    // Should see description
+    // Should see description first
     let _ = session
         .expect(Regex(
             "TUI application for viewing Claude Code JSONL session logs",
         ))
         .expect("Failed to find description");
+
+    // Should see usage after description
+    let _ = session
+        .expect(Regex("Usage:"))
+        .expect("Failed to find help output");
 
     // Should exit cleanly
     let _ = session.expect(Eof).expect("Process should exit");
