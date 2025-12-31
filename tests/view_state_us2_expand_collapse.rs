@@ -96,10 +96,7 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
 
     // Verify entry 2 is NOT expanded
     let entry_2 = view_state.get(EntryIndex::new(2)).unwrap();
-    assert!(
-        !entry_2.is_expanded(),
-        "Entry 2 should start collapsed"
-    );
+    assert!(!entry_2.is_expanded(), "Entry 2 should start collapsed");
     assert_eq!(
         entry_2.layout().cumulative_y().get(),
         6,
@@ -360,17 +357,16 @@ fn us2_scenario4_entries_above_viewport_toggle_visible_stable() {
 
     // The scroll should still be anchored to entry 6
     match scroll_after {
-        ScrollPosition::AtEntry { entry_index, line_in_entry } => {
+        ScrollPosition::AtEntry {
+            entry_index,
+            line_in_entry,
+        } => {
             assert_eq!(
                 entry_index.get(),
                 6,
                 "Scroll should still be anchored to entry 6"
             );
-            assert_eq!(
-                *line_in_entry,
-                0,
-                "Scroll should be at top of entry 6"
-            );
+            assert_eq!(*line_in_entry, 0, "Scroll should be at top of entry 6");
         }
         _ => panic!("Scroll should remain as AtEntry after toggle above viewport"),
     }

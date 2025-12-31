@@ -298,8 +298,8 @@ mod tests {
         // Session 2
         log.add_entry(make_entry("session-2", "uuid-3", Role::User), None);
 
-        let height_1_plus_2 = log.get_session(0).unwrap().total_height()
-            + log.get_session(1).unwrap().total_height();
+        let height_1_plus_2 =
+            log.get_session(0).unwrap().total_height() + log.get_session(1).unwrap().total_height();
 
         // Session 3
         log.add_entry(make_entry("session-3", "uuid-4", Role::User), None);
@@ -353,12 +353,16 @@ mod tests {
         assert_eq!(log.active_session_index(0), Some(1));
 
         // Scroll line at height_1 (which is 0): same as above
-        let session = log.active_session(height_1).expect("should have active session");
+        let session = log
+            .active_session(height_1)
+            .expect("should have active session");
         assert_eq!(session.session_id(), &make_session_id("session-2"));
         assert_eq!(log.active_session_index(height_1), Some(1));
 
         // Scroll line beyond all sessions: returns last session
-        let session = log.active_session(height_1 + 1).expect("should have active session");
+        let session = log
+            .active_session(height_1 + 1)
+            .expect("should have active session");
         assert_eq!(session.session_id(), &make_session_id("session-2"));
         assert_eq!(log.active_session_index(height_1 + 1), Some(1));
     }
@@ -370,7 +374,9 @@ mod tests {
         log.add_entry(make_entry("session-2", "uuid-2", Role::User), None);
 
         let huge_scroll = 999999;
-        let session = log.active_session(huge_scroll).expect("should have active session");
+        let session = log
+            .active_session(huge_scroll)
+            .expect("should have active session");
         assert_eq!(session.session_id(), &make_session_id("session-2"));
         assert_eq!(log.active_session_index(huge_scroll), Some(1));
     }
@@ -403,9 +409,7 @@ mod tests {
         log.add_entry(make_entry("session-2", "uuid-2", Role::User), None);
         log.add_entry(make_entry("session-3", "uuid-3", Role::User), None);
 
-        let session_ids: Vec<_> = log.sessions()
-            .map(|s| s.session_id().clone())
-            .collect();
+        let session_ids: Vec<_> = log.sessions().map(|s| s.session_id().clone()).collect();
 
         assert_eq!(session_ids.len(), 3);
         assert_eq!(session_ids[0], make_session_id("session-1"));

@@ -62,7 +62,10 @@ fn handle_toggle_wrap_adds_override_on_first_toggle() {
         .main_conversation_view()
         .and_then(|view| view.get(EntryIndex::new(0)))
         .and_then(|e| e.wrap_override());
-    assert_eq!(initial_override, None, "Should have no wrap override initially");
+    assert_eq!(
+        initial_override, None,
+        "Should have no wrap override initially"
+    );
 
     // First toggle
     let result = handle_toggle_wrap(state);
@@ -112,7 +115,11 @@ fn handle_toggle_wrap_clears_override_on_second_toggle() {
         .main_conversation_view()
         .and_then(|view| view.get(EntryIndex::new(0)))
         .and_then(|e| e.wrap_override());
-    assert_eq!(after_first, Some(WrapMode::NoWrap), "First toggle should set override");
+    assert_eq!(
+        after_first,
+        Some(WrapMode::NoWrap),
+        "First toggle should set override"
+    );
 
     // Second toggle - clears override
     let result = handle_toggle_wrap(state);

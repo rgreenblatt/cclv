@@ -227,7 +227,10 @@ pub fn handle_entry_click(mut state: AppState, entry_click: EntryClickResult) ->
     let viewport = ViewportDimensions::new(80, 24);
 
     // Height calculator stub
-    let height_calc = |_entry: &crate::model::ConversationEntry, _expanded: bool, _wrap: WrapMode| -> LineHeight {
+    let height_calc = |_entry: &crate::model::ConversationEntry,
+                       _expanded: bool,
+                       _wrap: WrapMode|
+     -> LineHeight {
         LineHeight::new(5).unwrap() // Stub height
     };
 
@@ -248,7 +251,9 @@ pub fn handle_entry_click(mut state: AppState, entry_click: EntryClickResult) ->
                 let agent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
                 let agent_id_opt = agent_ids.get(tab_index).cloned();
 
-                if let (Some(agent_id), Some(session_view)) = (agent_id_opt, state.log_view_mut().current_session_mut()) {
+                if let (Some(agent_id), Some(session_view)) =
+                    (agent_id_opt, state.log_view_mut().current_session_mut())
+                {
                     let conv_view = session_view.subagent_mut(&agent_id);
                     let idx = EntryIndex::new(index);
                     conv_view.toggle_expand(idx, params, viewport, height_calc);

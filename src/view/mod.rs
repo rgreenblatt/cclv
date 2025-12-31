@@ -422,7 +422,12 @@ where
             KeyAction::FilterSubagent => {
                 // Filter to current subagent tab if selected
                 if let Some(tab_index) = self.app_state.selected_tab {
-                    let subagent_ids: Vec<_> = self.app_state.session_view().subagent_ids().cloned().collect();
+                    let subagent_ids: Vec<_> = self
+                        .app_state
+                        .session_view()
+                        .subagent_ids()
+                        .cloned()
+                        .collect();
                     if let Some(agent_id) = subagent_ids.get(tab_index) {
                         self.app_state.stats_filter =
                             crate::model::StatsFilter::Subagent(agent_id.clone());
@@ -487,7 +492,11 @@ where
                 // Execute search to populate matches
                 use crate::state::{execute_search, SearchState};
                 if let SearchState::Active { query, .. } = &self.app_state.search {
-                    let session_view = self.app_state.log_view().get_session(0).expect("Session 0 must exist");
+                    let session_view = self
+                        .app_state
+                        .log_view()
+                        .get_session(0)
+                        .expect("Session 0 must exist");
                     let matches = execute_search(session_view, query);
                     self.app_state.search = SearchState::Active {
                         query: query.clone(),
@@ -950,10 +959,7 @@ mod tests {
             app.app_state.auto_scroll,
             "auto_scroll should remain enabled"
         );
-        assert!(
-            app.app_state.live_mode,
-            "live_mode should remain enabled"
-        );
+        assert!(app.app_state.live_mode, "live_mode should remain enabled");
     }
 
     #[test]
@@ -1475,7 +1481,6 @@ mod tests {
     // ===== Expand/Collapse Tests =====
     // Tests removed during expand state migration to view-state layer
 
-
     // ===== US4: Horizontal Scrolling Tests =====
 
     #[test]
@@ -1587,18 +1592,23 @@ mod tests {
         assert_eq!(app.app_state.global_wrap, WrapMode::Wrap);
 
         // Initially no override in view-state
-        let initial_override = app.app_state
+        let initial_override = app
+            .app_state
             .main_conversation_view()
             .and_then(|view| view.get(crate::view_state::types::EntryIndex::new(0)))
             .and_then(|e| e.wrap_override());
-        assert_eq!(initial_override, None, "Should have no wrap override initially");
+        assert_eq!(
+            initial_override, None,
+            "Should have no wrap override initially"
+        );
 
         // Press 'w' to toggle wrap for focused message
         let key = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::NONE);
         let should_quit = app.handle_key(key);
 
         assert!(!should_quit, "'w' should not trigger quit");
-        let after_first = app.app_state
+        let after_first = app
+            .app_state
             .main_conversation_view()
             .and_then(|view| view.get(crate::view_state::types::EntryIndex::new(0)))
             .and_then(|e| e.wrap_override());
@@ -1612,7 +1622,8 @@ mod tests {
         let should_quit = app.handle_key(key);
 
         assert!(!should_quit, "'w' should not trigger quit");
-        let after_second = app.app_state
+        let after_second = app
+            .app_state
             .main_conversation_view()
             .and_then(|view| view.get(crate::view_state::types::EntryIndex::new(0)))
             .and_then(|e| e.wrap_override());
@@ -1696,7 +1707,8 @@ mod tests {
         app.handle_key(key);
 
         // Check subagent has override set
-        let sub_override = app.app_state
+        let sub_override = app
+            .app_state
             .subagent_conversation_view(0)
             .and_then(|view| view.get(crate::view_state::types::EntryIndex::new(0)))
             .and_then(|e| e.wrap_override());
@@ -1707,7 +1719,8 @@ mod tests {
         );
 
         // Check main is unaffected
-        let main_override = app.app_state
+        let main_override = app
+            .app_state
             .main_conversation_view()
             .and_then(|view| view.get(crate::view_state::types::EntryIndex::new(0)))
             .and_then(|e| e.wrap_override());

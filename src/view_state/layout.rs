@@ -121,8 +121,8 @@ pub fn calculate_height(
 mod tests {
     use super::*;
     use crate::model::{
-        ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry,
-        Message, MessageContent, Role, SessionId,
+        ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry, Message,
+        MessageContent, Role, SessionId,
     };
     use chrono::DateTime;
 
@@ -243,12 +243,7 @@ mod tests {
     }
 
     fn make_malformed_entry() -> ConversationEntry {
-        ConversationEntry::Malformed(MalformedEntry::new(
-            42,
-            "invalid json",
-            "parse error",
-            None,
-        ))
+        ConversationEntry::Malformed(MalformedEntry::new(42, "invalid json", "parse error", None))
     }
 
     mod calculate_height_tests {
@@ -309,7 +304,8 @@ mod tests {
         #[test]
         fn collapsed_height_consistent_regardless_of_content() {
             let short_entry = make_valid_entry("Short");
-            let long_entry = make_valid_entry("Very long text that spans multiple lines when expanded");
+            let long_entry =
+                make_valid_entry("Very long text that spans multiple lines when expanded");
 
             let short_height = calculate_height(&short_entry, false, WrapMode::Wrap);
             let long_height = calculate_height(&long_entry, false, WrapMode::Wrap);

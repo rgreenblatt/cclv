@@ -617,7 +617,6 @@ impl<'a> ConversationView<'a> {
     ) -> usize {
         match entry {
             ConversationEntry::Valid(log_entry) => {
-
                 // Get effective wrap mode from view-state (per-entry override)
                 let effective_wrap = self
                     .view_state
@@ -1003,7 +1002,8 @@ impl<'a> Widget for ConversationView<'a> {
                             MessageContent::Blocks(blocks) => {
                                 // Structured content - render each block
                                 for block in blocks {
-                                    let is_expanded = self.view_state.is_expanded_by_uuid(log_entry.uuid());
+                                    let is_expanded =
+                                        self.view_state.is_expanded_by_uuid(log_entry.uuid());
                                     let block_lines = render_content_block(
                                         block,
                                         log_entry.uuid(),
@@ -2322,7 +2322,9 @@ pub fn render_conversation_view_with_search(
             WrapMode::NoWrap
         } else {
             view_state
-                .get(crate::view_state::types::EntryIndex::new(actual_entry_index))
+                .get(crate::view_state::types::EntryIndex::new(
+                    actual_entry_index,
+                ))
                 .map(|e| e.effective_wrap(global_wrap))
                 .unwrap_or(global_wrap)
         };
@@ -2976,4 +2978,3 @@ fn add_wrap_continuation_indicators(
 
     result
 }
-

@@ -92,18 +92,14 @@ pub fn handle_scroll_action(
         KeyAction::ScrollUp => {
             // Scroll up by 1 line
             match current_scroll {
-                ScrollPosition::AtLine(offset) => {
-                    ScrollPosition::AtLine(offset.saturating_sub(1))
-                }
+                ScrollPosition::AtLine(offset) => ScrollPosition::AtLine(offset.saturating_sub(1)),
                 ScrollPosition::Top => ScrollPosition::Top, // Already at top
                 _ => {
                     // Resolve current position to line offset, then scroll up
                     let total_height = conversation.total_height();
-                    let offset = current_scroll.resolve(
-                        total_height,
-                        viewport_height,
-                        |idx| conversation.entry_cumulative_y(idx),
-                    );
+                    let offset = current_scroll.resolve(total_height, viewport_height, |idx| {
+                        conversation.entry_cumulative_y(idx)
+                    });
                     ScrollPosition::AtLine(offset.saturating_sub(1))
                 }
             }
@@ -111,18 +107,14 @@ pub fn handle_scroll_action(
         KeyAction::ScrollDown => {
             // Scroll down by 1 line
             match current_scroll {
-                ScrollPosition::AtLine(offset) => {
-                    ScrollPosition::AtLine(offset.saturating_add(1))
-                }
+                ScrollPosition::AtLine(offset) => ScrollPosition::AtLine(offset.saturating_add(1)),
                 ScrollPosition::Bottom => ScrollPosition::Bottom, // Already at bottom
                 _ => {
                     // Resolve current position to line offset, then scroll down
                     let total_height = conversation.total_height();
-                    let offset = current_scroll.resolve(
-                        total_height,
-                        viewport_height,
-                        |idx| conversation.entry_cumulative_y(idx),
-                    );
+                    let offset = current_scroll.resolve(total_height, viewport_height, |idx| {
+                        conversation.entry_cumulative_y(idx)
+                    });
                     ScrollPosition::AtLine(offset.saturating_add(1))
                 }
             }
@@ -137,11 +129,9 @@ pub fn handle_scroll_action(
                 _ => {
                     // Resolve current position to line offset, then page up
                     let total_height = conversation.total_height();
-                    let offset = current_scroll.resolve(
-                        total_height,
-                        viewport_height,
-                        |idx| conversation.entry_cumulative_y(idx),
-                    );
+                    let offset = current_scroll.resolve(total_height, viewport_height, |idx| {
+                        conversation.entry_cumulative_y(idx)
+                    });
                     ScrollPosition::AtLine(offset.saturating_sub(viewport_height))
                 }
             }
@@ -156,11 +146,9 @@ pub fn handle_scroll_action(
                 _ => {
                     // Resolve current position to line offset, then page down
                     let total_height = conversation.total_height();
-                    let offset = current_scroll.resolve(
-                        total_height,
-                        viewport_height,
-                        |idx| conversation.entry_cumulative_y(idx),
-                    );
+                    let offset = current_scroll.resolve(total_height, viewport_height, |idx| {
+                        conversation.entry_cumulative_y(idx)
+                    });
                     ScrollPosition::AtLine(offset.saturating_add(viewport_height))
                 }
             }
@@ -184,11 +172,9 @@ pub fn handle_scroll_action(
     // This maintains compatibility with view/message.rs during migration.
     // TODO(cclv-5ur.6.9): Remove when view/message.rs uses visible_range instead.
     let total_height = conversation.total_height();
-    let resolved_offset = new_scroll.resolve(
-        total_height,
-        viewport_height,
-        |idx| conversation.entry_cumulative_y(idx),
-    );
+    let resolved_offset = new_scroll.resolve(total_height, viewport_height, |idx| {
+        conversation.entry_cumulative_y(idx)
+    });
 
     // Write to the appropriate ScrollState based on focus
     match state.focus {

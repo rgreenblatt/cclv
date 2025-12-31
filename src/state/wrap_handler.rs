@@ -16,9 +16,10 @@ use crate::state::{AppState, FocusPane, WrapMode};
 /// Returns a new AppState with the wrap toggle applied (or unchanged if no message focused).
 pub fn handle_toggle_wrap(mut state: AppState) -> AppState {
     // Stub height calculator - will be properly wired when rendering is migrated
-    let stub_calculator = |_entry: &crate::model::ConversationEntry, _expanded: bool, _wrap: WrapMode| {
-        crate::view_state::types::LineHeight::new(10).unwrap()
-    };
+    let stub_calculator =
+        |_entry: &crate::model::ConversationEntry, _expanded: bool, _wrap: WrapMode| {
+            crate::view_state::types::LineHeight::new(10).unwrap()
+        };
 
     match state.focus {
         FocusPane::Main => {

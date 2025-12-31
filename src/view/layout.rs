@@ -311,7 +311,9 @@ fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState, styles:
             .and_then(|&agent_id| state.session_view().get_subagent(agent_id))
     } else {
         // No selection - show first subagent as default (read-only access)
-        agent_ids.first().and_then(|&agent_id| state.session_view().get_subagent(agent_id))
+        agent_ids
+            .first()
+            .and_then(|&agent_id| state.session_view().get_subagent(agent_id))
     };
 
     // Render the selected conversation using its view-state
@@ -337,7 +339,10 @@ fn render_stats_panel(frame: &mut Frame, area: Rect, state: &AppState) {
     // Build session statistics by iterating through entries
     // Uses SessionViewState which contains all entries including pending subagents
     // TODO: This should be cached in SessionViewState once stats are integrated
-    let session_view = state.log_view().get_session(0).expect("Session 0 must exist");
+    let session_view = state
+        .log_view()
+        .get_session(0)
+        .expect("Session 0 must exist");
     let stats = build_session_stats(session_view);
 
     // Get model ID for pricing calculation
@@ -361,7 +366,9 @@ fn render_stats_panel(frame: &mut Frame, area: Rect, state: &AppState) {
 
 /// Build SessionStats by iterating through all entries in SessionViewState.
 /// This is temporary - stats should eventually be maintained in SessionViewState during ingestion.
-fn build_session_stats(session_view: &crate::view_state::session::SessionViewState) -> crate::model::SessionStats {
+fn build_session_stats(
+    session_view: &crate::view_state::session::SessionViewState,
+) -> crate::model::SessionStats {
     use crate::model::SessionStats;
 
     let mut stats = SessionStats::default();
@@ -493,7 +500,9 @@ fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
 
             if let Some(&agent_id) = agent_ids.get(selected_idx) {
                 // Try to get initialized subagent, but show subagent label even if pending
-                let conv = state.session_view().get_subagent(agent_id)
+                let conv = state
+                    .session_view()
+                    .get_subagent(agent_id)
                     .unwrap_or_else(|| state.session_view().main());
                 (format!("Subagent {}", agent_id.as_str()), conv)
             } else {
@@ -504,9 +513,7 @@ fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
     };
 
     // Get model name from conversation view-state
-    let model_name = conversation_view
-        .model_name()
-        .unwrap_or("Unknown");
+    let model_name = conversation_view.model_name().unwrap_or("Unknown");
 
     // Show [LIVE] indicator only when both live_mode and auto_scroll are true
     let live_indicator = if state.live_mode && state.auto_scroll {

@@ -27,7 +27,10 @@ pub fn handle_expand_action(mut state: AppState, action: KeyAction) -> AppState 
     let viewport = ViewportDimensions::new(80, 24); // TODO: Use actual viewport dimensions
 
     // Height calculator stub for now
-    let height_calc = |_entry: &crate::model::ConversationEntry, _expanded: bool, _wrap: WrapMode| -> LineHeight {
+    let height_calc = |_entry: &crate::model::ConversationEntry,
+                       _expanded: bool,
+                       _wrap: WrapMode|
+     -> LineHeight {
         LineHeight::new(5).unwrap() // Stub height
     };
 

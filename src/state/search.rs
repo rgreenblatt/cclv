@@ -198,7 +198,10 @@ pub fn agent_ids_with_matches(matches: &[SearchMatch]) -> std::collections::Hash
 /// Searches all text content in main agent and all subagents (initialized + pending).
 /// Performs case-insensitive substring matching.
 /// Returns all matches with full location information.
-pub fn execute_search(session_view: &crate::view_state::session::SessionViewState, query: &SearchQuery) -> Vec<SearchMatch> {
+pub fn execute_search(
+    session_view: &crate::view_state::session::SessionViewState,
+    query: &SearchQuery,
+) -> Vec<SearchMatch> {
     let mut matches = Vec::new();
     let query_lower = query.as_str().to_lowercase();
 
@@ -213,7 +216,12 @@ pub fn execute_search(session_view: &crate::view_state::session::SessionViewStat
     for (agent_id, conversation_view) in session_view.initialized_subagents() {
         for entry_view in conversation_view.iter() {
             if let Some(log_entry) = entry_view.entry().as_valid() {
-                search_entry(log_entry, Some(agent_id.clone()), &query_lower, &mut matches);
+                search_entry(
+                    log_entry,
+                    Some(agent_id.clone()),
+                    &query_lower,
+                    &mut matches,
+                );
             }
         }
     }
@@ -222,7 +230,12 @@ pub fn execute_search(session_view: &crate::view_state::session::SessionViewStat
     for (agent_id, entries) in session_view.pending_subagents() {
         for entry in entries {
             if let Some(log_entry) = entry.as_valid() {
-                search_entry(log_entry, Some(agent_id.clone()), &query_lower, &mut matches);
+                search_entry(
+                    log_entry,
+                    Some(agent_id.clone()),
+                    &query_lower,
+                    &mut matches,
+                );
             }
         }
     }

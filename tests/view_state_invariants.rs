@@ -19,7 +19,10 @@
 
 #![allow(dead_code)] // Allow unused helper strategies
 
-use cclv::model::{AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, MalformedEntry, Role, SessionId};
+use cclv::model::{
+    AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry,
+    Message, MessageContent, Role, SessionId,
+};
 use cclv::state::WrapMode;
 use cclv::view_state::{
     conversation::ConversationViewState,
@@ -102,10 +105,7 @@ fn arb_malformed_entry() -> impl Strategy<Value = ConversationEntry> {
                 None
             };
             ConversationEntry::Malformed(MalformedEntry::new(
-                line_num,
-                raw_line,
-                error_msg,
-                session_id,
+                line_num, raw_line, error_msg, session_id,
             ))
         })
 }

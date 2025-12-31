@@ -285,7 +285,11 @@ fn us2_scenario5_collapse_default() {
 
     // VERIFY: Message is NOT in expanded set (collapsed by default)
     let first_entry_uuid = entries[0].uuid().expect("Valid entry should have UUID");
-    let main_view_state = state.log_view().get_session(0).expect("Session 0 should exist").main();
+    let main_view_state = state
+        .log_view()
+        .get_session(0)
+        .expect("Session 0 should exist")
+        .main();
 
     assert!(
         !main_view_state.is_expanded_by_uuid(first_entry_uuid),
@@ -338,7 +342,11 @@ fn us2_scenario6_expand_message() {
         let uuid = entries[0].uuid().expect("Valid entry should have UUID");
 
         // VERIFY: Message starts collapsed
-        let main_view_state = initial_state.log_view().get_session(0).expect("Session 0 should exist").main();
+        let main_view_state = initial_state
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main();
         assert!(
             !main_view_state.is_expanded_by_uuid(uuid),
             "Message should start collapsed"
@@ -352,7 +360,11 @@ fn us2_scenario6_expand_message() {
 
     // VERIFY: Message is now in expanded set
     let expanded_state = harness.state();
-    let main_view_state = expanded_state.log_view().get_session(0).expect("Session 0 should exist").main();
+    let main_view_state = expanded_state
+        .log_view()
+        .get_session(0)
+        .expect("Session 0 should exist")
+        .main();
     assert!(
         main_view_state.is_expanded_by_uuid(&first_entry_uuid),
         "Message should be expanded after Enter key"
@@ -402,7 +414,11 @@ fn us2_scenario7_collapse_message() {
 
     // VERIFY: Message is expanded
     let expanded_state = harness.state();
-    let main_view_expanded = expanded_state.log_view().get_session(0).expect("Session 0 should exist").main();
+    let main_view_expanded = expanded_state
+        .log_view()
+        .get_session(0)
+        .expect("Session 0 should exist")
+        .main();
     assert!(
         main_view_expanded.is_expanded_by_uuid(&first_entry_uuid),
         "Message should be expanded before collapse test"
@@ -413,7 +429,11 @@ fn us2_scenario7_collapse_message() {
 
     // VERIFY: Message is removed from expanded set (collapsed)
     let collapsed_state = harness.state();
-    let main_view_collapsed = collapsed_state.log_view().get_session(0).expect("Session 0 should exist").main();
+    let main_view_collapsed = collapsed_state
+        .log_view()
+        .get_session(0)
+        .expect("Session 0 should exist")
+        .main();
     assert!(
         !main_view_collapsed.is_expanded_by_uuid(&first_entry_uuid),
         "Message should be collapsed after second Enter key"

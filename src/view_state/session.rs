@@ -94,7 +94,9 @@ impl SessionViewState {
 
     /// List all known subagent IDs (initialized or pending).
     pub fn subagent_ids(&self) -> impl Iterator<Item = &AgentId> {
-        self.subagents.keys().chain(self.pending_subagent_entries.keys())
+        self.subagents
+            .keys()
+            .chain(self.pending_subagent_entries.keys())
     }
 
     /// Check if there are any subagents (initialized or pending).
@@ -111,7 +113,9 @@ impl SessionViewState {
     ///
     /// Returns iterator over (AgentId, ConversationViewState) pairs for
     /// subagents that have been lazily initialized.
-    pub fn initialized_subagents(&self) -> impl Iterator<Item = (&AgentId, &ConversationViewState)> {
+    pub fn initialized_subagents(
+        &self,
+    ) -> impl Iterator<Item = (&AgentId, &ConversationViewState)> {
         self.subagents.iter()
     }
 
@@ -181,7 +185,11 @@ impl SessionViewState {
     pub fn total_height(&self) -> usize {
         let main_h = self.main.total_height();
         let subagent_h: usize = self.subagents.values().map(|s| s.total_height()).sum();
-        let pending_h: usize = self.pending_subagent_entries.values().map(|v| v.len()).sum();
+        let pending_h: usize = self
+            .pending_subagent_entries
+            .values()
+            .map(|v| v.len())
+            .sum();
         main_h + subagent_h + pending_h
     }
 }
@@ -190,8 +198,7 @@ impl SessionViewState {
 mod tests {
     use super::*;
     use crate::model::{
-        EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent,
-        Role,
+        EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
     };
 
     // ===== Test Helpers =====
@@ -267,7 +274,9 @@ mod tests {
         let session_id = make_session_id("session-1");
         let mut state = SessionViewState::new(session_id);
 
-        state.main_mut().append(vec![make_valid_entry("uuid-1", "session-1")]);
+        state
+            .main_mut()
+            .append(vec![make_valid_entry("uuid-1", "session-1")]);
         assert_eq!(state.main().len(), 1);
     }
 
@@ -280,14 +289,23 @@ mod tests {
         let agent_id = make_agent_id("agent-1");
 
         // Before access: should not have subagent
-        assert!(!state.has_subagent(&agent_id), "Should not have subagent before access");
+        assert!(
+            !state.has_subagent(&agent_id),
+            "Should not have subagent before access"
+        );
 
         // First access: creates view-state
         let subagent = state.subagent(&agent_id);
-        assert!(subagent.is_empty(), "Newly created subagent should be empty");
+        assert!(
+            subagent.is_empty(),
+            "Newly created subagent should be empty"
+        );
 
         // After access: should have subagent
-        assert!(state.has_subagent(&agent_id), "Should have subagent after access");
+        assert!(
+            state.has_subagent(&agent_id),
+            "Should have subagent after access"
+        );
     }
 
     #[test]
@@ -305,7 +323,11 @@ mod tests {
 
         // First access should consume pending entries
         let subagent = state.subagent(&agent_id);
-        assert_eq!(subagent.len(), 2, "Subagent should have consumed pending entries");
+        assert_eq!(
+            subagent.len(),
+            2,
+            "Subagent should have consumed pending entries"
+        );
 
         // Pending entries should be cleared
         assert!(state.has_subagent(&agent_id));
@@ -335,7 +357,9 @@ mod tests {
         let agent_id = make_agent_id("agent-1");
 
         // Use mutable access for first time
-        state.subagent_mut(&agent_id).append(vec![make_valid_entry("uuid-1", "session-1")]);
+        state
+            .subagent_mut(&agent_id)
+            .append(vec![make_valid_entry("uuid-1", "session-1")]);
 
         assert!(state.has_subagent(&agent_id));
         assert_eq!(state.subagent(&agent_id).len(), 1);
@@ -470,7 +494,9 @@ mod tests {
         state.add_main_entry(make_valid_entry("uuid-1", "session-1"));
 
         // Initialize subagent and add entry
-        state.subagent_mut(&agent_id).append(vec![make_valid_entry("uuid-2", "session-1")]);
+        state
+            .subagent_mut(&agent_id)
+            .append(vec![make_valid_entry("uuid-2", "session-1")]);
 
         // Total height = main + initialized subagents + pending estimate
         // Note: Without layout computation, heights are 0

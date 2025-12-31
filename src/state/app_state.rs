@@ -192,9 +192,7 @@ impl AppState {
 
             // Extract agent_id for routing to log_view
             let agent_id = match &entry {
-                crate::model::ConversationEntry::Valid(log_entry) => {
-                    log_entry.agent_id().cloned()
-                }
+                crate::model::ConversationEntry::Valid(log_entry) => log_entry.agent_id().cloned(),
                 crate::model::ConversationEntry::Malformed(_) => None,
             };
 
@@ -208,12 +206,16 @@ impl AppState {
     /// Assumes single session (current limitation).
     /// Panics if no sessions exist (shouldn't happen in normal operation).
     pub fn session_view(&self) -> &crate::view_state::session::SessionViewState {
-        self.log_view.get_session(0).expect("No session view-state - this is a bug")
+        self.log_view
+            .get_session(0)
+            .expect("No session view-state - this is a bug")
     }
 
     /// Get mutable reference to session view-state.
     pub fn session_view_mut(&mut self) -> &mut crate::view_state::session::SessionViewState {
-        self.log_view.get_session_mut(0).expect("No session view-state - this is a bug")
+        self.log_view
+            .get_session_mut(0)
+            .expect("No session view-state - this is a bug")
     }
 
     /// Get immutable reference to log_view (view-state layer).
@@ -230,19 +232,26 @@ impl AppState {
     ///
     /// Assumes single session (current limitation).
     /// Returns None if no sessions exist (shouldn't happen in normal operation).
-    pub fn main_conversation_view(&self) -> Option<&crate::view_state::conversation::ConversationViewState> {
+    pub fn main_conversation_view(
+        &self,
+    ) -> Option<&crate::view_state::conversation::ConversationViewState> {
         self.log_view.get_session(0).map(|s| s.main())
     }
 
     /// Get mutable main conversation view-state.
-    pub fn main_conversation_view_mut(&mut self) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
+    pub fn main_conversation_view_mut(
+        &mut self,
+    ) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
         self.log_view.get_session_mut(0).map(|s| s.main_mut())
     }
 
     /// Get subagent conversation view-state by tab index.
     ///
     /// Returns None if tab_index is out of range or session doesn't exist.
-    pub fn subagent_conversation_view(&mut self, tab_index: usize) -> Option<&crate::view_state::conversation::ConversationViewState> {
+    pub fn subagent_conversation_view(
+        &mut self,
+        tab_index: usize,
+    ) -> Option<&crate::view_state::conversation::ConversationViewState> {
         let session = self.log_view.get_session_mut(0)?;
         let agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
         let agent_id = agent_ids.get(tab_index)?;
@@ -252,7 +261,10 @@ impl AppState {
     /// Get mutable subagent conversation view-state by tab index.
     ///
     /// Returns None if tab_index is out of range or session doesn't exist.
-    pub fn subagent_conversation_view_mut(&mut self, tab_index: usize) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
+    pub fn subagent_conversation_view_mut(
+        &mut self,
+        tab_index: usize,
+    ) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
         let session = self.log_view.get_session_mut(0)?;
         let agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
         let agent_id = agent_ids.get(tab_index).cloned()?;
@@ -279,7 +291,8 @@ impl AppState {
 
         if !main_has_entries && !subagents_have_entries {
             // Create an empty session view-state to match the model session
-            self.log_view.create_empty_session(session.session_id().clone());
+            self.log_view
+                .create_empty_session(session.session_id().clone());
         }
 
         // Main agent entries
@@ -290,7 +303,8 @@ impl AppState {
         // Subagent entries
         for (agent_id, conversation) in session.subagents() {
             for entry in conversation.entries() {
-                self.log_view.add_entry(entry.clone(), Some(agent_id.clone()));
+                self.log_view
+                    .add_entry(entry.clone(), Some(agent_id.clone()));
             }
         }
     }
@@ -338,7 +352,9 @@ impl AppState {
             return;
         }
 
-        let num_subagents = self.log_view.get_session(0)
+        let num_subagents = self
+            .log_view
+            .get_session(0)
             .map(|s| s.subagent_ids().count())
             .unwrap_or(0);
 
@@ -368,7 +384,9 @@ impl AppState {
             return;
         }
 
-        let num_subagents = self.log_view.get_session(0)
+        let num_subagents = self
+            .log_view
+            .get_session(0)
             .map(|s| s.subagent_ids().count())
             .unwrap_or(0);
 
@@ -394,7 +412,9 @@ impl AppState {
             return;
         }
 
-        let num_subagents = self.log_view.get_session(0)
+        let num_subagents = self
+            .log_view
+            .get_session(0)
             .map(|s| s.subagent_ids().count())
             .unwrap_or(0);
 
@@ -548,7 +568,6 @@ pub struct ScrollState {
     /// Only relevant when line wrapping is disabled (FR-040).
     /// 0 means viewing from the leftmost column.
     pub horizontal_offset: usize,
-
 
     /// Index of the currently focused message within this pane's entry list.
     /// `None` means no specific message has focus (pane-level focus only).

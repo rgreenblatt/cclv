@@ -12,7 +12,9 @@ use crossterm::event::KeyCode;
 
 /// Build SessionStats from SessionViewState by iterating all entries.
 /// Matches the approach used in view/layout.rs until stats are integrated into Session.
-fn build_session_stats(session_view: &cclv::view_state::session::SessionViewState) -> cclv::model::SessionStats {
+fn build_session_stats(
+    session_view: &cclv::view_state::session::SessionViewState,
+) -> cclv::model::SessionStats {
     use cclv::model::{ConversationEntry, SessionStats};
 
     let mut stats = SessionStats::default();

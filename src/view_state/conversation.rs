@@ -92,7 +92,8 @@ impl ConversationViewState {
 
     /// Get mutable focused entry view, if any.
     pub fn focused_entry_mut(&mut self) -> Option<&mut EntryView> {
-        self.focused_message.and_then(|i| self.entries.get_mut(i.get()))
+        self.focused_message
+            .and_then(|i| self.entries.get_mut(i.get()))
     }
 
     /// Number of entries.
@@ -173,7 +174,8 @@ impl ConversationViewState {
     pub fn append(&mut self, entries: Vec<ConversationEntry>) {
         let start_idx = self.entries.len();
         for (offset, entry) in entries.into_iter().enumerate() {
-            self.entries.push(EntryView::new(entry, EntryIndex::new(start_idx + offset)));
+            self.entries
+                .push(EntryView::new(entry, EntryIndex::new(start_idx + offset)));
         }
         // Invalidate layout
         self.last_layout_params = None;
@@ -214,8 +216,12 @@ impl ConversationViewState {
     /// - `from_index`: Index of first entry to relayout
     /// - `params`: Current global layout parameters
     /// - `height_calculator`: Function to compute height
-    pub fn relayout_from<F>(&mut self, from_index: EntryIndex, params: LayoutParams, height_calculator: F)
-    where
+    pub fn relayout_from<F>(
+        &mut self,
+        from_index: EntryIndex,
+        params: LayoutParams,
+        height_calculator: F,
+    ) where
         F: Fn(&ConversationEntry, bool, WrapMode) -> LineHeight,
     {
         use super::layout::EntryLayout;
@@ -283,7 +289,11 @@ impl ConversationViewState {
 
     /// Compute scroll anchor for preserving viewport stability when toggling entry.
     /// Returns Some(ScrollPosition::AtEntry) if toggled entry is above viewport.
-    fn compute_scroll_anchor_before_toggle(&self, toggled_index: EntryIndex, viewport: ViewportDimensions) -> Option<ScrollPosition> {
+    fn compute_scroll_anchor_before_toggle(
+        &self,
+        toggled_index: EntryIndex,
+        viewport: ViewportDimensions,
+    ) -> Option<ScrollPosition> {
         if self.entries.is_empty() {
             return None;
         }
@@ -341,26 +351,28 @@ impl ConversationViewState {
             return VisibleRange::default();
         }
 
-        let scroll_offset = self.scroll.resolve(
-            self.total_height,
-            viewport.height as usize,
-            |idx| self.entries.get(idx.get()).map(|e| e.layout().cumulative_y()),
-        );
+        let scroll_offset =
+            self.scroll
+                .resolve(self.total_height, viewport.height as usize, |idx| {
+                    self.entries
+                        .get(idx.get())
+                        .map(|e| e.layout().cumulative_y())
+                });
 
         let scroll_line = scroll_offset.get();
         let viewport_bottom = scroll_line + viewport.height as usize;
 
         // Binary search for first visible entry
         // Find first entry whose bottom_y > scroll_line
-        let start_index = self.entries.partition_point(|e| {
-            e.layout().bottom_y().get() <= scroll_line
-        });
+        let start_index = self
+            .entries
+            .partition_point(|e| e.layout().bottom_y().get() <= scroll_line);
 
         // Binary search for first entry past viewport
         // Find first entry whose cumulative_y >= viewport_bottom
-        let end_index = self.entries.partition_point(|e| {
-            e.layout().cumulative_y().get() < viewport_bottom
-        });
+        let end_index = self
+            .entries
+            .partition_point(|e| e.layout().cumulative_y().get() < viewport_bottom);
 
         VisibleRange::new(
             EntryIndex::new(start_index),
@@ -380,7 +392,12 @@ impl ConversationViewState {
     ///
     /// # Returns
     /// What entry (if any) was hit.
-    pub fn hit_test(&self, screen_y: u16, screen_x: u16, scroll_offset: LineOffset) -> HitTestResult {
+    pub fn hit_test(
+        &self,
+        screen_y: u16,
+        screen_x: u16,
+        scroll_offset: LineOffset,
+    ) -> HitTestResult {
         if self.entries.is_empty() {
             return HitTestResult::miss();
         }
@@ -389,9 +406,9 @@ impl ConversationViewState {
 
         // Binary search for entry containing absolute_y
         // Find first entry whose bottom_y > absolute_y
-        let index = self.entries.partition_point(|e| {
-            e.layout().bottom_y().get() <= absolute_y
-        });
+        let index = self
+            .entries
+            .partition_point(|e| e.layout().bottom_y().get() <= absolute_y);
 
         if index >= self.entries.len() {
             return HitTestResult::miss();
@@ -411,7 +428,9 @@ impl ConversationViewState {
 
     /// Get cumulative_y for entry at index (for scroll resolution).
     pub fn entry_cumulative_y(&self, index: EntryIndex) -> Option<LineOffset> {
-        self.entries.get(index.get()).map(|e| e.layout().cumulative_y())
+        self.entries
+            .get(index.get())
+            .map(|e| e.layout().cumulative_y())
     }
 
     /// Check if entry with given UUID is expanded.
@@ -486,7 +505,9 @@ mod tests {
     }
 
     // Mock height calculator: returns fixed height for testing
-    fn fixed_height_calculator(height: u16) -> impl Fn(&ConversationEntry, bool, WrapMode) -> LineHeight {
+    fn fixed_height_calculator(
+        height: u16,
+    ) -> impl Fn(&ConversationEntry, bool, WrapMode) -> LineHeight {
         move |_entry, _expanded, _wrap| LineHeight::new(height).unwrap()
     }
 
@@ -511,7 +532,11 @@ mod tests {
         let entries = vec![make_valid_entry("uuid-1")];
         let state = ConversationViewState::new(entries);
 
-        assert_eq!(state.total_height(), 0, "Total height should be 0 before layout");
+        assert_eq!(
+            state.total_height(),
+            0,
+            "Total height should be 0 before layout"
+        );
         assert!(
             state.last_layout_params.is_none(),
             "Should have no layout params until first layout"
@@ -547,9 +572,18 @@ mod tests {
         ];
         let state = ConversationViewState::new(entries);
 
-        assert_eq!(state.get(EntryIndex::new(0)).unwrap().index(), EntryIndex::new(0));
-        assert_eq!(state.get(EntryIndex::new(1)).unwrap().index(), EntryIndex::new(1));
-        assert_eq!(state.get(EntryIndex::new(2)).unwrap().index(), EntryIndex::new(2));
+        assert_eq!(
+            state.get(EntryIndex::new(0)).unwrap().index(),
+            EntryIndex::new(0)
+        );
+        assert_eq!(
+            state.get(EntryIndex::new(1)).unwrap().index(),
+            EntryIndex::new(1)
+        );
+        assert_eq!(
+            state.get(EntryIndex::new(2)).unwrap().index(),
+            EntryIndex::new(2)
+        );
     }
 
     // === ConversationViewState::empty Tests ===
@@ -596,9 +630,33 @@ mod tests {
         state.recompute_layout(params, fixed_height_calculator(5));
 
         // Verify cumulative_y invariant: cumulative_y[i] = sum(height[0..i])
-        assert_eq!(state.get(EntryIndex::new(0)).unwrap().layout().cumulative_y().get(), 0);
-        assert_eq!(state.get(EntryIndex::new(1)).unwrap().layout().cumulative_y().get(), 5);
-        assert_eq!(state.get(EntryIndex::new(2)).unwrap().layout().cumulative_y().get(), 10);
+        assert_eq!(
+            state
+                .get(EntryIndex::new(0))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            0
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(1))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            5
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(2))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            10
+        );
     }
 
     #[test]
@@ -736,9 +794,33 @@ mod tests {
         state.relayout_from(EntryIndex::new(1), params, variable_height);
 
         // After relayout from 1: [0, 10, 30], total=40
-        assert_eq!(state.get(EntryIndex::new(0)).unwrap().layout().cumulative_y().get(), 0);
-        assert_eq!(state.get(EntryIndex::new(1)).unwrap().layout().cumulative_y().get(), 10);
-        assert_eq!(state.get(EntryIndex::new(2)).unwrap().layout().cumulative_y().get(), 30); // 10 + 20
+        assert_eq!(
+            state
+                .get(EntryIndex::new(0))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            0
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(1))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            10
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(2))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            30
+        ); // 10 + 20
         assert_eq!(state.total_height(), 40);
     }
 
@@ -780,7 +862,12 @@ mod tests {
         state.recompute_layout(params, fixed_height_calculator(10));
 
         let viewport = ViewportDimensions::new(80, 24);
-        let result = state.toggle_expand(EntryIndex::new(0), params, viewport, fixed_height_calculator(10));
+        let result = state.toggle_expand(
+            EntryIndex::new(0),
+            params,
+            viewport,
+            fixed_height_calculator(10),
+        );
 
         assert_eq!(result, Some(true), "Should toggle to expanded");
         assert!(state.get(EntryIndex::new(0)).unwrap().is_expanded());
@@ -792,17 +879,19 @@ mod tests {
         let params = LayoutParams::new(80, WrapMode::Wrap);
 
         let viewport = ViewportDimensions::new(80, 24);
-        let result = state.toggle_expand(EntryIndex::new(0), params, viewport, fixed_height_calculator(10));
+        let result = state.toggle_expand(
+            EntryIndex::new(0),
+            params,
+            viewport,
+            fixed_height_calculator(10),
+        );
 
         assert_eq!(result, None);
     }
 
     #[test]
     fn toggle_expand_triggers_relayout() {
-        let entries = vec![
-            make_valid_entry("uuid-1"),
-            make_valid_entry("uuid-2"),
-        ];
+        let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
         let mut state = ConversationViewState::new(entries);
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
@@ -821,8 +910,24 @@ mod tests {
         state.toggle_expand(EntryIndex::new(0), params, viewport, variable_height);
         // After expanding entry 0: [0, 20], total=30
 
-        assert_eq!(state.get(EntryIndex::new(0)).unwrap().layout().cumulative_y().get(), 0);
-        assert_eq!(state.get(EntryIndex::new(1)).unwrap().layout().cumulative_y().get(), 20);
+        assert_eq!(
+            state
+                .get(EntryIndex::new(0))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            0
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(1))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            20
+        );
         assert_eq!(state.total_height(), 30);
     }
 
@@ -858,11 +963,20 @@ mod tests {
         let range_before = state.visible_range(viewport);
 
         // Verify initial visible range: entries 5-9 (0-indexed, end exclusive)
-        assert_eq!(range_before.start_index, EntryIndex::new(5), "Initially, entry 5 should be first visible");
+        assert_eq!(
+            range_before.start_index,
+            EntryIndex::new(5),
+            "Initially, entry 5 should be first visible"
+        );
 
         // Record the first visible entry's absolute position in viewport
         let first_visible_entry = range_before.start_index;
-        let first_visible_y_before = state.get(first_visible_entry).unwrap().layout().cumulative_y().get();
+        let first_visible_y_before = state
+            .get(first_visible_entry)
+            .unwrap()
+            .layout()
+            .cumulative_y()
+            .get();
         let scroll_offset_before = range_before.scroll_offset.get();
         let offset_in_viewport_before = first_visible_y_before.saturating_sub(scroll_offset_before);
 
@@ -895,19 +1009,22 @@ mod tests {
         // The KEY assertion: first visible entry should still be entry 5
         // and it should still be at the same relative position in the viewport
         let range_after = state.visible_range(viewport);
-        let first_visible_y_after = state.get(first_visible_entry).unwrap().layout().cumulative_y().get();
+        let first_visible_y_after = state
+            .get(first_visible_entry)
+            .unwrap()
+            .layout()
+            .cumulative_y()
+            .get();
         let scroll_offset_after = range_after.scroll_offset.get();
         let offset_in_viewport_after = first_visible_y_after.saturating_sub(scroll_offset_after);
 
         assert_eq!(
-            range_after.start_index,
-            first_visible_entry,
+            range_after.start_index, first_visible_entry,
             "First visible entry should remain entry 5 after toggling entry 2 above viewport"
         );
 
         assert_eq!(
-            offset_in_viewport_after,
-            offset_in_viewport_before,
+            offset_in_viewport_after, offset_in_viewport_before,
             "Entry 5 should maintain same relative position in viewport (stable view)"
         );
     }
@@ -925,10 +1042,7 @@ mod tests {
 
     #[test]
     fn hit_test_finds_first_entry() {
-        let entries = vec![
-            make_valid_entry("uuid-1"),
-            make_valid_entry("uuid-2"),
-        ];
+        let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
         let mut state = ConversationViewState::new(entries);
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
@@ -1021,7 +1135,10 @@ mod tests {
         state.append(vec![make_valid_entry("uuid-2"), make_valid_entry("uuid-3")]);
 
         assert_eq!(state.len(), 3);
-        assert_eq!(state.get(EntryIndex::new(2)).unwrap().index(), EntryIndex::new(2));
+        assert_eq!(
+            state.get(EntryIndex::new(2)).unwrap().index(),
+            EntryIndex::new(2)
+        );
     }
 
     #[test]
@@ -1052,7 +1169,10 @@ mod tests {
         // Initially no override, uses global
         assert_eq!(state.get(EntryIndex::new(0)).unwrap().wrap_override(), None);
         assert_eq!(
-            state.get(EntryIndex::new(0)).unwrap().effective_wrap(WrapMode::Wrap),
+            state
+                .get(EntryIndex::new(0))
+                .unwrap()
+                .effective_wrap(WrapMode::Wrap),
             WrapMode::Wrap
         );
 
@@ -1146,28 +1266,80 @@ mod tests {
         let params = LayoutParams::new(80, WrapMode::Wrap);
 
         // Variable height based on wrap mode
-        let variable_height = |_entry: &ConversationEntry, _expanded: bool, wrap: WrapMode| {
-            match wrap {
+        let variable_height =
+            |_entry: &ConversationEntry, _expanded: bool, wrap: WrapMode| match wrap {
                 WrapMode::Wrap => LineHeight::new(10).unwrap(),
                 WrapMode::NoWrap => LineHeight::new(5).unwrap(),
-            }
-        };
+            };
 
         state.recompute_layout(params, variable_height);
         // Initial: all Wrap mode, heights [10, 10, 10], cumulative_y [0, 10, 20], total=30
 
-        assert_eq!(state.get(EntryIndex::new(0)).unwrap().layout().cumulative_y().get(), 0);
-        assert_eq!(state.get(EntryIndex::new(1)).unwrap().layout().cumulative_y().get(), 10);
-        assert_eq!(state.get(EntryIndex::new(2)).unwrap().layout().cumulative_y().get(), 20);
+        assert_eq!(
+            state
+                .get(EntryIndex::new(0))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            0
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(1))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            10
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(2))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            20
+        );
         assert_eq!(state.total_height(), 30);
 
         // Set wrap override on entry 1 to NoWrap (height becomes 5)
-        state.set_wrap_override(EntryIndex::new(1), Some(WrapMode::NoWrap), params, variable_height);
+        state.set_wrap_override(
+            EntryIndex::new(1),
+            Some(WrapMode::NoWrap),
+            params,
+            variable_height,
+        );
 
         // After: heights [10, 5, 10], cumulative_y [0, 10, 15], total=25
-        assert_eq!(state.get(EntryIndex::new(0)).unwrap().layout().cumulative_y().get(), 0);
-        assert_eq!(state.get(EntryIndex::new(1)).unwrap().layout().cumulative_y().get(), 10);
-        assert_eq!(state.get(EntryIndex::new(2)).unwrap().layout().cumulative_y().get(), 15); // Shifted up by 5
+        assert_eq!(
+            state
+                .get(EntryIndex::new(0))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            0
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(1))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            10
+        );
+        assert_eq!(
+            state
+                .get(EntryIndex::new(2))
+                .unwrap()
+                .layout()
+                .cumulative_y()
+                .get(),
+            15
+        ); // Shifted up by 5
         assert_eq!(state.total_height(), 25);
     }
 
@@ -1214,7 +1386,12 @@ mod tests {
         assert_eq!(entry.effective_wrap(WrapMode::NoWrap), WrapMode::Wrap);
 
         // Clear override
-        state.set_wrap_override(EntryIndex::new(0), None, params, fixed_height_calculator(10));
+        state.set_wrap_override(
+            EntryIndex::new(0),
+            None,
+            params,
+            fixed_height_calculator(10),
+        );
 
         let entry = state.get(EntryIndex::new(0)).unwrap();
 
