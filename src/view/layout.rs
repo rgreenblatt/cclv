@@ -3,8 +3,9 @@
 //! Pure layout logic - calculates layout constraints and renders
 //! placeholder widgets for main agent, subagent tabs, and status bar.
 
+use crate::model::PricingConfig;
 use crate::state::{AppState, FocusPane};
-use crate::view::{message, tabs, MessageStyles};
+use crate::view::{message, stats::StatsPanel, tabs, MessageStyles};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -39,18 +40,37 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
 
     render_header(frame, header_area, state);
 
-    // Split content area horizontally based on subagent presence
+    // Split content area vertically: conversation area + stats panel (if visible)
+    let (conversation_area, stats_area) = if state.stats_visible {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),      // Conversation area (flexible)
+                Constraint::Length(10),  // Stats panel (fixed ~10 lines)
+            ])
+            .split(content_area);
+        (chunks[0], Some(chunks[1]))
+    } else {
+        (content_area, None)
+    };
+
+    // Split conversation area horizontally based on subagent presence
     let (main_constraint, subagent_constraint) = calculate_horizontal_constraints(has_subagents);
     let horizontal_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([main_constraint, subagent_constraint])
-        .split(content_area);
+        .split(conversation_area);
 
     // Render panes
     render_main_pane(frame, horizontal_chunks[0], state, &styles);
 
     if has_subagents {
         render_subagent_pane(frame, horizontal_chunks[1], state, &styles);
+    }
+
+    // Render stats panel if visible
+    if let Some(stats_area_rect) = stats_area {
+        render_stats_panel(frame, stats_area_rect, state);
     }
 
     render_status_bar(frame, status_area, state);
@@ -124,6 +144,86 @@ fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState, styles:
             state.focus == FocusPane::Subagent,
         );
     }
+}
+
+/// Render the stats panel with session statistics.
+///
+/// The panel displays token usage, estimated cost, tool usage, and subagent count.
+/// Border is highlighted when FocusPane::Stats is active.
+fn render_stats_panel(frame: &mut Frame, area: Rect, state: &AppState) {
+    // Build session statistics by iterating through entries
+    // TODO: This should be cached in Session once stats are integrated
+    let stats = build_session_stats(state.session());
+
+    // Get model ID for pricing calculation
+    let model_id = state
+        .session()
+        .main_agent()
+        .model()
+        .map(|m| m.id());
+
+    // Use default pricing configuration
+    let pricing = PricingConfig::default();
+
+    // Create stats panel widget with focus highlighting
+    let panel = if state.focus == FocusPane::Stats {
+        // Create panel with highlighted border
+        use ratatui::widgets::{Block, Borders};
+
+        let focused_panel = StatsPanel::new(
+            &stats,
+            &state.stats_filter,
+            &pricing,
+            model_id,
+        );
+
+        // Render with a focused block wrapper for border highlighting
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Yellow));
+
+        let inner_area = block.inner(area);
+        frame.render_widget(block, area);
+
+        // Render panel inside the focused border
+        frame.render_widget(focused_panel, inner_area);
+        return;
+    } else {
+        StatsPanel::new(
+            &stats,
+            &state.stats_filter,
+            &pricing,
+            model_id,
+        )
+    };
+
+    frame.render_widget(panel, area);
+}
+
+/// Build SessionStats by iterating through all session entries.
+/// This is temporary until stats tracking is integrated into Session.
+fn build_session_stats(session: &crate::model::Session) -> crate::model::SessionStats {
+    use crate::model::{ConversationEntry, SessionStats};
+
+    let mut stats = SessionStats::default();
+
+    // Process main agent entries
+    for entry in session.main_agent().entries() {
+        if let ConversationEntry::Valid(log_entry) = entry {
+            stats.record_entry(log_entry);
+        }
+    }
+
+    // Process subagent entries
+    for (_agent_id, conversation) in session.subagents() {
+        for entry in conversation.entries() {
+            if let ConversationEntry::Valid(log_entry) = entry {
+                stats.record_entry(log_entry);
+            }
+        }
+    }
+
+    stats
 }
 
 /// Render the status bar with hints and live mode indicator.
