@@ -1117,4 +1117,295 @@ mod tests {
             );
         }
     }
+
+    // ===== US4: Tab Navigation Dispatch Tests =====
+
+    #[test]
+    fn handle_key_right_bracket_calls_next_tab() {
+        use crate::model::{
+            AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId, TokenUsage,
+        };
+        use chrono::Utc;
+
+        let mut app = create_test_app();
+
+        // Add two subagent entries to create tabs
+        let agent_id_1 = AgentId::new("agent-1").unwrap();
+        let agent_id_2 = AgentId::new("agent-2").unwrap();
+
+        for (idx, agent_id) in [&agent_id_1, &agent_id_2].iter().enumerate() {
+            let message = Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
+                .with_usage(TokenUsage::default());
+            let entry = LogEntry::new(
+                EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
+                None,
+                SessionId::new("test-session").unwrap(),
+                Some((*agent_id).clone()),
+                Utc::now(),
+                EntryType::Assistant,
+                message,
+                EntryMetadata::default(),
+            );
+            app.app_state
+                .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
+        }
+
+        // Focus on Subagent pane and select first tab
+        app.app_state.focus = FocusPane::Subagent;
+        app.app_state.selected_tab = Some(0);
+
+        // Press ']' to go to next tab
+        let key = KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "']' should not trigger quit");
+        assert_eq!(
+            app.app_state.selected_tab,
+            Some(1),
+            "']' should call next_tab() and move to tab 1"
+        );
+    }
+
+    #[test]
+    fn handle_key_left_bracket_calls_prev_tab() {
+        use crate::model::{
+            AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId, TokenUsage,
+        };
+        use chrono::Utc;
+
+        let mut app = create_test_app();
+
+        // Add two subagent entries
+        let agent_id_1 = AgentId::new("agent-1").unwrap();
+        let agent_id_2 = AgentId::new("agent-2").unwrap();
+
+        for (idx, agent_id) in [&agent_id_1, &agent_id_2].iter().enumerate() {
+            let message = Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
+                .with_usage(TokenUsage::default());
+            let entry = LogEntry::new(
+                EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
+                None,
+                SessionId::new("test-session").unwrap(),
+                Some((*agent_id).clone()),
+                Utc::now(),
+                EntryType::Assistant,
+                message,
+                EntryMetadata::default(),
+            );
+            app.app_state
+                .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
+        }
+
+        // Focus on Subagent pane and select second tab
+        app.app_state.focus = FocusPane::Subagent;
+        app.app_state.selected_tab = Some(1);
+
+        // Press '[' to go to previous tab
+        let key = KeyEvent::new(KeyCode::Char('['), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'[' should not trigger quit");
+        assert_eq!(
+            app.app_state.selected_tab,
+            Some(0),
+            "'[' should call prev_tab() and move to tab 0"
+        );
+    }
+
+    #[test]
+    fn handle_key_number_calls_select_tab() {
+        use crate::model::{
+            AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId, TokenUsage,
+        };
+        use chrono::Utc;
+
+        let mut app = create_test_app();
+
+        // Add 5 subagent entries
+        for idx in 0..5 {
+            let agent_id = AgentId::new(&format!("agent-{}", idx)).unwrap();
+            let message = Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
+                .with_usage(TokenUsage::default());
+            let entry = LogEntry::new(
+                EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
+                None,
+                SessionId::new("test-session").unwrap(),
+                Some(agent_id),
+                Utc::now(),
+                EntryType::Assistant,
+                message,
+                EntryMetadata::default(),
+            );
+            app.app_state
+                .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
+        }
+
+        // Focus on Subagent pane
+        app.app_state.focus = FocusPane::Subagent;
+        app.app_state.selected_tab = Some(0);
+
+        // Press '5' to select 5th tab (0-indexed: tab 4)
+        let key = KeyEvent::new(KeyCode::Char('5'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'5' should not trigger quit");
+        assert_eq!(
+            app.app_state.selected_tab,
+            Some(4),
+            "'5' should call select_tab(5) and move to 0-indexed tab 4"
+        );
+    }
+
+    // ===== US4: Message Expand/Collapse Dispatch Tests =====
+
+    #[test]
+    fn handle_key_enter_toggles_expand() {
+        let mut app = create_test_app();
+
+        // Add an entry to the main pane
+        let entry = create_test_entry("test message");
+        app.app_state.add_entries(vec![entry]);
+
+        // Focus on Main pane and set focused message
+        app.app_state.focus = FocusPane::Main;
+        app.app_state.main_scroll.set_focused_message(Some(0));
+
+        // Get the UUID of the first message
+        let uuid = app
+            .app_state
+            .session()
+            .main_agent()
+            .entries()
+            .first()
+            .and_then(|e| e.as_valid())
+            .map(|log| log.uuid().clone())
+            .unwrap();
+
+        // Initially not expanded
+        assert!(
+            !app.app_state.main_scroll.is_expanded(&uuid),
+            "Message should start collapsed"
+        );
+
+        // Press Enter to toggle expand
+        let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "Enter should not trigger quit");
+        assert!(
+            app.app_state.main_scroll.is_expanded(&uuid),
+            "Enter should call expand_handler and toggle message to expanded"
+        );
+    }
+
+    #[test]
+    fn handle_key_e_expands_all_messages() {
+        let mut app = create_test_app();
+
+        // Add multiple entries
+        for i in 0..3 {
+            app.app_state
+                .add_entries(vec![create_test_entry(&format!("msg{}", i))]);
+        }
+
+        // Focus on Main pane
+        app.app_state.focus = FocusPane::Main;
+
+        // Initially all collapsed
+        assert_eq!(
+            app.app_state.main_scroll.expanded_messages.len(),
+            0,
+            "No messages should be expanded initially"
+        );
+
+        // Press 'e' to expand all
+        let key = KeyEvent::new(KeyCode::Char('e'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'e' should not trigger quit");
+        assert_eq!(
+            app.app_state.main_scroll.expanded_messages.len(),
+            3,
+            "'e' should call expand_handler and expand all 3 messages"
+        );
+    }
+
+    #[test]
+    fn handle_key_c_collapses_all_messages() {
+        let mut app = create_test_app();
+
+        // Add entries
+        for i in 0..3 {
+            app.app_state
+                .add_entries(vec![create_test_entry(&format!("msg{}", i))]);
+        }
+
+        // Focus on Main and expand all
+        app.app_state.focus = FocusPane::Main;
+        let uuids: Vec<_> = app
+            .app_state
+            .session()
+            .main_agent()
+            .entries()
+            .iter()
+            .filter_map(|e| e.as_valid().map(|log| log.uuid().clone()))
+            .collect();
+        app.app_state.main_scroll.expand_all(uuids.into_iter());
+
+        assert_eq!(app.app_state.main_scroll.expanded_messages.len(), 3);
+
+        // Press 'c' to collapse all
+        let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'c' should not trigger quit");
+        assert_eq!(
+            app.app_state.main_scroll.expanded_messages.len(),
+            0,
+            "'c' should call expand_handler and collapse all messages"
+        );
+    }
+
+    // ===== US4: Horizontal Scrolling Tests =====
+
+    #[test]
+    fn handle_key_h_scrolls_left() {
+        let mut app = create_test_app();
+
+        // Focus on Main pane and set horizontal offset
+        app.app_state.focus = FocusPane::Main;
+        app.app_state.main_scroll.horizontal_offset = 10;
+
+        // Press 'h' to scroll left
+        let key = KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'h' should not trigger quit");
+        assert_eq!(
+            app.app_state.main_scroll.horizontal_offset, 9,
+            "'h' should call scroll_handler with ScrollLeft action"
+        );
+    }
+
+    #[test]
+    fn handle_key_l_scrolls_right() {
+        let mut app = create_test_app();
+
+        // Focus on Main pane
+        app.app_state.focus = FocusPane::Main;
+        app.app_state.main_scroll.horizontal_offset = 0;
+
+        // Press 'l' to scroll right
+        let key = KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'l' should not trigger quit");
+        assert_eq!(
+            app.app_state.main_scroll.horizontal_offset, 1,
+            "'l' should call scroll_handler with ScrollRight action"
+        );
+    }
 }
