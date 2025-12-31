@@ -139,23 +139,34 @@ pub fn detect_entry_click(
                 && click_y >= inner_y
                 && click_y < inner_y + inner_height
             {
-                // Check if there are any entries
+                // Use hit_test from ConversationViewState for accurate entry detection
                 if let Some(tab_index) = state.selected_tab {
                     let session_view = state.session_view();
                     let agent_ids: Vec<_> = session_view.subagent_ids().cloned().collect();
                     if let Some(agent_id) = agent_ids.get(tab_index) {
-                        let entry_count = session_view.get_subagent_entry_count(agent_id);
-                        if entry_count > 0 {
-                            // Calculate which entry was clicked based on Y position
-                            let relative_y = click_y.saturating_sub(inner_y);
+                        if let Some(conv_view) = session_view.get_subagent(agent_id) {
+                            use crate::view_state::hit_test::HitTestResult;
 
-                            // Simple fixed-height approach: each entry gets ~4 lines
-                            const ENTRY_HEIGHT: u16 = 4;
-                            let entry_index = (relative_y / ENTRY_HEIGHT) as usize;
+                            // Get scroll offset
+                            let scroll_offset = conv_view.scroll().resolve(
+                                conv_view.total_height(),
+                                inner_height as usize,
+                                |idx| conv_view.entry_cumulative_y(idx),
+                            );
 
-                            // Clamp to valid range
-                            let clamped_index = entry_index.min(entry_count - 1);
-                            return EntryClickResult::SubagentPaneEntry(clamped_index);
+                            // Calculate viewport-relative Y position
+                            let viewport_y = click_y.saturating_sub(inner_y);
+                            let viewport_x = click_x.saturating_sub(inner_x);
+
+                            // Hit-test using ConversationViewState
+                            match conv_view.hit_test(viewport_y, viewport_x, scroll_offset) {
+                                HitTestResult::Hit { entry_index, .. } => {
+                                    return EntryClickResult::SubagentPaneEntry(entry_index.get());
+                                }
+                                HitTestResult::Miss => {
+                                    return EntryClickResult::NoEntry;
+                                }
+                            }
                         }
                     }
                 }
@@ -181,19 +192,30 @@ pub fn detect_entry_click(
             && click_y >= inner_y
             && click_y < inner_y + inner_height
         {
-            // Check if there are any entries
-            let entries = state.session_view().main().entries();
-            if !entries.is_empty() {
-                // Calculate which entry was clicked based on Y position
-                let relative_y = click_y.saturating_sub(inner_y);
+            // Use hit_test from ConversationViewState for accurate entry detection
+            use crate::view_state::hit_test::HitTestResult;
 
-                // Simple fixed-height approach: each entry gets ~4 lines
-                const ENTRY_HEIGHT: u16 = 4;
-                let entry_index = (relative_y / ENTRY_HEIGHT) as usize;
+            let conv_view = state.session_view().main();
 
-                // Clamp to valid range
-                let clamped_index = entry_index.min(entries.len() - 1);
-                return EntryClickResult::MainPaneEntry(clamped_index);
+            // Get scroll offset
+            let scroll_offset = conv_view.scroll().resolve(
+                conv_view.total_height(),
+                inner_height as usize,
+                |idx| conv_view.entry_cumulative_y(idx),
+            );
+
+            // Calculate viewport-relative Y position
+            let viewport_y = click_y.saturating_sub(inner_y);
+            let viewport_x = click_x.saturating_sub(inner_x);
+
+            // Hit-test using ConversationViewState
+            match conv_view.hit_test(viewport_y, viewport_x, scroll_offset) {
+                HitTestResult::Hit { entry_index, .. } => {
+                    return EntryClickResult::MainPaneEntry(entry_index.get());
+                }
+                HitTestResult::Miss => {
+                    return EntryClickResult::NoEntry;
+                }
             }
         }
         return EntryClickResult::NoEntry;

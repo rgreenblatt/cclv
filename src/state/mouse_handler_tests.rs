@@ -74,6 +74,31 @@ fn create_app_state_with_tabs(agent_ids: Vec<&str>) -> AppState {
     state
 }
 
+/// Initialize layout for all conversations in state with fixed height.
+/// Required for tests that use hit_test-based entry detection.
+fn init_layout_for_state(state: &mut AppState, height_per_entry: u16) {
+    use crate::state::WrapMode;
+    use crate::view_state::layout_params::LayoutParams;
+    use crate::view_state::types::LineHeight;
+
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    let height_calc =
+        |_entry: &ConversationEntry, _expanded: bool, _wrap: WrapMode| {
+            LineHeight::new(height_per_entry).unwrap()
+        };
+
+    // Initialize main conversation layout
+    if let Some(session_view) = state.log_view_mut().current_session_mut() {
+        session_view.main_mut().recompute_layout(params, height_calc);
+
+        // Initialize subagent layouts
+        let agent_ids: Vec<_> = session_view.subagent_ids().cloned().collect();
+        for agent_id in agent_ids {
+            session_view.subagent_mut(&agent_id).recompute_layout(params, height_calc);
+        }
+    }
+}
+
 // ===== detect_tab_click Tests =====
 
 #[test]
@@ -420,6 +445,7 @@ fn detect_entry_click_detects_main_pane_first_entry() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
+    init_layout_for_state(&mut state, 10);
 
     // Main pane at (0, 0) with width 40, height 20
     // Click on first entry (inside border: y=1)
@@ -440,6 +466,7 @@ fn detect_entry_click_detects_subagent_pane_entry() {
     // Set focus and select the first subagent tab
     state.focus = crate::state::FocusPane::Subagent;
     state.select_tab(1); // 1-indexed
+    init_layout_for_state(&mut state, 10);
 
     // Main pane area
     let main_area = Rect::new(0, 0, 40, 20);
@@ -490,7 +517,8 @@ fn detect_entry_click_accounts_for_border() {
 
 #[test]
 fn detect_entry_click_handles_empty_conversation() {
-    let state = create_app_state_with_tabs(vec![]);
+    let mut state = create_app_state_with_tabs(vec![]);
+    init_layout_for_state(&mut state, 10);
 
     let main_area = Rect::new(0, 0, 40, 20);
 
@@ -532,36 +560,35 @@ fn detect_entry_click_maps_different_y_positions_to_different_entries() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
+    init_layout_for_state(&mut state, 10);
 
     // Main pane at (0, 0) with width 40, height 20
     // Inner area: (1, 1) to (39, 19) - 18 lines tall
+    // Layout with height=10 per entry: Entry 0 at y=0..10, Entry 1 at y=10..20, Entry 2 at y=20..30
     let main_area = Rect::new(0, 0, 40, 20);
 
-    // Click near top of inner area (y=2) - should hit first entry
+    // Click at y=2 (inside border) -> viewport_y = 1 -> Entry 0 (y=0..10)
     let result_top = detect_entry_click(5, 2, main_area, None, &state);
     assert_eq!(
         result_top,
         EntryClickResult::MainPaneEntry(0),
-        "Click near top should hit first entry"
+        "Click at viewport_y=1 should hit entry 0"
     );
 
-    // Click in middle of inner area (y=10) - should hit second or third entry
-    let result_mid = detect_entry_click(5, 10, main_area, None, &state);
-    assert!(
-        matches!(
-            result_mid,
-            EntryClickResult::MainPaneEntry(1) | EntryClickResult::MainPaneEntry(2)
-        ),
-        "Click in middle should hit entry 1 or 2, got {:?}",
-        result_mid
+    // Click at y=11 (inside border) -> viewport_y = 10 -> Entry 1 (starts at y=10)
+    let result_mid = detect_entry_click(5, 11, main_area, None, &state);
+    assert_eq!(
+        result_mid,
+        EntryClickResult::MainPaneEntry(1),
+        "Click at viewport_y=10 should hit entry 1"
     );
 
-    // Click near bottom of inner area (y=18) - should hit last entry
-    let result_bottom = detect_entry_click(5, 18, main_area, None, &state);
+    // Click at y=16 (inside border) -> viewport_y = 15 -> Entry 1 (y=10..20)
+    let result_bottom = detect_entry_click(5, 16, main_area, None, &state);
     assert_eq!(
         result_bottom,
-        EntryClickResult::MainPaneEntry(2),
-        "Click near bottom should hit last entry"
+        EntryClickResult::MainPaneEntry(1),
+        "Click at viewport_y=15 should hit entry 1"
     );
 }
 
@@ -588,23 +615,34 @@ fn detect_entry_click_with_single_entry_always_returns_index_0() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
+    init_layout_for_state(&mut state, 10);
     let main_area = Rect::new(0, 0, 40, 20);
 
-    // Any click within inner area should hit entry 0
-    let results = vec![
+    // Entry height is 10, so viewport_y 0-9 should hit entry 0
+    // Click at y=1 (inside border) -> viewport_y = 0 -> hit
+    assert_eq!(
         detect_entry_click(5, 1, main_area, None, &state),
-        detect_entry_click(5, 5, main_area, None, &state),
-        detect_entry_click(5, 10, main_area, None, &state),
-        detect_entry_click(5, 18, main_area, None, &state),
-    ];
+        EntryClickResult::MainPaneEntry(0)
+    );
 
-    for result in results {
-        assert_eq!(
-            result,
-            EntryClickResult::MainPaneEntry(0),
-            "All clicks on single entry should return index 0"
-        );
-    }
+    // Click at y=5 -> viewport_y = 4 -> hit
+    assert_eq!(
+        detect_entry_click(5, 5, main_area, None, &state),
+        EntryClickResult::MainPaneEntry(0)
+    );
+
+    // Click at y=10 -> viewport_y = 9 -> hit (last line of entry)
+    assert_eq!(
+        detect_entry_click(5, 10, main_area, None, &state),
+        EntryClickResult::MainPaneEntry(0)
+    );
+
+    // Click at y=18 -> viewport_y = 17 -> miss (beyond 10-line entry)
+    assert_eq!(
+        detect_entry_click(5, 18, main_area, None, &state),
+        EntryClickResult::NoEntry,
+        "Click beyond entry height should return NoEntry"
+    );
 }
 
 // ===== Hit Test Integration Tests =====
