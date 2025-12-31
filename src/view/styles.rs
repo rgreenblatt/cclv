@@ -24,12 +24,20 @@ pub struct MessageStyles {
 impl MessageStyles {
     /// Create a new MessageStyles with default color scheme.
     pub fn new() -> Self {
-        todo!("MessageStyles::new")
+        Self {
+            user_style: Style::default().fg(Color::Cyan),
+            assistant_style: Style::default().fg(Color::Green),
+            tool_call_style: Style::default().fg(Color::Yellow),
+            error_style: Style::default().fg(Color::Red),
+        }
     }
 
     /// Get the style for a message role.
     pub fn style_for_role(&self, role: Role) -> Style {
-        todo!("MessageStyles::style_for_role")
+        match role {
+            Role::User => self.user_style,
+            Role::Assistant => self.assistant_style,
+        }
     }
 
     /// Get the style for a content block.
@@ -39,7 +47,17 @@ impl MessageStyles {
     /// - ToolResult with is_error=true: error_style
     /// - Others: No specific styling (return default)
     pub fn style_for_content_block(&self, block: &ContentBlock) -> Option<Style> {
-        todo!("MessageStyles::style_for_content_block")
+        match block {
+            ContentBlock::ToolUse(_) => Some(self.tool_call_style),
+            ContentBlock::ToolResult { is_error, .. } => {
+                if *is_error {
+                    Some(self.error_style)
+                } else {
+                    None
+                }
+            }
+            ContentBlock::Text { .. } | ContentBlock::Thinking { .. } => None,
+        }
     }
 }
 
