@@ -32,6 +32,7 @@ pub struct ConversationView<'a> {
     collapse_threshold: usize,
     summary_lines: usize,
     buffer_size: usize,
+    global_wrap: WrapMode,
 }
 
 impl<'a> ConversationView<'a> {
@@ -57,6 +58,7 @@ impl<'a> ConversationView<'a> {
             collapse_threshold: 10,
             summary_lines: 3,
             buffer_size: 20,
+            global_wrap: WrapMode::default(), // Default to Wrap
         }
     }
 
@@ -90,61 +92,36 @@ impl<'a> ConversationView<'a> {
         self
     }
 
+    /// Set the global wrap mode.
+    pub fn global_wrap(mut self, wrap: WrapMode) -> Self {
+        self.global_wrap = wrap;
+        self
+    }
+
     /// Calculate the height in lines for a single conversation entry.
     ///
     /// Accounts for collapsed state based on scroll_state expansion tracking.
+    /// When wrap is enabled, calculates how many display lines text occupies when
+    /// wrapped to viewport_width. When disabled, counts newlines.
     /// For malformed entries, returns fixed height (line number + error message).
-    fn calculate_entry_height(&self, entry: &ConversationEntry) -> usize {
-        match entry {
-            ConversationEntry::Valid(log_entry) => {
-                let is_expanded = self.scroll_state.is_expanded(log_entry.uuid());
-
-                match log_entry.message().content() {
-                    MessageContent::Text(text) => {
-                        let total_lines = text.lines().count();
-                        if total_lines > self.collapse_threshold && !is_expanded {
-                            // Collapsed: summary_lines + 1 indicator line
-                            self.summary_lines + 1
-                        } else {
-                            total_lines
-                        }
-                    }
-                    MessageContent::Blocks(blocks) => {
-                        let mut total_height = 0;
-                        let role = log_entry.message().role();
-                        let role_style = self.styles.style_for_role(role);
-
-                        for block in blocks {
-                            let block_lines = render_content_block(
-                                block,
-                                log_entry.uuid(),
-                                self.scroll_state,
-                                self.styles,
-                                role_style,
-                                self.collapse_threshold,
-                                self.summary_lines,
-                            );
-                            total_height += block_lines.len();
-                        }
-                        // Add spacing between entries
-                        total_height + 1
-                    }
-                }
-            }
-            ConversationEntry::Malformed(malformed) => {
-                // Malformed entries: 3 lines (border + line number + error + border)
-                // Error message might wrap, count actual lines
-                let error_lines = malformed.error_message().lines().count();
-                // Header line + error lines + spacing
-                2 + error_lines
-            }
-        }
+    fn calculate_entry_height(
+        &self,
+        _entry: &ConversationEntry,
+        _viewport_width: usize,
+        _global_wrap: WrapMode,
+    ) -> usize {
+        todo!("calculate_entry_height: implement wrap-aware height calculation")
     }
 
     /// Determine the range of entries that should be rendered based on viewport.
     ///
     /// Returns (start_index, end_index) for the visible range including buffer.
-    fn calculate_visible_range(&self, viewport_height: usize) -> (usize, usize) {
+    fn calculate_visible_range(
+        &self,
+        viewport_height: usize,
+        viewport_width: usize,
+        global_wrap: WrapMode,
+    ) -> (usize, usize) {
         let entries = self.conversation.entries();
         let total_entries = entries.len();
 
@@ -160,7 +137,7 @@ impl<'a> ConversationView<'a> {
 
         // Find the first entry that should be visible (accounting for buffer)
         for (i, entry) in entries.iter().enumerate() {
-            let entry_height = self.calculate_entry_height(entry);
+            let entry_height = self.calculate_entry_height(entry, viewport_width, global_wrap);
             if cumulative_height + entry_height > scroll_offset.saturating_sub(self.buffer_size) {
                 start_entry_index = i;
                 break;
@@ -173,7 +150,7 @@ impl<'a> ConversationView<'a> {
         cumulative_height = 0;
 
         for (i, entry) in entries.iter().enumerate().skip(start_entry_index) {
-            let entry_height = self.calculate_entry_height(entry);
+            let entry_height = self.calculate_entry_height(entry, viewport_width, global_wrap);
             cumulative_height = cumulative_height.saturating_add(entry_height);
 
             if cumulative_height > viewport_height + self.buffer_size.saturating_mul(2) {
@@ -228,8 +205,9 @@ impl<'a> Widget for ConversationView<'a> {
             .title(title)
             .style(Style::default().fg(border_color));
 
-        // Calculate viewport height (area height minus borders)
+        // Calculate viewport dimensions (area minus borders)
         let viewport_height = area.height.saturating_sub(2) as usize;
+        let viewport_width = area.width.saturating_sub(2) as usize;
 
         // Render content: only render visible entries
         let mut lines = Vec::new();
@@ -238,7 +216,8 @@ impl<'a> Widget for ConversationView<'a> {
             lines.push(Line::from("No messages yet..."));
         } else {
             // Calculate which entries are visible
-            let (start_index, end_index) = self.calculate_visible_range(viewport_height);
+            let (start_index, end_index) =
+                self.calculate_visible_range(viewport_height, viewport_width, self.global_wrap);
 
             // Render only the visible range
             for (visible_index, entry) in self.conversation.entries()[start_index..end_index]
@@ -2008,7 +1987,7 @@ mod tests {
         );
 
         let conv_entry = ConversationEntry::Valid(Box::new(entry));
-        let height = widget.calculate_entry_height(&conv_entry);
+        let height = widget.calculate_entry_height(&conv_entry, 80, WrapMode::NoWrap);
 
         // With collapse_threshold=10, summary_lines=3:
         // Should collapse to 3 lines + 1 indicator line = 4 lines
@@ -2055,7 +2034,7 @@ mod tests {
         );
 
         let conv_entry = ConversationEntry::Valid(Box::new(entry));
-        let height = widget.calculate_entry_height(&conv_entry);
+        let height = widget.calculate_entry_height(&conv_entry, 80, WrapMode::NoWrap);
 
         // When expanded, should show all 15 lines
         assert_eq!(height, 15, "Expanded entry should show all 15 lines");
@@ -2071,7 +2050,7 @@ mod tests {
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         // Viewport shows 10 lines, buffer_size=20
-        let (start, end) = widget.calculate_visible_range(10);
+        let (start, end) = widget.calculate_visible_range(10, 80, WrapMode::NoWrap);
 
         // With scroll_offset=0, should render from 0 to min(20 buffer, entry_count)
         assert_eq!(start, 0, "Should start at beginning");
@@ -2114,7 +2093,7 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        let (start, end) = widget.calculate_visible_range(10);
+        let (start, end) = widget.calculate_visible_range(10, 80, WrapMode::NoWrap);
 
         // With scroll_offset=50, buffer=20:
         // Should start rendering before line 50 (accounting for buffer)
@@ -4244,5 +4223,252 @@ mod tests {
             content.contains("Line 3"),
             "Should contain Line 3 from render_entry_lines"
         );
+    }
+
+    // ===== Tests for calculate_entry_height with wrap mode =====
+
+    #[test]
+    fn calculate_entry_height_nowrap_counts_newlines() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        let uuid = EntryUuid::new("test-uuid-1").expect("valid uuid");
+        let session_id = SessionId::new("test-session-1").expect("valid session");
+        let timestamp = Utc::now();
+
+        // Create entry with 3 lines of text (2 newlines)
+        let message = Message::new(Role::User, MessageContent::Text("Line 1\nLine 2\nLine 3".to_string()));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            session_id,
+            None,
+            timestamp,
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // With NoWrap, should return line count (3 lines)
+        let height = widget.calculate_entry_height(&entry, 80, WrapMode::NoWrap);
+        assert_eq!(height, 3, "NoWrap mode should count newlines: 3 lines");
+    }
+
+    #[test]
+    fn calculate_entry_height_wrap_with_long_line_wraps() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        let uuid = EntryUuid::new("test-uuid-2").expect("valid uuid");
+        let session_id = SessionId::new("test-session-2").expect("valid session");
+        let timestamp = Utc::now();
+
+        // Create entry with single long line (100 chars, should wrap to 2 lines at width 80)
+        let long_text = "a".repeat(100);
+        
+        let message = Message::new(Role::User, MessageContent::Text(long_text));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            session_id,
+            None,
+            timestamp,
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // With Wrap at width 80, 100 chars should wrap to at least 2 lines
+        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        assert!(height >= 2, "Wrap mode should wrap 100 chars at width 80 to at least 2 lines, got {}", height);
+    }
+
+    #[test]
+    fn calculate_entry_height_wrap_respects_per_entry_override() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        let uuid = EntryUuid::new("test-uuid-3").expect("valid uuid");
+        let session_id = SessionId::new("test-session-3").expect("valid session");
+        let timestamp = Utc::now();
+
+        // Create entry with long line
+        let long_text = "a".repeat(100);
+        
+        let message = Message::new(Role::User, MessageContent::Text(long_text));
+        let log_entry = LogEntry::new(
+            uuid.clone(),
+            None,
+            session_id,
+            None,
+            timestamp,
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let mut scroll_state = ScrollState::default();
+
+        // Add per-item override (global Wrap -> NoWrap for this entry)
+        scroll_state.toggle_wrap(&uuid);
+
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // Global is Wrap, but per-item override should make it NoWrap (1 line)
+        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        assert_eq!(height, 1, "Per-item override should invert global Wrap to NoWrap (1 line)");
+    }
+
+    #[test]
+    fn calculate_entry_height_wrap_empty_text() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        let uuid = EntryUuid::new("test-uuid-4").expect("valid uuid");
+        let session_id = SessionId::new("test-session-4").expect("valid session");
+        let timestamp = Utc::now();
+
+        
+        let message = Message::new(Role::User, MessageContent::Text("".to_string()));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            session_id,
+            None,
+            timestamp,
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // Empty text should be at least 1 line (empty line still occupies space)
+        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        assert!(height >= 1, "Empty text should have height of at least 1, got {}", height);
+    }
+
+    #[test]
+    fn calculate_entry_height_wrap_exactly_viewport_width() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        let uuid = EntryUuid::new("test-uuid-5").expect("valid uuid");
+        let session_id = SessionId::new("test-session-5").expect("valid session");
+        let timestamp = Utc::now();
+
+        // Create text exactly 80 chars (should fit in one line)
+        let text = "a".repeat(80);
+        
+        let message = Message::new(Role::User, MessageContent::Text(text));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            session_id,
+            None,
+            timestamp,
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // Exactly viewport width should fit in 1 line
+        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        assert_eq!(height, 1, "Text exactly viewport width should fit in 1 line");
+    }
+
+    #[test]
+    fn calculate_entry_height_wrap_one_char_over_wraps() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        let uuid = EntryUuid::new("test-uuid-6").expect("valid uuid");
+        let session_id = SessionId::new("test-session-6").expect("valid session");
+        let timestamp = Utc::now();
+
+        // Create text 81 chars (one more than viewport, should wrap to 2 lines)
+        let text = "a".repeat(81);
+        
+        let message = Message::new(Role::User, MessageContent::Text(text));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            session_id,
+            None,
+            timestamp,
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // 81 chars at width 80 should wrap to 2 lines
+        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        assert_eq!(height, 2, "Text one char over viewport width should wrap to 2 lines");
+    }
+
+    #[test]
+    fn calculate_entry_height_wrap_multiline_text_each_line_wraps() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        let uuid = EntryUuid::new("test-uuid-7").expect("valid uuid");
+        let session_id = SessionId::new("test-session-7").expect("valid session");
+        let timestamp = Utc::now();
+
+        // Two lines, each 100 chars (should wrap to 2 lines each = 4 total)
+        let text = format!("{}\n{}", "a".repeat(100), "b".repeat(100));
+        
+        let message = Message::new(Role::User, MessageContent::Text(text));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            session_id,
+            None,
+            timestamp,
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // 2 lines × 2 wrapped = 4 total lines
+        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        assert!(height >= 4, "Two 100-char lines at width 80 should wrap to at least 4 lines, got {}", height);
     }
 }
