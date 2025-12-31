@@ -579,7 +579,7 @@ fn snapshot_message_with_search_highlighting() {
 ///           Offset 5 should show different first visible line than offset 0.
 /// ACTUAL: Offsets 0, 5, 10, 15, 20 all show identical Entry 1-4 content.
 #[test]
-#[ignore] // TODO(cclv-5ur.6.9): Remove test - scroll is now handled by ConversationViewState
+#[ignore = "cclv-5ur.6.9: obsolete - scroll offset now handled by ConversationViewState; test should be removed"]
 fn bug_scroll_offset_adds_blank_lines_instead_of_moving_viewport() {
     // Create 20 entries - each entry is 2 lines (content + blank separator)
     let entries: Vec<LogEntry> = (1..=20)
@@ -635,7 +635,7 @@ fn bug_scroll_offset_adds_blank_lines_instead_of_moving_viewport() {
 
 /// Diagnostic test: Print exact rendering to understand scroll behavior
 #[test]
-#[ignore] // Run with --ignored to see output
+#[ignore = "diagnostic-only: run with --ignored to inspect scroll rendering output"]
 fn diagnostic_scroll_rendering_with_many_entries() {
     // Create 20 entries to ensure scrolling is needed
     let entries: Vec<LogEntry> = (1..=20)

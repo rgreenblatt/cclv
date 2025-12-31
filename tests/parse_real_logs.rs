@@ -52,7 +52,7 @@ fn parse_fixture_file(path: &str) -> std::io::Result<ParseStats> {
 }
 
 #[test]
-#[ignore] // Remove #[ignore] to run this test
+#[ignore = "cclv-07v.11.9: manual dogfooding test - run with --ignored against full session log"]
 fn test_parse_cc_session_log() {
     // Fixture file path
     let fixture_path = "tests/fixtures/cc-session-log.jsonl";
