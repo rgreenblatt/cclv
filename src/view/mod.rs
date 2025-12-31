@@ -54,6 +54,10 @@ where
     input_source: InputSource,
     line_counter: usize,
     key_bindings: KeyBindings,
+    /// Last time a frame was rendered (for 60fps batching)
+    last_render: std::time::Instant,
+    /// Pending entries accumulated between renders
+    pending_entries: Vec<crate::model::ConversationEntry>,
 }
 
 impl TuiApp<CrosstermBackend<Stdout>> {
@@ -97,6 +101,8 @@ impl TuiApp<CrosstermBackend<Stdout>> {
             input_source,
             line_counter,
             key_bindings,
+            last_render: std::time::Instant::now(),
+            pending_entries: Vec::new(),
         })
     }
 
@@ -279,6 +285,34 @@ where
         })?;
         Ok(())
     }
+
+    /// Accumulate entries to the pending buffer without rendering
+    ///
+    /// Used for batching rapid updates to maintain 60fps
+    fn accumulate_pending_entries(&mut self, entries: Vec<crate::model::ConversationEntry>) {
+        todo!("accumulate_pending_entries: not implemented")
+    }
+
+    /// Get count of pending entries in buffer
+    fn pending_entry_count(&self) -> usize {
+        todo!("pending_entry_count: not implemented")
+    }
+
+    /// Flush pending entries to session and clear buffer
+    fn flush_pending_entries(&mut self) {
+        todo!("flush_pending_entries: not implemented")
+    }
+
+    /// Check if enough time has elapsed to render a new frame (16ms for 60fps)
+    fn should_render_frame(&self) -> bool {
+        todo!("should_render_frame: not implemented")
+    }
+
+    /// Set the last render time (for testing)
+    #[cfg(test)]
+    fn set_last_render_time(&mut self, time: std::time::Instant) {
+        todo!("set_last_render_time: not implemented")
+    }
 }
 
 /// CLI arguments (simplified for TUI layer)
@@ -377,6 +411,8 @@ mod tests {
             input_source,
             line_counter: 0,
             key_bindings,
+            last_render: std::time::Instant::now(),
+            pending_entries: Vec::new(),
         }
     }
 
@@ -814,5 +850,153 @@ mod tests {
         );
 
         ConversationEntry::Valid(Box::new(log_entry))
+    }
+
+    // ===== Batch rendering tests (60fps) =====
+
+    #[test]
+    fn batch_accumulates_entries_without_dropping() {
+        // Test that rapid entries are accumulated, not dropped
+        let mut app = create_test_app();
+
+        // Simulate 100 rapid entries arriving
+        let entries: Vec<_> = (0..100)
+            .map(|i| create_test_entry(&format!("message {}", i)))
+            .collect();
+
+        // Add all entries to pending buffer (simulating rapid poll_input calls)
+        app.accumulate_pending_entries(entries);
+
+        // Verify all entries are in buffer
+        assert_eq!(
+            app.pending_entry_count(),
+            100,
+            "All 100 entries should be accumulated in buffer"
+        );
+
+        // Verify session hasn't been updated yet (batched)
+        assert_eq!(
+            app.app_state.session().main_agent().len(),
+            0,
+            "Entries should not be added to session until flush"
+        );
+    }
+
+    #[test]
+    fn batch_flush_moves_all_entries_to_session() {
+        let mut app = create_test_app();
+
+        // Add pending entries
+        let entries: Vec<_> = (0..50)
+            .map(|i| create_test_entry(&format!("msg {}", i)))
+            .collect();
+        app.accumulate_pending_entries(entries);
+
+        assert_eq!(app.pending_entry_count(), 50);
+
+        // Flush should move all to session and clear buffer
+        app.flush_pending_entries();
+
+        assert_eq!(
+            app.pending_entry_count(),
+            0,
+            "Buffer should be empty after flush"
+        );
+        assert_eq!(
+            app.app_state.session().main_agent().len(),
+            50,
+            "All entries should be in session after flush"
+        );
+    }
+
+    #[test]
+    fn should_render_returns_false_before_frame_duration() {
+        use std::time::{Duration, Instant};
+
+        let mut app = create_test_app();
+
+        // Set last render to just now
+        app.set_last_render_time(Instant::now());
+
+        // Immediately check - should not render yet
+        assert!(
+            !app.should_render_frame(),
+            "Should not render immediately after last render"
+        );
+
+        // Check after 10ms (less than 16ms frame budget)
+        std::thread::sleep(Duration::from_millis(10));
+        assert!(
+            !app.should_render_frame(),
+            "Should not render after only 10ms"
+        );
+    }
+
+    #[test]
+    fn should_render_returns_true_after_frame_duration() {
+        use std::time::{Duration, Instant};
+
+        let mut app = create_test_app();
+
+        // Set last render to 20ms ago (past the 16ms frame budget)
+        let past = Instant::now() - Duration::from_millis(20);
+        app.set_last_render_time(past);
+
+        assert!(
+            app.should_render_frame(),
+            "Should render after 16ms frame duration has elapsed"
+        );
+    }
+
+    #[test]
+    fn should_render_returns_true_when_pending_entries_and_frame_elapsed() {
+        use std::time::{Duration, Instant};
+
+        let mut app = create_test_app();
+
+        // Set last render to 20ms ago
+        let past = Instant::now() - Duration::from_millis(20);
+        app.set_last_render_time(past);
+
+        // Add pending entries
+        app.accumulate_pending_entries(vec![create_test_entry("msg1")]);
+
+        assert!(
+            app.should_render_frame(),
+            "Should render when frame elapsed and entries pending"
+        );
+    }
+
+    #[test]
+    fn batching_prevents_rendering_on_every_entry() {
+        // This test verifies the core requirement:
+        // When many entries arrive rapidly (< 16ms apart),
+        // we should NOT render after each one.
+
+        use std::time::Instant;
+
+        let mut app = create_test_app();
+
+        // Simulate 10 entries arriving in quick succession
+        for i in 0..10 {
+            let entry = create_test_entry(&format!("rapid msg {}", i));
+            app.accumulate_pending_entries(vec![entry]);
+
+            // Check if we should render (simulating the event loop decision)
+            let should_render = app.should_render_frame();
+
+            if i == 0 {
+                // First entry after enough time should trigger render
+                continue;
+            }
+
+            // Subsequent rapid entries should NOT trigger render
+            // (assuming they arrive within 16ms)
+            assert!(
+                !should_render,
+                "Rapid entry {} should not trigger immediate render",
+                i
+            );
+        }
     }
 }
