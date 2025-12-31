@@ -80,7 +80,6 @@ pub struct AppState {
     /// View-state layer for rendering log entries.
     /// This becomes the primary source of truth for entry layout and display.
     /// Dual-write pattern during migration (cclv-5ur.6.x tasks).
-    #[allow(dead_code)] // Used in subsequent migration tasks
     log_view: LogViewState,
 
     /// Which pane currently has keyboard focus.
@@ -180,8 +179,29 @@ impl AppState {
     ///
     /// This is the proper way for the shell layer to add entries
     /// without directly mutating the core session state.
+    ///
+    /// # Dual-Write Migration (cclv-5ur.6.1)
+    /// During migration, this writes to BOTH:
+    /// - `session` (existing, for compatibility)
+    /// - `log_view` (new, becomes source of truth)
+    ///
+    /// Subsequent tasks will migrate call sites from session to log_view.
     pub fn add_entries(&mut self, entries: Vec<crate::model::ConversationEntry>) {
         for entry in entries {
+            // Dual-write: populate both session (old) and log_view (new)
+
+            // Extract agent_id for routing to log_view
+            let agent_id = match &entry {
+                crate::model::ConversationEntry::Valid(log_entry) => {
+                    log_entry.agent_id().cloned()
+                }
+                crate::model::ConversationEntry::Malformed(_) => None,
+            };
+
+            // Write to log_view (new path - source of truth)
+            self.log_view.add_entry(entry.clone(), agent_id);
+
+            // Write to session (old path - compatibility during migration)
             self.session.add_conversation_entry(entry);
         }
     }
