@@ -62,7 +62,7 @@ log_buffer_capacity = 500
     );
 
     let config = config.unwrap();
-    assert_eq!(config.theme, Some("solarized-dark".to_string()));
+    assert_eq!(config.theme, Some(THEME_SOLARIZED_DARK.to_string()));
     assert_eq!(config.show_stats, Some(true));
     assert_eq!(config.collapse_threshold, Some(20));
     assert_eq!(config.summary_lines, Some(5));
@@ -114,7 +114,7 @@ theme = "monokai"
     assert!(result.is_ok(), "Should parse partial config");
 
     let config = result.unwrap().unwrap();
-    assert_eq!(config.theme, Some("monokai".to_string()));
+    assert_eq!(config.theme, Some(THEME_MONOKAI.to_string()));
     assert_eq!(config.show_stats, None);
 
     // Cleanup
@@ -137,7 +137,7 @@ fn merge_config_uses_defaults_when_none() {
 #[test]
 fn merge_config_overrides_with_config_file_values() {
     let config_file = ConfigFile {
-        theme: Some("solarized-light".to_string()),
+        theme: Some(THEME_SOLARIZED_LIGHT.to_string()),
         show_stats: Some(true),
         collapse_threshold: Some(15),
         summary_lines: Some(2),
@@ -151,7 +151,7 @@ fn merge_config_overrides_with_config_file_values() {
 
     let resolved = merge_config(Some(config_file));
 
-    assert_eq!(resolved.theme, "solarized-light");
+    assert_eq!(resolved.theme, THEME_SOLARIZED_LIGHT);
     assert!(resolved.show_stats);
     assert_eq!(resolved.collapse_threshold, 15);
     assert_eq!(resolved.summary_lines, 2);
@@ -357,7 +357,7 @@ fn load_config_with_precedence_falls_back_to_default_path() {
 fn resolved_config_default_has_expected_values() {
     let config = ResolvedConfig::default();
 
-    assert_eq!(config.theme, "base16-ocean");
+    assert_eq!(config.theme, THEME_BASE16_OCEAN);
     assert!(!config.show_stats);
     assert_eq!(config.collapse_threshold, 10);
     assert_eq!(config.summary_lines, 3);
@@ -565,7 +565,7 @@ output = 15.0
     assert!(result.is_ok(), "Should parse full config with pricing");
 
     let config = result.unwrap().expect("Should have config");
-    assert_eq!(config.theme, Some("solarized-dark".to_string()));
+    assert_eq!(config.theme, Some(THEME_SOLARIZED_DARK.to_string()));
 
     let pricing = config.pricing.expect("Should have pricing section");
     assert_eq!(pricing.models.len(), 2);
@@ -581,7 +581,7 @@ output = 15.0
 #[test]
 fn apply_cli_overrides_theme_override() {
     let base = ResolvedConfig {
-        theme: "base16-ocean".to_string(),
+        theme: THEME_BASE16_OCEAN.to_string(),
         show_stats: false,
         collapse_threshold: 10,
         summary_lines: 3,
@@ -591,9 +591,9 @@ fn apply_cli_overrides_theme_override() {
         max_context_tokens: 200_000,
     };
 
-    let result = apply_cli_overrides(base.clone(), Some("monokai".to_string()), None);
+    let result = apply_cli_overrides(base.clone(), Some(THEME_MONOKAI.to_string()), None);
 
-    assert_eq!(result.theme, "monokai", "CLI theme should override");
+    assert_eq!(result.theme, THEME_MONOKAI, "CLI theme should override");
     assert_eq!(result.show_stats, base.show_stats, "Other fields unchanged");
 }
 
@@ -610,7 +610,7 @@ fn apply_cli_overrides_stats_override() {
 #[test]
 fn apply_cli_overrides_multiple_overrides() {
     let base = ResolvedConfig {
-        theme: "base16-ocean".to_string(),
+        theme: THEME_BASE16_OCEAN.to_string(),
         show_stats: false,
         collapse_threshold: 10,
         summary_lines: 3,
@@ -620,9 +620,9 @@ fn apply_cli_overrides_multiple_overrides() {
         max_context_tokens: 200_000,
     };
 
-    let result = apply_cli_overrides(base.clone(), Some("solarized-dark".to_string()), Some(true));
+    let result = apply_cli_overrides(base.clone(), Some(THEME_SOLARIZED_DARK.to_string()), Some(true));
 
-    assert_eq!(result.theme, "solarized-dark");
+    assert_eq!(result.theme, THEME_SOLARIZED_DARK);
     assert!(result.show_stats);
     assert_eq!(
         result.collapse_threshold, base.collapse_threshold,

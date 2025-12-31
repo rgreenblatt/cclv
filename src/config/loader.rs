@@ -168,7 +168,7 @@ pub struct ResolvedConfig {
 impl Default for ResolvedConfig {
     fn default() -> Self {
         Self {
-            theme: "base16-ocean".to_string(),
+            theme: THEME_DEFAULT.to_string(),
             show_stats: false,
             collapse_threshold: 10,
             summary_lines: 3,

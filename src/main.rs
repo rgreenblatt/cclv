@@ -1,5 +1,7 @@
 //! Claude Code Log Viewer - Entry Point
 
+use cclv::config::VALID_THEMES;
+use cclv::config::THEME_DEFAULT;
 use clap::Parser;
 use std::path::PathBuf;
 use tracing::info;
@@ -30,7 +32,7 @@ pub struct Args {
     pub no_color: bool,
 
     /// Color theme for syntax highlighting
-    #[arg(long, default_value = "base16-ocean", value_parser = ["base16-ocean", "solarized-dark", "solarized-light", "monokai"])]
+    #[arg(long, default_value = THEME_DEFAULT, value_parser = clap::builder::PossibleValuesParser::new(VALID_THEMES))]
     pub theme: String,
 
     /// Path to configuration file
@@ -105,6 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cclv::config::{THEME_BASE16_OCEAN, THEME_DEFAULT, THEME_MONOKAI, THEME_SOLARIZED_DARK, THEME_SOLARIZED_LIGHT};
     use clap::Parser;
 
     #[test]
@@ -133,7 +136,7 @@ mod tests {
         assert_eq!(args.search, None);
         assert!(!args.stats);
         assert!(!args.no_color);
-        assert_eq!(args.theme, "base16-ocean");
+        assert_eq!(args.theme, THEME_DEFAULT);
         assert_eq!(args.config, None);
     }
 
@@ -201,26 +204,26 @@ mod tests {
 
     #[test]
     fn test_theme_base16_ocean() {
-        let args = Args::parse_from(["cclv", "--theme", "base16-ocean"]);
-        assert_eq!(args.theme, "base16-ocean");
+        let args = Args::parse_from(["cclv", "--theme", THEME_BASE16_OCEAN]);
+        assert_eq!(args.theme, THEME_BASE16_OCEAN);
     }
 
     #[test]
     fn test_theme_solarized_dark() {
-        let args = Args::parse_from(["cclv", "--theme", "solarized-dark"]);
-        assert_eq!(args.theme, "solarized-dark");
+        let args = Args::parse_from(["cclv", "--theme", THEME_SOLARIZED_DARK]);
+        assert_eq!(args.theme, THEME_SOLARIZED_DARK);
     }
 
     #[test]
     fn test_theme_solarized_light() {
-        let args = Args::parse_from(["cclv", "--theme", "solarized-light"]);
-        assert_eq!(args.theme, "solarized-light");
+        let args = Args::parse_from(["cclv", "--theme", THEME_SOLARIZED_LIGHT]);
+        assert_eq!(args.theme, THEME_SOLARIZED_LIGHT);
     }
 
     #[test]
     fn test_theme_monokai() {
-        let args = Args::parse_from(["cclv", "--theme", "monokai"]);
-        assert_eq!(args.theme, "monokai");
+        let args = Args::parse_from(["cclv", "--theme", THEME_MONOKAI]);
+        assert_eq!(args.theme, THEME_MONOKAI);
     }
 
     #[test]
@@ -248,13 +251,13 @@ mod tests {
             "error",
             "--stats",
             "--theme",
-            "monokai",
+            THEME_MONOKAI,
         ]);
         assert_eq!(args.file, Some(PathBuf::from("session.jsonl")));
         assert_eq!(args.line, 42);
         assert_eq!(args.search, Some("error".to_string()));
         assert!(args.stats);
-        assert_eq!(args.theme, "monokai");
+        assert_eq!(args.theme, THEME_MONOKAI);
     }
 
     #[test]
@@ -263,7 +266,7 @@ mod tests {
 
         // Simulate full precedence chain: Defaults → Config File → Env Vars → CLI Args
         let config_file = ConfigFile {
-            theme: Some("solarized-dark".to_string()),
+            theme: Some(THEME_SOLARIZED_DARK.to_string()),
             show_stats: None,
             collapse_threshold: None,
             summary_lines: None,
@@ -278,19 +281,19 @@ mod tests {
         // Step 1: Merge with defaults
         let merged = merge_config(Some(config_file));
         assert_eq!(
-            merged.theme, "solarized-dark",
+            merged.theme, THEME_SOLARIZED_DARK,
             "Config file should override default theme"
         );
 
         // Step 2: Apply env override (simulated - not actually setting env var)
         let with_env = apply_env_overrides(merged);
         // Theme unchanged since CCLV_THEME not set
-        assert_eq!(with_env.theme, "solarized-dark");
+        assert_eq!(with_env.theme, THEME_SOLARIZED_DARK);
 
         // Step 3: Apply CLI override
-        let with_cli = apply_cli_overrides(with_env, Some("monokai".to_string()), None);
+        let with_cli = apply_cli_overrides(with_env, Some(THEME_MONOKAI.to_string()), None);
         assert_eq!(
-            with_cli.theme, "monokai",
+            with_cli.theme, THEME_MONOKAI,
             "CLI theme should override all other sources"
         );
     }
@@ -301,7 +304,7 @@ mod tests {
 
         let config = ResolvedConfig::default();
         assert_eq!(
-            config.theme, "base16-ocean",
+            config.theme, THEME_BASE16_OCEAN,
             "Default theme should be base16-ocean per CLI contract"
         );
     }
