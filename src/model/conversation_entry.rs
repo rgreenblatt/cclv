@@ -25,7 +25,10 @@ impl ConversationEntry {
     /// Returns Some for both Valid entries (always has session_id)
     /// and Malformed entries (may have extracted session_id).
     pub fn session_id(&self) -> Option<&SessionId> {
-        todo!("ConversationEntry::session_id")
+        match self {
+            ConversationEntry::Valid(entry) => Some(entry.session_id()),
+            ConversationEntry::Malformed(malformed) => malformed.session_id(),
+        }
     }
 
     /// Get the timestamp if available.
@@ -33,27 +36,36 @@ impl ConversationEntry {
     /// Returns Some for Valid entries (always has timestamp),
     /// None for Malformed entries (no timestamp available).
     pub fn timestamp(&self) -> Option<DateTime<Utc>> {
-        todo!("ConversationEntry::timestamp")
+        match self {
+            ConversationEntry::Valid(entry) => Some(entry.timestamp()),
+            ConversationEntry::Malformed(_) => None,
+        }
     }
 
     /// Check if this is a valid entry.
     pub fn is_valid(&self) -> bool {
-        todo!("ConversationEntry::is_valid")
+        matches!(self, ConversationEntry::Valid(_))
     }
 
     /// Check if this is a malformed entry.
     pub fn is_malformed(&self) -> bool {
-        todo!("ConversationEntry::is_malformed")
+        matches!(self, ConversationEntry::Malformed(_))
     }
 
     /// Get the valid entry if this is a Valid variant.
     pub fn as_valid(&self) -> Option<&LogEntry> {
-        todo!("ConversationEntry::as_valid")
+        match self {
+            ConversationEntry::Valid(entry) => Some(entry),
+            ConversationEntry::Malformed(_) => None,
+        }
     }
 
     /// Get the malformed entry if this is a Malformed variant.
     pub fn as_malformed(&self) -> Option<&MalformedEntry> {
-        todo!("ConversationEntry::as_malformed")
+        match self {
+            ConversationEntry::Valid(_) => None,
+            ConversationEntry::Malformed(malformed) => Some(malformed),
+        }
     }
 }
 
