@@ -58,9 +58,20 @@ impl SessionStats {
             }
         }
 
-        // Count tool calls
+        // Count tool calls (global and per-agent)
         for tool in entry.message().tool_calls() {
+            // Global count
             *self.tool_counts.entry(tool.name().clone()).or_default() += 1;
+
+            // Per-agent count
+            if let Some(agent_id) = entry.agent_id() {
+                // Subagent tool count
+                let agent_tools = self.subagent_tool_counts.entry(agent_id.clone()).or_default();
+                *agent_tools.entry(tool.name().clone()).or_default() += 1;
+            } else {
+                // Main agent tool count
+                *self.main_agent_tool_counts.entry(tool.name().clone()).or_default() += 1;
+            }
         }
 
         // Update subagent count (unique count)
@@ -122,7 +133,17 @@ impl SessionStats {
     /// - `StatsFilter::MainAgent`: main_agent_tool_counts only
     /// - `StatsFilter::Subagent(id)`: tool_counts for specific subagent, or empty if not found
     pub fn filtered_tool_counts(&self, filter: &StatsFilter) -> &HashMap<ToolName, u32> {
-        todo!("filtered_tool_counts")
+        use std::sync::OnceLock;
+        static EMPTY: OnceLock<HashMap<ToolName, u32>> = OnceLock::new();
+
+        match filter {
+            StatsFilter::Global => &self.tool_counts,
+            StatsFilter::MainAgent => &self.main_agent_tool_counts,
+            StatsFilter::Subagent(agent_id) => self
+                .subagent_tool_counts
+                .get(agent_id)
+                .unwrap_or_else(|| EMPTY.get_or_init(HashMap::new)),
+        }
     }
 }
 
