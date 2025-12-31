@@ -168,10 +168,12 @@ impl EntryView {
     /// trigger recomputation (to maintain HeightIndex consistency).
     #[allow(dead_code)] // Will be used by ConversationViewState in future tasks
     pub(crate) fn recompute_lines(&mut self, wrap_mode: WrapMode, width: u16) {
+        // Bug fix cclv-5ur.18: Use effective_wrap to respect per-entry override
+        let effective_mode = self.effective_wrap(wrap_mode);
         self.rendered_lines = compute_entry_lines(
             &self.entry,
             self.expanded,
-            wrap_mode,
+            effective_mode,
             width,
             Self::COLLAPSE_THRESHOLD,
             Self::SUMMARY_LINES,
