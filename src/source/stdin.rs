@@ -28,6 +28,7 @@ enum ReaderMessage {
 /// - Non-blocking poll() via background thread + channel
 /// - Background thread performs blocking read_line() and sends results to channel
 /// - Tracks EOF state via `complete` flag
+#[derive(Debug)]
 pub struct StdinSource {
     rx: Receiver<ReaderMessage>,
     _reader_thread: JoinHandle<()>,
@@ -108,7 +109,7 @@ impl StdinSource {
     /// Spawns a background thread to read from the provided reader.
     /// Internal constructor - bypasses TTY check for testing.
     #[cfg(test)]
-    fn from_reader<R: Read + Send + 'static>(reader: R) -> Self {
+    pub(crate) fn from_reader<R: Read + Send + 'static>(reader: R) -> Self {
         let (tx, rx) = channel();
         let reader_thread = thread::spawn(move || {
             let mut reader = BufReader::new(reader);

@@ -15,6 +15,7 @@ use std::time::Duration;
 ///
 /// Tracks file position and watches for modifications to provide
 /// incremental updates.
+#[derive(Debug)]
 pub struct FileTailer {
     path: PathBuf,
     position: u64,
