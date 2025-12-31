@@ -203,6 +203,19 @@ fn build_session_stats(session: &crate::model::Session) -> crate::model::Session
     stats
 }
 
+/// Build context-sensitive keyboard hints based on current focus pane.
+///
+/// Returns a formatted string with keyboard shortcuts appropriate for the
+/// current pane. Truncates or adapts hints based on terminal width.
+///
+/// # Arguments
+/// * `focus` - Current focused pane
+/// * `search_active` - Whether search mode is currently active
+/// * `terminal_width` - Available width for rendering hints
+fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u16) -> String {
+    todo!("build_keyboard_hints")
+}
+
 /// Render the status bar with hints and live mode indicator.
 fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
     let live_indicator = if state.live_mode && state.auto_scroll {

@@ -732,6 +732,180 @@ fn render_layout_reduces_content_area_when_stats_visible() {
     );
 }
 
+// ===== Keyboard Hints Tests =====
+
+#[test]
+fn build_keyboard_hints_main_pane_shows_navigation_and_common() {
+    let hints = build_keyboard_hints(FocusPane::Main, false, 80);
+
+    // Should contain common shortcuts
+    assert!(
+        hints.contains("q: Quit"),
+        "Main pane hints should include 'q: Quit'"
+    );
+    assert!(
+        hints.contains("?: Help"),
+        "Main pane hints should include '?: Help'"
+    );
+
+    // Should contain navigation shortcuts
+    assert!(
+        hints.contains("/: Search"),
+        "Main pane hints should include '/: Search'"
+    );
+    assert!(
+        hints.contains("s: Stats"),
+        "Main pane hints should include 's: Stats'"
+    );
+}
+
+#[test]
+fn build_keyboard_hints_subagent_pane_shows_tab_shortcuts() {
+    let hints = build_keyboard_hints(FocusPane::Subagent, false, 80);
+
+    // Should contain tab navigation
+    assert!(
+        hints.contains("[/]") || hints.contains("Tab"),
+        "Subagent pane hints should include tab navigation"
+    );
+
+    // Should still have common shortcuts
+    assert!(
+        hints.contains("q: Quit"),
+        "Subagent pane hints should include 'q: Quit'"
+    );
+}
+
+#[test]
+fn build_keyboard_hints_stats_pane_shows_filter_shortcuts() {
+    let hints = build_keyboard_hints(FocusPane::Stats, false, 80);
+
+    // Should contain filter shortcuts
+    assert!(
+        hints.contains("!: Global") || hints.contains("@: Main") || hints.contains("#: Current"),
+        "Stats pane hints should include filter shortcuts"
+    );
+
+    // Should still have common shortcuts
+    assert!(
+        hints.contains("q: Quit"),
+        "Stats pane hints should include 'q: Quit'"
+    );
+}
+
+#[test]
+fn build_keyboard_hints_search_active_shows_search_shortcuts() {
+    let hints = build_keyboard_hints(FocusPane::Search, true, 80);
+
+    // Should contain search-specific shortcuts
+    assert!(
+        hints.contains("Enter") || hints.contains("Esc") || hints.contains("n:"),
+        "Search active hints should include search navigation shortcuts"
+    );
+}
+
+#[test]
+fn build_keyboard_hints_truncates_for_narrow_terminal() {
+    let hints_wide = build_keyboard_hints(FocusPane::Main, false, 80);
+    let hints_narrow = build_keyboard_hints(FocusPane::Main, false, 40);
+
+    // Narrow terminal should produce shorter output
+    assert!(
+        hints_narrow.len() <= hints_wide.len(),
+        "Narrow terminal hints should be truncated or abbreviated"
+    );
+
+    // Even narrow terminal should show critical shortcuts
+    assert!(
+        hints_narrow.contains("q:") || hints_narrow.contains("Quit"),
+        "Even narrow hints should include quit shortcut"
+    );
+}
+
+#[test]
+fn render_status_bar_displays_keyboard_hints() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let state = AppState::new(session);
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let last_line: String = buffer
+        .content
+        .iter()
+        .skip(80 * 23) // Skip to last row (row 23, 0-indexed)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Status bar should contain keyboard hints
+    assert!(
+        last_line.contains("q:") || last_line.contains("Quit"),
+        "Status bar should display keyboard hints including quit"
+    );
+    assert!(
+        last_line.contains("?:") || last_line.contains("Help"),
+        "Status bar should display help shortcut"
+    );
+}
+
+#[test]
+fn render_status_bar_hints_change_based_on_focus() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_with_subagents();
+
+    // Test Main pane focus
+    let mut state_main = AppState::new(session.clone());
+    state_main.focus = FocusPane::Main;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state_main);
+        })
+        .unwrap();
+
+    let buffer_main = terminal.backend().buffer().clone();
+    let status_main: String = buffer_main
+        .content
+        .iter()
+        .skip(80 * 23)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Test Subagent pane focus
+    let mut state_subagent = AppState::new(session);
+    state_subagent.focus = FocusPane::Subagent;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state_subagent);
+        })
+        .unwrap();
+
+    let buffer_subagent = terminal.backend().buffer().clone();
+    let status_subagent: String = buffer_subagent
+        .content
+        .iter()
+        .skip(80 * 23)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Status bars should differ based on focus
+    // Main pane should show search/stats, subagent should show tab shortcuts
+    let has_different_hints = status_main != status_subagent;
+    assert!(
+        has_different_hints,
+        "Status bar hints should change based on focused pane"
+    );
+}
+
 // ===== Helper Functions =====
 
 fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
