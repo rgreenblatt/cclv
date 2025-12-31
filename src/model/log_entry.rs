@@ -46,6 +46,10 @@ pub struct LogEntry {
 
 impl LogEntry {
     /// Create a new log entry.
+    ///
+    /// This constructor mirrors all fields and is intended for use by the parser.
+    /// For creating entries from JSONL, use `LogEntry::parse()` instead.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         uuid: EntryUuid,
         parent_uuid: Option<EntryUuid>,
