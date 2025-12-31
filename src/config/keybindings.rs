@@ -273,4 +273,16 @@ mod tests {
             "Uppercase 'W' (shift+w) should map to ToggleGlobalWrap"
         );
     }
+
+    #[test]
+    fn default_bindings_map_uppercase_l_to_toggle_log_pane() {
+        let bindings = KeyBindings::default();
+        let key_event = KeyEvent::new(KeyCode::Char('L'), KeyModifiers::SHIFT);
+
+        assert_eq!(
+            bindings.get(key_event),
+            Some(KeyAction::ToggleLogPane),
+            "Uppercase 'L' (shift+l) should map to ToggleLogPane"
+        );
+    }
 }
