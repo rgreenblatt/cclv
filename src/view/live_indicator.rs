@@ -10,6 +10,9 @@ use ratatui::{
     text::Span,
 };
 
+/// Text content for the LIVE indicator.
+const LIVE_INDICATOR_PREFIX: &str = "[LIVE] ";
+
 /// LIVE indicator widget that renders based on InputMode and blink state.
 ///
 /// # Functional Requirement
@@ -75,12 +78,12 @@ impl LiveIndicator {
         match self.mode {
             InputMode::Static | InputMode::Eof => {
                 // Always gray when static or EOF
-                Span::styled("[LIVE] ", Style::default().fg(Color::Gray))
+                Span::styled(LIVE_INDICATOR_PREFIX, Style::default().fg(Color::Gray))
             }
             InputMode::Streaming => {
                 if self.blink_on {
                     // Green when blinking ON
-                    Span::styled("[LIVE] ", Style::default().fg(Color::Green))
+                    Span::styled(LIVE_INDICATOR_PREFIX, Style::default().fg(Color::Green))
                 } else {
                     // Hidden when blinking OFF
                     Span::raw("")
