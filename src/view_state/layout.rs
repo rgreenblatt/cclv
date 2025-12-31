@@ -71,7 +71,7 @@ pub type HeightCalculator = fn(&ConversationEntry, bool, WrapMode) -> LineHeight
 /// # Arguments
 /// - `entry`: The conversation entry to measure
 /// - `expanded`: Whether the entry is currently expanded
-/// - `_wrap_mode`: The effective wrap mode for this entry (unused in stub)
+/// - `_wrap_mode`: The effective wrap mode for this entry (currently unused)
 ///
 /// # Returns
 /// - `LineHeight::ZERO` for malformed entries
@@ -82,12 +82,39 @@ pub type HeightCalculator = fn(&ConversationEntry, bool, WrapMode) -> LineHeight
 /// - MUST return at least `LineHeight::ONE` for valid entries
 /// - MUST be deterministic (same inputs → same output)
 /// - SHOULD be fast (called for every entry during layout)
+///
+/// # Implementation Notes
+/// This is a simplified initial implementation that counts newlines.
+/// Future enhancements may include:
+/// - Text wrapping based on viewport width
+/// - Markdown rendering line count
+/// - Syntax highlighting effects
 pub fn calculate_height(
-    _entry: &ConversationEntry,
-    _expanded: bool,
+    entry: &ConversationEntry,
+    expanded: bool,
     _wrap_mode: WrapMode,
 ) -> LineHeight {
-    todo!("calculate_height: not implemented")
+    match entry {
+        ConversationEntry::Malformed(_) => LineHeight::ZERO,
+        ConversationEntry::Valid(log_entry) => {
+            if !expanded {
+                // Collapsed: fixed height showing summary
+                // Type indicator + truncated preview = 2 lines
+                LineHeight::new(2).expect("2 is valid line height")
+            } else {
+                // Expanded: count actual lines in content
+                let content = log_entry.message().text();
+                let line_count = if content.is_empty() {
+                    1
+                } else {
+                    // Count lines by splitting on newlines
+                    // Number of lines = number of newlines + 1
+                    content.lines().count().max(1)
+                };
+                LineHeight::new(line_count as u16).expect("line_count >= 1")
+            }
+        }
+    }
 }
 
 #[cfg(test)]
