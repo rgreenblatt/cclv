@@ -516,3 +516,7 @@ pub enum WrapMode {
 
 // ===== Tests =====
 // Tests removed during expand state migration to view-state layer
+
+#[cfg(test)]
+#[path = "app_state_unified_tabs_test.rs"]
+mod unified_tabs_test;
