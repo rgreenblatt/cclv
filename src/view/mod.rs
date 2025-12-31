@@ -2,6 +2,7 @@
 
 mod layout;
 mod message;
+pub mod tabs;
 
 use crate::integration;
 use crate::model::{AppError, SessionId};
