@@ -26,7 +26,8 @@ use ratatui::{
 /// - Application
 ///
 /// The overlay is centered on the screen with a border and dismissal hint.
-pub fn render_help_overlay(frame: &mut Frame) {
+/// The scroll_offset parameter controls which line is shown at the top (cclv-5ur.76).
+pub fn render_help_overlay(frame: &mut Frame, scroll_offset: u16) {
     let area = frame.area();
     let popup_area = centered_rect(HELP_POPUP_WIDTH_PERCENT, HELP_POPUP_HEIGHT_PERCENT, area);
 
@@ -45,7 +46,8 @@ pub fn render_help_overlay(frame: &mut Frame) {
                 .border_style(Style::default().fg(Color::Cyan)),
         )
         .wrap(Wrap { trim: false })
-        .alignment(Alignment::Left);
+        .alignment(Alignment::Left)
+        .scroll((scroll_offset, 0)); // Scroll vertically (cclv-5ur.76)
 
     frame.render_widget(help_paragraph, popup_area);
 

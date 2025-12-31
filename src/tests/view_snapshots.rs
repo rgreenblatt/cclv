@@ -3078,16 +3078,15 @@ fn bug_help_popup_scroll_passthrough() {
     let after_scroll = buffer_to_string(app.terminal().backend().buffer());
     insta::assert_snapshot!("bug_help_popup_scroll_after", after_scroll.clone());
 
-    // BUG ASSERTION: Output should be IDENTICAL - help popup should block scroll
-    assert_eq!(
+    // FIXED (cclv-5ur.76): Help content should scroll, not conversation
+    // The snapshots should be DIFFERENT (help scrolled) but conversation should be SAME
+    assert_ne!(
         before_scroll, after_scroll,
-        "BUG: Help popup does NOT capture scroll events.\n\
-         When help popup is visible, scroll events should be blocked or\n\
-         scroll the help content - NOT the underlying conversation.\n\n\
-         Expected: Output identical before and after pressing 'j'\n\
-         Actual: Conversation behind popup has scrolled\n\n\
-         Verified by manual testing in tmux pane 3.\n\
-         Bead: cclv-5ur.66"
+        "REGRESSION: Help popup content should scroll when 'j' is pressed.\n\
+         The help overlay should capture scroll events and scroll its own content.\n\n\
+         Expected: Help content scrolls (snapshots different)\n\
+         Actual: No change detected\n\n\
+         Fixed in cclv-5ur.76 (was bug cclv-5ur.66)"
     );
 }
 
@@ -3174,14 +3173,15 @@ fn bug_help_popup_mouse_scroll_passthrough() {
     let after_scroll = buffer_to_string(app.terminal().backend().buffer());
     insta::assert_snapshot!("bug_help_popup_mouse_scroll_after", after_scroll.clone());
 
-    // BUG ASSERTION: Output should be IDENTICAL - help popup should block mouse scroll
-    assert_eq!(
+    // FIXED (cclv-5ur.76): Help content should scroll with mouse, not conversation
+    // The snapshots should be DIFFERENT (help scrolled) but conversation should be SAME
+    assert_ne!(
         before_scroll, after_scroll,
-        "BUG: Help popup does NOT block mouse scroll events.\n\
-         When help popup is visible, mouse scroll events should be blocked.\n\n\
-         Expected: Output identical before and after mouse scroll\n\
-         Actual: Conversation behind popup has scrolled\n\n\
-         Related to keyboard scroll bug in cclv-5ur.66"
+        "REGRESSION: Help popup content should scroll with mouse scroll events.\n\
+         The help overlay should capture mouse scroll and scroll its own content.\n\n\
+         Expected: Help content scrolls (snapshots different)\n\
+         Actual: No change detected\n\n\
+         Fixed in cclv-5ur.76 (was bug cclv-5ur.66)"
     );
 }
 
@@ -3497,7 +3497,6 @@ fn bug_token_stats_divider_wrong_calculation() {
 /// 3. Press 'j' or scroll down with mouse
 /// 4. Observe: content does not scroll, cannot see content below visible area
 #[test]
-#[ignore = "cclv-5ur.76: help popup contents don't scroll with keyboard/mouse"]
 fn bug_help_popup_no_scroll() {
     use crate::test_harness::AcceptanceTestHarness;
     use crossterm::event::KeyCode;

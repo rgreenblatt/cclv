@@ -4,16 +4,16 @@ expression: after_scroll.clone()
 ---
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────┐
 │ Main         ┌ Keyboard Shortcuts ────────────────────────────────────────────────┐              │
-└──────────────│Navigation                                                          │──────────────┘
-┌Main [Opus] (1│  j/↓         Scroll down                                           │──────────────┐
-│              │  k/↑         Scroll up                                             │              │
-││  2 First mes│  h/←         Scroll left (for long lines)                          │              │
-│              │  l/→         Scroll right                                          │              │
-││  3 Response │  Ctrl+d/Page Down Page down                                        │              │
-│              │  Ctrl+u/Page Up   Page up                                          │              │
-││  4 Second me│  g/Home      Go to top                                             │              │
-│              │  G/End       Go to bottom                                          │              │
-││  5 Response │                                                                    │              │
+└──────────────│  Ctrl+d/Page Down Page down                                        │──────────────┘
+┌Main [Opus] (1│  Ctrl+u/Page Up   Page up                                          │──────────────┐
+│              │  g/Home      Go to top                                             │              │
+││  2 First mes│  G/End       Go to bottom                                          │              │
+│              │                                                                    │              │
+││  3 Response │Pane Focus                                                          │              │
+│              │  Tab         Cycle focus between panes                             │              │
+││  4 Second me│  1           Focus main agent pane                                 │              │
+│              │  2           Focus subagent pane                                   │              │
+││  5 Response │  3           Focus stats panel                                     │              │
 │              └────────────────────── Press Esc or ? to close ─────────────────────┘              │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

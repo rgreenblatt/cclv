@@ -11,7 +11,7 @@ fn render_help_overlay_shows_centered_modal() {
 
     terminal
         .draw(|frame| {
-            render_help_overlay(frame);
+            render_help_overlay(frame, 0);
         })
         .unwrap();
 
@@ -33,7 +33,7 @@ fn render_help_overlay_contains_navigation_shortcuts() {
 
     terminal
         .draw(|frame| {
-            render_help_overlay(frame);
+            render_help_overlay(frame, 0);
         })
         .unwrap();
 
@@ -62,7 +62,7 @@ fn render_help_overlay_contains_pane_focus_shortcuts() {
 
     terminal
         .draw(|frame| {
-            render_help_overlay(frame);
+            render_help_overlay(frame, 0);
         })
         .unwrap();
 
@@ -90,7 +90,7 @@ fn render_help_overlay_contains_search_shortcuts() {
 
     terminal
         .draw(|frame| {
-            render_help_overlay(frame);
+            render_help_overlay(frame, 0);
         })
         .unwrap();
 
@@ -136,7 +136,7 @@ fn render_help_overlay_shows_dismissal_hint() {
 
     terminal
         .draw(|frame| {
-            render_help_overlay(frame);
+            render_help_overlay(frame, 0);
         })
         .unwrap();
 

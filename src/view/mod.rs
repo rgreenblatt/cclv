@@ -307,15 +307,22 @@ where
             None => return false, // Unknown key, ignore
         };
 
-        // Special case: Block most events when help popup is visible (cclv-5ur.66)
-        // Only allow: Help toggle ('?'), Quit (q/Ctrl+C), and Esc (already handled above)
+        // Special case: Block most events when help popup is visible (cclv-5ur.66, cclv-5ur.76)
+        // Allow: Help toggle ('?'), Quit (q/Ctrl+C), scroll actions, and Esc (already handled above)
         if self.app_state.help_visible {
             match action {
-                KeyAction::Help | KeyAction::Quit => {
+                KeyAction::Help
+                | KeyAction::Quit
+                | KeyAction::ScrollUp
+                | KeyAction::ScrollDown
+                | KeyAction::PageUp
+                | KeyAction::PageDown
+                | KeyAction::ScrollToTop
+                | KeyAction::ScrollToBottom => {
                     // Allow these actions to proceed
                 }
                 _ => {
-                    // Block all other actions (scroll, navigation, etc.)
+                    // Block all other actions (navigation, tab switching, etc.)
                     return false;
                 }
             }
@@ -388,7 +395,7 @@ where
                 }
             }
 
-            // Scrolling actions - delegate to pure scroll handler
+            // Scrolling actions - delegate to pure scroll handler or help scroll (cclv-5ur.76)
             KeyAction::ScrollUp
             | KeyAction::ScrollDown
             | KeyAction::ScrollLeft
@@ -397,24 +404,76 @@ where
             | KeyAction::PageDown
             | KeyAction::ScrollToTop
             | KeyAction::ScrollToBottom => {
-                // Calculate viewport dimensions from terminal size
-                let size = self.terminal.size().ok().unwrap_or_else(|| {
-                    let (w, h) = crossterm::terminal::size().unwrap_or((80, 20));
-                    ratatui::layout::Size {
-                        width: w,
-                        height: h,
-                    }
-                });
-                let viewport = crate::view_state::types::ViewportDimensions::new(
-                    size.width.max(1),             // Guard against zero width (cclv-5ur.58)
-                    size.height.saturating_sub(5), // Reserve space for header/footer
-                );
+                // When help is visible, scroll the help overlay instead of content (cclv-5ur.76)
+                if self.app_state.help_visible {
+                    // Help content has ~50 lines, help popup uses 80% of viewport height
+                    // For a 20-row terminal, about 14 rows visible, so ~36 lines are scrollable
+                    const HELP_CONTENT_LINES: u16 = 50;
+                    let size = self.terminal.size().ok().unwrap_or_else(|| {
+                        let (w, h) = crossterm::terminal::size().unwrap_or((80, 20));
+                        ratatui::layout::Size {
+                            width: w,
+                            height: h,
+                        }
+                    });
+                    let help_height = (size.height * crate::view::constants::HELP_POPUP_HEIGHT_PERCENT / 100)
+                        .saturating_sub(2); // Subtract 2 for borders
+                    let max_scroll = HELP_CONTENT_LINES.saturating_sub(help_height);
 
-                // Clone app_state, apply scroll action, then replace
-                // This is safe because AppState is cheap to clone (Rc internals)
-                let new_state =
-                    scroll_handler::handle_scroll_action(self.app_state.clone(), action, viewport);
-                self.app_state = new_state;
+                    match action {
+                        KeyAction::ScrollUp => {
+                            self.app_state.help_scroll_offset =
+                                self.app_state.help_scroll_offset.saturating_sub(1);
+                        }
+                        KeyAction::ScrollDown => {
+                            self.app_state.help_scroll_offset = self
+                                .app_state
+                                .help_scroll_offset
+                                .saturating_add(1)
+                                .min(max_scroll);
+                        }
+                        KeyAction::PageUp => {
+                            self.app_state.help_scroll_offset = self
+                                .app_state
+                                .help_scroll_offset
+                                .saturating_sub(help_height / 2);
+                        }
+                        KeyAction::PageDown => {
+                            self.app_state.help_scroll_offset = self
+                                .app_state
+                                .help_scroll_offset
+                                .saturating_add(help_height / 2)
+                                .min(max_scroll);
+                        }
+                        KeyAction::ScrollToTop => {
+                            self.app_state.help_scroll_offset = 0;
+                        }
+                        KeyAction::ScrollToBottom => {
+                            self.app_state.help_scroll_offset = max_scroll;
+                        }
+                        _ => {} // ScrollLeft/ScrollRight don't apply to help
+                    }
+                } else {
+                    // Normal scrolling for conversation panes
+                    // Calculate viewport dimensions from terminal size
+                    let size = self.terminal.size().ok().unwrap_or_else(|| {
+                        let (w, h) = crossterm::terminal::size().unwrap_or((80, 20));
+                        ratatui::layout::Size {
+                            width: w,
+                            height: h,
+                        }
+                    });
+                    let viewport = crate::view_state::types::ViewportDimensions::new(
+                        size.width.max(1),             // Guard against zero width (cclv-5ur.58)
+                        size.height.saturating_sub(5), // Reserve space for header/footer
+                    );
+
+                    // Clone app_state, apply scroll action, then replace
+                    // This is safe because AppState is cheap to clone (Rc internals)
+                    let new_state =
+                        scroll_handler::handle_scroll_action(self.app_state.clone(), action, viewport);
+                    self.app_state = new_state;
+                }
             }
 
             // Tab navigation - delegate to app_state methods
@@ -607,6 +666,10 @@ where
             // Help overlay toggle
             KeyAction::Help => {
                 self.app_state.help_visible = !self.app_state.help_visible;
+                // Reset scroll offset when closing help (cclv-5ur.76)
+                if !self.app_state.help_visible {
+                    self.app_state.help_scroll_offset = 0;
+                }
             }
 
             // Not yet implemented
@@ -619,14 +682,36 @@ where
     /// Handle a single mouse event
     ///
     /// Handles left-click on tab bar to switch tabs, on entries to expand/collapse,
-    /// and scroll wheel events to scroll the focused pane
+    /// and scroll wheel events to scroll the focused pane or help overlay
     fn handle_mouse(&mut self, mouse: MouseEvent) {
-        // Block scroll events when help popup is visible (cclv-5ur.66)
+        // When help is visible, route scroll events to help overlay (cclv-5ur.76)
         // Mouse clicks are allowed to pass through for closing help or other interactions
         if self.app_state.help_visible {
             match mouse.kind {
                 MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
-                    // Block scroll events when help is visible
+                    // Scroll the help overlay instead of blocking
+                    const HELP_CONTENT_LINES: u16 = 50;
+                    let size = self.terminal.size().ok().unwrap_or_else(|| {
+                        let (w, h) = crossterm::terminal::size().unwrap_or((80, 20));
+                        ratatui::layout::Size {
+                            width: w,
+                            height: h,
+                        }
+                    });
+                    let help_height = (size.height * crate::view::constants::HELP_POPUP_HEIGHT_PERCENT / 100)
+                        .saturating_sub(2); // Subtract 2 for borders
+                    let max_scroll = HELP_CONTENT_LINES.saturating_sub(help_height);
+
+                    if mouse.kind == MouseEventKind::ScrollUp {
+                        self.app_state.help_scroll_offset =
+                            self.app_state.help_scroll_offset.saturating_sub(1);
+                    } else {
+                        self.app_state.help_scroll_offset = self
+                            .app_state
+                            .help_scroll_offset
+                            .saturating_add(1)
+                            .min(max_scroll);
+                    }
                     return;
                 }
                 _ => {

@@ -5,12 +5,9 @@ expression: after_scroll.clone()
 ┌Conversations─────────────────────────────────────────────────────────────────┐
 │ Main                                                                         │
 └───────────┌ Keyboard Shortcuts ──────────────────────────────────┐───────────┘
-┌Main [Opus]│Navigation                                            │───────────┐
-││  1 Minima│  j/↓         Scroll down                             │           │
-│── ↓1/1 ↑1/│  k/↑         Scroll up                               │           │
-│           │  h/←         Scroll left (for long lines)            │           │
-│           │  l/→         Scroll right                            │           │
-│           │  Ctrl+d/Page Down Page down                          │           │
+┌Main [Opus]│  h/←         Scroll left (for long lines)            │───────────┐
+││  1 Minima│  l/→         Scroll right                            │           │
+│── ↓1/1 ↑1/│  Ctrl+d/Page Down Page down                          │           │
 │           │  Ctrl+u/Page Up   Page up                            │           │
 │           │  g/Home      Go to top                               │           │
 │           │  G/End       Go to bottom                            │           │
@@ -19,6 +16,9 @@ expression: after_scroll.clone()
 │           │  Tab         Cycle focus between panes               │           │
 │           │  1           Focus main agent pane                   │           │
 │           │  2           Focus subagent pane                     │           │
+│           │  3           Focus stats panel                       │           │
+│           │                                                      │           │
+│           │Tabs (Subagent Pane)                                  │           │
 │           └─────────────── Press Esc or ? to close ──────────────┘           │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

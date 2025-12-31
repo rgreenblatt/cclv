@@ -131,6 +131,11 @@ pub struct AppState {
     /// Toggled by user action to show keyboard shortcuts.
     pub help_visible: bool,
 
+    /// Scroll offset for the help overlay (cclv-5ur.76).
+    /// 0 means showing from the top, higher values scroll down.
+    /// Only meaningful when help_visible is true.
+    pub help_scroll_offset: u16,
+
     /// Whether the application is following a live log file.
     /// `true` means new entries are being tailed in real-time (FR-007).
     /// `false` means viewing a static/completed log file (FR-008).
@@ -182,6 +187,7 @@ impl AppState {
             stats_filter: StatsFilter::MainAgent, // Sync with Main conversation selection
             stats_visible: false,
             help_visible: false,
+            help_scroll_offset: 0,
             live_mode: false,
             auto_scroll: true,
             global_wrap: WrapMode::default(),

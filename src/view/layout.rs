@@ -200,7 +200,7 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
 
     // Render help overlay on top of everything else if visible
     if state.help_visible {
-        render_help_overlay(frame);
+        render_help_overlay(frame, state.help_scroll_offset);
     }
 }
 
