@@ -3088,3 +3088,190 @@ fn bug_help_popup_scroll_passthrough() {
          Bead: cclv-5ur.66"
     );
 }
+
+/// Bug reproduction: Tab key should cycle tabs like ']' but only works once
+///
+/// EXPECTED: Tab key should cycle through conversation tabs (Main → subagent1 → subagent2 → Main)
+///           The same behavior as pressing ']'
+/// ACTUAL: Tab works once (Main → subagent1), then stops cycling (stays on subagent1)
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/tab_navigation_repro.jsonl
+/// 2. Press Tab - switches to first subagent (correct)
+/// 3. Press Tab again - stays on same subagent (BUG)
+/// 4. Press ']' - correctly switches to next subagent
+#[test]
+#[ignore = "cclv-5ur.69: Tab key should cycle tabs continuously like ']'"]
+fn bug_tab_key_should_cycle_tabs_continuously() {
+    use crate::config::keybindings::KeyBindings;
+    use crate::source::{FileSource, InputSource, StdinSource};
+    use crate::state::AppState;
+    use crate::view::TuiApp;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use std::path::PathBuf;
+
+    // Load minimal fixture with Main + 2 subagents
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/tab_navigation_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal
+    let backend = TestBackend::new(100, 30);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Verify precondition: we have Main + 2 subagents = 3 tabs
+    let subagent_count = app.app_state().session_view().subagent_ids().count();
+    assert_eq!(
+        subagent_count, 2,
+        "Test precondition: need exactly 2 subagents, got {}",
+        subagent_count
+    );
+
+    // Initial render - should be on Main (tab 0)
+    app.render_test().expect("Initial render should succeed");
+    let initial_tab = app.app_state().selected_tab_index();
+    assert_eq!(initial_tab, Some(0), "Should start on Main (tab 0)");
+
+    // Press Tab once - should go to subagent 1 (tab 1)
+    let tab_key = KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE);
+    app.handle_key_test(tab_key);
+    let after_first_tab = app.app_state().selected_tab_index();
+    assert_eq!(
+        after_first_tab,
+        Some(1),
+        "First Tab should switch to subagent 1 (tab 1)"
+    );
+
+    // Press Tab again - should go to subagent 2 (tab 2)
+    let tab_key = KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE);
+    app.handle_key_test(tab_key);
+    let after_second_tab = app.app_state().selected_tab_index();
+
+    // Capture snapshot for reference
+    app.render_test().expect("Render after Tab should succeed");
+    let output = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_tab_key_cycle_after_second_press", output);
+
+    // BUG ASSERTION: Tab should continue cycling
+    assert_eq!(
+        after_second_tab,
+        Some(2),
+        "BUG: Tab key only works once, then stops cycling.\n\
+         After first Tab: tab 1 (correct)\n\
+         After second Tab: {:?} (should be Some(2))\n\n\
+         Expected: Tab cycles tabs continuously like ']'\n\
+         Actual: Tab works once then gets stuck\n\n\
+         Verified by manual testing in tmux pane 1.\n\
+         Bead: cclv-5ur.69",
+        after_second_tab
+    );
+}
+
+/// Bug reproduction: Number keys 1-9 should select specific tabs
+///
+/// EXPECTED: Pressing '1' selects Main, '2' selects first subagent, '3' selects second, etc.
+/// ACTUAL: Number keys do nothing - the tab doesn't change
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/tab_navigation_repro.jsonl
+/// 2. Press ']' to go to a subagent tab
+/// 3. Press '1' - should go back to Main (BUG: stays on subagent)
+/// 4. Press '2' - should go to first subagent (BUG: does nothing)
+#[test]
+#[ignore = "cclv-5ur.69: Number keys 1-9 should select specific tabs"]
+fn bug_number_keys_should_select_tabs() {
+    use crate::config::keybindings::KeyBindings;
+    use crate::source::{FileSource, InputSource, StdinSource};
+    use crate::state::AppState;
+    use crate::view::TuiApp;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use std::path::PathBuf;
+
+    // Load minimal fixture with Main + 2 subagents
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/tab_navigation_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal
+    let backend = TestBackend::new(100, 30);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Verify precondition: we have Main + 2 subagents = 3 tabs
+    let subagent_count = app.app_state().session_view().subagent_ids().count();
+    assert_eq!(
+        subagent_count, 2,
+        "Test precondition: need exactly 2 subagents, got {}",
+        subagent_count
+    );
+
+    // Initial render - should be on Main (tab 0)
+    app.render_test().expect("Initial render should succeed");
+    assert_eq!(
+        app.app_state().selected_tab_index(),
+        Some(0),
+        "Should start on Main (tab 0)"
+    );
+
+    // Navigate to subagent 2 using ']' (which works)
+    let bracket_key = KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE);
+    app.handle_key_test(bracket_key);
+    app.handle_key_test(bracket_key);
+    assert_eq!(
+        app.app_state().selected_tab_index(),
+        Some(2),
+        "Should be on subagent 2 (tab 2) after two ']' presses"
+    );
+
+    // Press '1' to go back to Main
+    let key_1 = KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE);
+    app.handle_key_test(key_1);
+    let after_1 = app.app_state().selected_tab_index();
+
+    // Capture snapshot for reference
+    app.render_test()
+        .expect("Render after '1' should succeed");
+    let output = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_number_key_1_should_select_main", output);
+
+    // BUG ASSERTION: Pressing '1' should select Main (tab 0)
+    assert_eq!(
+        after_1,
+        Some(0),
+        "BUG: Number key '1' does not select Main tab.\n\
+         Before pressing '1': tab 2 (subagent 2)\n\
+         After pressing '1': {:?} (should be Some(0) for Main)\n\n\
+         Expected: '1' selects Main, '2' selects first subagent, etc.\n\
+         Actual: Number keys have no effect on tab selection\n\n\
+         Verified by manual testing in tmux pane 1.\n\
+         Bead: cclv-5ur.69",
+        after_1
+    );
+}
