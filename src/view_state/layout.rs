@@ -21,30 +21,37 @@ pub struct EntryLayout {
 
 impl EntryLayout {
     /// Create new layout. Called internally during layout computation.
-    pub(crate) fn new(_height: LineHeight, _cumulative_y: LineOffset) -> Self {
-        todo!("EntryLayout::new")
+    #[allow(dead_code)] // Used by ConversationViewState during layout computation
+    pub(crate) fn new(height: LineHeight, cumulative_y: LineOffset) -> Self {
+        Self {
+            height,
+            cumulative_y,
+        }
     }
 
     /// Height in lines.
     pub fn height(&self) -> LineHeight {
-        todo!("EntryLayout::height")
+        self.height
     }
 
     /// Cumulative Y offset (lines from start of conversation).
     pub fn cumulative_y(&self) -> LineOffset {
-        todo!("EntryLayout::cumulative_y")
+        self.cumulative_y
     }
 
     /// Y offset of the line immediately after this entry.
     /// Equal to cumulative_y + height.
     pub fn bottom_y(&self) -> LineOffset {
-        todo!("EntryLayout::bottom_y")
+        LineOffset::new(self.cumulative_y.get() + self.height.get() as usize)
     }
 }
 
 impl Default for EntryLayout {
     fn default() -> Self {
-        todo!("EntryLayout::default")
+        Self {
+            height: LineHeight::default(),
+            cumulative_y: LineOffset::default(),
+        }
     }
 }
 
