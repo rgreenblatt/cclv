@@ -2277,3 +2277,224 @@ fn bug_header_shows_wrong_agent_for_tab_zero() {
         header_line
     );
 }
+
+/// Bug reproduction: Tab cycling limited to 3 subagents despite more being available
+///
+/// EXPECTED: Pressing ']' should cycle through ALL visible subagent tabs (6+ in this fixture)
+/// ACTUAL: Tab cycling only reaches 3 subagents before returning to Main Agent
+///
+/// Steps to reproduce manually:
+/// 1. cargo run --release -- tests/fixtures/cc-session-log.jsonl
+/// 2. Press ']' 4 times from Main Agent
+/// 3. Observe: Returns to Main Agent after only 3 subagents
+/// 4. Tab bar shows 6 subagent tabs but only 3 are accessible
+///
+/// Root cause hypothesis: selected_tab increment uses wrong count (perhaps
+/// session_view.subagent_count() vs actual tab count, or lazy initialization issue)
+///
+/// Fixture: tests/fixtures/cc-session-log.jsonl (31k lines, 7 subagents)
+#[test]
+#[ignore = "cclv-5ur.42: Tab cycling limited to 3 subagents despite 7 being available"]
+fn bug_tab_cycling_limited_to_three_subagents() {
+    use cclv::config::keybindings::KeyBindings;
+    use cclv::source::{FileSource, InputSource, StdinSource};
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use std::path::PathBuf;
+
+    // Load fixture with multiple subagents
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal
+    let backend = TestBackend::new(200, 40);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Verify precondition: multiple subagents exist
+    let subagent_count = app.app_state().session_view().subagent_ids().count();
+    assert!(
+        subagent_count >= 4,
+        "Test precondition: need at least 4 subagents, got {}",
+        subagent_count
+    );
+
+    // Initial render
+    app.render_test().expect("Initial render should succeed");
+
+    // Track which tabs we visit
+    let mut visited_tabs: Vec<Option<usize>> = vec![app.app_state().selected_tab];
+
+    // Press ']' to cycle through all tabs (should visit Main + all subagents)
+    // With 7 subagents, we need 8 presses to cycle back to Main
+    let total_tabs = 1 + subagent_count; // Main + subagents
+    for _ in 0..total_tabs {
+        let key_event = KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE);
+        app.handle_key_test(key_event);
+        visited_tabs.push(app.app_state().selected_tab);
+    }
+
+    // Count unique tabs visited (excluding the final return to start)
+    let unique_tabs: std::collections::HashSet<_> = visited_tabs.iter().collect();
+
+    // BUG: Only 4 unique tabs visited (Main + 3 subagents) instead of 8 (Main + 7 subagents)
+    assert_eq!(
+        unique_tabs.len(),
+        total_tabs,
+        "BUG: Tab cycling limited to {} tabs instead of {}.\n\
+         With {} subagents, pressing ']' should cycle through Main + all subagents.\n\
+         Visited tabs: {:?}\n\
+         Unique tabs: {:?}\n\n\
+         Expected: Main Agent (0) + subagents (1-{})\n\
+         Actual: Only cycling through first 3 subagents then back to Main",
+        unique_tabs.len(),
+        total_tabs,
+        subagent_count,
+        visited_tabs,
+        unique_tabs,
+        subagent_count
+    );
+}
+
+/// Bug reproduction: Subagent conversations cannot be scrolled
+///
+/// EXPECTED: Pressing 'j' in a subagent tab should scroll its conversation down
+/// ACTUAL: Scrolling only works for Main Agent; subagent conversations stay fixed
+///
+/// Steps to reproduce manually:
+/// 1. cargo run --release -- tests/fixtures/cc-session-log.jsonl
+/// 2. Press ']' to switch to first subagent
+/// 3. Press 'j' multiple times to scroll down
+/// 4. Observe: Content doesn't move (scroll has no effect)
+///
+/// Root cause hypothesis: Scroll events may not be routed to the correct
+/// ConversationViewState for the selected subagent tab.
+///
+/// Fixture: tests/fixtures/cc-session-log.jsonl
+#[test]
+#[ignore = "cclv-5ur.42: Subagent conversations cannot be scrolled independently"]
+fn bug_subagent_scroll_does_not_work() {
+    use cclv::config::keybindings::KeyBindings;
+    use cclv::source::{FileSource, InputSource, StdinSource};
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use std::path::PathBuf;
+
+    // Load fixture with subagent entries
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal
+    let backend = TestBackend::new(200, 40);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Initial render
+    app.render_test().expect("Initial render should succeed");
+
+    // Switch to first subagent tab with ']'
+    let key_event = KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE);
+    app.handle_key_test(key_event);
+
+    // Verify we're on a subagent tab
+    assert!(
+        app.app_state().selected_tab.unwrap_or(0) > 0,
+        "Should be on a subagent tab after pressing ']'"
+    );
+
+    // Render after tab switch
+    app.render_test().expect("Render after tab switch should succeed");
+    let output_before = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_subagent_scroll_before", output_before.clone());
+
+    // Get scroll position before
+    let selected_tab = app.app_state().selected_tab.unwrap_or(0);
+
+    // Get the subagent's conversation view state
+    let mut sorted_agent_ids: Vec<_> = app.app_state().session_view().subagent_ids().collect();
+    sorted_agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+
+    let agent_id = sorted_agent_ids[selected_tab - 1].clone(); // selected_tab 1 = first subagent = index 0
+    let scroll_before = app
+        .app_state()
+        .session_view()
+        .subagents()
+        .get(&agent_id)
+        .map(|cv| cv.approximate_scroll_line())
+        .unwrap_or(0);
+
+    // Try to scroll down 5 times
+    for _ in 0..5 {
+        let key_event = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
+        app.handle_key_test(key_event);
+    }
+
+    // Render after scroll attempts
+    app.render_test().expect("Render after scroll should succeed");
+    let output_after = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_subagent_scroll_after", output_after.clone());
+
+    // Get scroll position after
+    let scroll_after = app
+        .app_state()
+        .session_view()
+        .subagents()
+        .get(&agent_id)
+        .map(|cv| cv.approximate_scroll_line())
+        .unwrap_or(0);
+
+    // BUG: Scroll position unchanged despite pressing 'j' 5 times
+    assert!(
+        scroll_after > scroll_before,
+        "BUG: Subagent scroll does not work.\n\
+         Pressed 'j' 5 times but scroll position unchanged.\n\
+         Scroll before: {}\n\
+         Scroll after: {}\n\
+         Selected tab: {} (subagent: {})\n\n\
+         Expected: scroll_offset should increase\n\
+         Actual: scroll_offset stayed at {}\n\n\
+         Root cause: Scroll events likely not routed to subagent ConversationViewState",
+        scroll_before,
+        scroll_after,
+        selected_tab,
+        agent_id.as_str(),
+        scroll_before
+    );
+
+    // Also verify rendered output changed
+    assert_ne!(
+        output_before, output_after,
+        "BUG: Rendered output unchanged after scroll attempts.\n\
+         The visible content should have changed if scroll worked."
+    );
+}
