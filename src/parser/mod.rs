@@ -79,7 +79,7 @@ struct RawTokenUsage {
 #[derive(Debug, Clone)]
 pub enum ParseResult {
     /// Successfully parsed a valid log entry.
-    Valid(LogEntry),
+    Valid(Box<LogEntry>),
     /// Encountered a malformed line that could not be parsed.
     Malformed(MalformedEntry),
 }
@@ -96,8 +96,41 @@ pub enum ParseResult {
 ///
 /// * `raw` - The raw JSONL line to parse
 /// * `line_number` - The line number (1-indexed) for error reporting
-pub fn parse_entry_graceful(_raw: &str, _line_number: usize) -> ParseResult {
-    todo!("parse_entry_graceful")
+pub fn parse_entry_graceful(raw: &str, line_number: usize) -> ParseResult {
+    // Attempt to parse the entry
+    match parse_entry(raw, line_number) {
+        Ok(entry) => ParseResult::Valid(Box::new(entry)),
+        Err(parse_error) => {
+            // Parsing failed - create a malformed entry
+            // Try to extract session_id if the JSON is partially parseable
+            let session_id = extract_session_id_best_effort(raw);
+
+            ParseResult::Malformed(MalformedEntry::new(
+                line_number,
+                raw,
+                parse_error.to_string(),
+                session_id,
+            ))
+        }
+    }
+}
+
+/// Attempt to extract session_id from malformed JSON on a best-effort basis.
+///
+/// This is used when a line fails to parse but we want to associate it with
+/// a session if possible. Returns None if extraction fails.
+fn extract_session_id_best_effort(raw: &str) -> Option<SessionId> {
+    // Try to deserialize just enough to get the session_id field
+    #[derive(Deserialize)]
+    struct PartialEntry {
+        #[serde(rename = "sessionId")]
+        session_id: Option<String>,
+    }
+
+    serde_json::from_str::<PartialEntry>(raw)
+        .ok()
+        .and_then(|partial| partial.session_id)
+        .and_then(|id| SessionId::new(id).ok())
 }
 
 /// Parse a single JSONL line into a LogEntry.
