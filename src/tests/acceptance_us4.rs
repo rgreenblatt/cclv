@@ -595,29 +595,25 @@ fn us4_scenario8_horizontal_scroll() {
 
 // ===== Mouse Click Integration Test =====
 
+/// Fixture with 4 tabs: Main Agent + 3 subagents (alpha, beta, gamma)
+const TAB_CLICK_FIXTURE: &str = "tests/fixtures/tab_click_mismatch_repro.jsonl";
+
 #[test]
-#[ignore = "Mouse click test requires fixture with subagents - see state/mouse_handler_tests.rs for unit tests"]
 fn mouse_click_switches_tabs() {
-    // NOTE: This integration test is currently ignored because we don't have a fixture
-    // with multiple subagents. The mouse click functionality is thoroughly tested
-    // in src/state/mouse_handler_tests.rs with unit tests.
-    //
     // GIVEN: A session with multiple subagents (tabs visible)
-    // WHEN: User clicks on a tab
+    // WHEN: User clicks on a different tab
     // THEN: The selected tab switches to the clicked tab
 
-    // DOING: Load session with subagents, click on second tab
-    // EXPECT: selected_tab changes from 0 to 1
-    let mut harness = AcceptanceTestHarness::from_fixture(SUBAGENTS_FIXTURE)
+    // Use wide terminal (120x30) like the bug test - full width layout shows all tabs
+    let mut harness = AcceptanceTestHarness::from_fixture_with_size(TAB_CLICK_FIXTURE, 120, 30)
         .expect("Should load session for mouse click test");
 
-    // IF YES: Session loaded
     // Render to initialize layout
     let _ = harness.render_to_string();
 
     let initial_state = harness.state();
 
-    // Verify we have subagents (tabs exist)
+    // Verify we have multiple subagents (tabs exist)
     let subagent_count = initial_state.session_view().subagents().len();
     assert!(
         subagent_count >= 2,
@@ -625,38 +621,43 @@ fn mouse_click_switches_tabs() {
         subagent_count
     );
 
-    // Select first tab explicitly
-    harness.send_key(KeyCode::Char('['));
+    // Tab bar is at row 2 (0-indexed), showing:
+    //   "│ Main Agent │ subagent_alpha │ subagent_beta │ subagent_gamma"
+    // Tab positions (from detect_tab_click logic):
+    //   Tab 0 "Main Agent": columns 0-12 (13 chars)
+    //   Tab 1 "subagent_alpha": columns 13-29 (17 chars)
+    //   Tab 2 "subagent_beta": columns 30-45 (16 chars)
+    //   Tab 3 "subagent_gamma": columns 46-62 (17 chars)
+
+    // WHEN: Click on the Main Agent tab (tab 0)
+    harness.click_at(5, 2);
     let _ = harness.render_to_string();
 
-    let state_before_click = harness.state();
     assert_eq!(
-        state_before_click.selected_tab_index(),
+        harness.state().selected_tab_index(),
         Some(0),
-        "Should start with first tab selected"
+        "Click at column 5 should select Main Agent (tab 0)"
     );
 
-    // WHEN: User clicks on the second tab
-    // Tab bar is at row 1 (after header), x coordinate ~40 (right pane at 60% = col 48, tab width varies)
-    // Calculate approximate position for second tab
-    // Terminal width is 80, right pane starts at 48 (60% of 80), tab bar is 3 lines high
-    // Each tab gets equal width in the 32 column right pane (80-48=32)
-    // With 2+ tabs, click on column 60 should hit the second tab
-    harness.click_at(60, 2);
-
-    // Force render to apply the click
+    // WHEN: Click on the second tab (subagent_alpha)
+    harness.click_at(20, 2);
     let _ = harness.render_to_string();
 
-    // VERIFY: selected_tab changed to 1
-    let state_after_click = harness.state();
-
     assert_eq!(
-        state_after_click.selected_tab_index(),
+        harness.state().selected_tab_index(),
         Some(1),
-        "Mouse click should switch to second tab"
+        "Click at column 20 should select subagent_alpha (tab 1)"
     );
 
-    // RESULT: Mouse click on tab switches selected_tab
-    // MATCHES: Yes - selected_tab changed from 0 to 1
-    // THEREFORE: Mouse click integration verified
+    // WHEN: Click on the third tab (subagent_beta)
+    harness.click_at(35, 2);
+    let _ = harness.render_to_string();
+
+    assert_eq!(
+        harness.state().selected_tab_index(),
+        Some(2),
+        "Click at column 35 should select subagent_beta (tab 2)"
+    );
+
+    // RESULT: Mouse clicks on tabs switch selection correctly
 }
