@@ -5357,4 +5357,357 @@ mod tests {
             );
         }
     }
+
+    // ===== Wrap Rendering Integration Tests =====
+    // These tests verify FR-052 and FR-053 at the RENDERING level.
+
+    /// Test that wrap continuation indicators appear in rendered output (FR-052).
+    ///
+    /// TODO: This test currently FAILS because add_wrap_continuation_indicators()
+    /// is not integrated into the rendering pipeline. The function exists and its
+    /// algorithm is tested, but it's not called in render_conversation_view().
+    ///
+    /// Integration point: Lines 772-794 in render_conversation_view() should call
+    /// add_wrap_continuation_indicators() when effective_wrap == WrapMode::Wrap.
+    #[test]
+    #[ignore = "TODO: Wrap continuation indicators not yet integrated into rendering (cclv-07v.9.9)"]
+    fn test_render_wrap_continuation_indicator_appears_in_output() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        // Create a conversation with a long line that will wrap
+        let mut conversation = AgentConversation::new(None);
+
+        // Line of 100 chars - will wrap multiple times in 40-column viewport
+        let long_text = "1234567890".repeat(10); // 100 chars
+        let message = Message::new(Role::Assistant, MessageContent::Text(long_text));
+
+        let uuid = EntryUuid::new("entry-wrap-indicator").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid.clone(),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        let scroll_state = ScrollState::default();
+
+        // Create a narrow test terminal (40 columns wide)
+        let backend = TestBackend::new(40, 24);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                    WrapMode::Wrap, // Enable wrap mode
+                );
+            })
+            .expect("Failed to draw");
+
+        // Get the rendered buffer
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // FR-052: Wrapped lines MUST show continuation indicator (↩)
+        // In a 40-column viewport with 2-column borders (38 usable), a 100-char line
+        // should wrap multiple times, each showing ↩ at the wrap point (except the last segment).
+        assert!(
+            content.contains('↩'),
+            "FAIL: Wrap continuation indicator (↩) not found in rendered output. \
+             FR-052 requires continuation indicator at wrap points. \
+             First 200 chars: {}",
+            content.chars().take(200).collect::<String>()
+        );
+
+        // The indicator should appear multiple times (not just once)
+        let indicator_count = content.matches('↩').count();
+        assert!(
+            indicator_count >= 2,
+            "FAIL: Expected at least 2 wrap indicators for 100-char line in 40-col viewport, \
+             found {}. Content: {}",
+            indicator_count,
+            content.chars().take(300).collect::<String>()
+        );
+    }
+
+    /// Test that intentional line breaks do NOT show wrap indicators (FR-052).
+    ///
+    /// TODO: Same integration gap as above - test is ignored until implementation.
+    #[test]
+    #[ignore = "TODO: Wrap continuation indicators not yet integrated into rendering (cclv-07v.9.9)"]
+    fn test_render_intentional_line_breaks_no_indicator() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        // Create a conversation with multiple short lines
+        let mut conversation = AgentConversation::new(None);
+
+        let multiline_text = "First line\nSecond line\nThird line";
+        let message = Message::new(Role::Assistant, MessageContent::Text(multiline_text.to_string()));
+
+        let uuid = EntryUuid::new("entry-no-indicator").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid,
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        let scroll_state = ScrollState::default();
+
+        // Wide viewport - lines won't wrap
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                    WrapMode::Wrap,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // FR-052: Intentional line breaks should NOT have continuation indicators
+        // Since lines are short and don't wrap, there should be NO ↩ symbols
+        assert!(
+            !content.contains('↩'),
+            "FAIL: Continuation indicator (↩) should NOT appear for intentional line breaks. \
+             Content: {}",
+            content.chars().take(200).collect::<String>()
+        );
+    }
+
+    /// Test that code blocks NEVER wrap regardless of global wrap setting (FR-053).
+    ///
+    /// TODO: This test is IGNORED because FR-053 (code block exemption) is not yet
+    /// implemented (bead cclv-07v.9.10). When implemented:
+    /// 1. Code blocks should be detected in markdown content
+    /// 2. Code blocks should always use WrapMode::NoWrap regardless of global setting
+    /// 3. Code blocks should use horizontal scrolling
+    ///
+    /// Integration point: render_entry_lines() should detect code blocks and apply
+    /// NoWrap mode specifically for those lines.
+    #[test]
+    #[ignore = "TODO: Code block wrap exemption not yet implemented (cclv-07v.9.10 / FR-053)"]
+    fn test_render_code_blocks_never_wrap() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        // Create a conversation with markdown containing a code block
+        let mut conversation = AgentConversation::new(None);
+
+        let markdown_with_code = r#"Here is some code:
+
+```rust
+fn very_long_function_name_that_exceeds_viewport_width() -> Result<String, Error> {
+    let result = "This line is intentionally very long to test that code blocks do not wrap";
+    Ok(result.to_string())
+}
+```
+
+That was the code."#;
+
+        let message = Message::new(Role::Assistant, MessageContent::Text(markdown_with_code.to_string()));
+
+        let uuid = EntryUuid::new("entry-code-block").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid,
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        let scroll_state = ScrollState::default();
+
+        // Narrow viewport (40 cols) - prose would wrap, but code blocks should not
+        let backend = TestBackend::new(40, 30);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                    WrapMode::Wrap, // Global wrap enabled
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // FR-053: Code blocks MUST never wrap, even when global wrap is enabled
+        // The long code lines should NOT be broken up across multiple lines
+        // Instead, they should use horizontal scrolling
+
+        // EXPECTED BEHAVIOR (when implemented):
+        // 1. The prose text "Here is some code:" should wrap if needed (global setting)
+        // 2. The code block lines should NOT wrap regardless of global setting
+        // 3. Code block should be visually distinct (no wrap continuation indicators in code)
+
+        // Test 1: Code block content should appear on single lines (not wrapped)
+        // The function declaration should be on one line in the buffer
+        assert!(
+            content.contains("fn very_long_function_name"),
+            "FAIL: Code block content not found. Expected function declaration on single line. \
+             Content: {}",
+            content.chars().take(500).collect::<String>()
+        );
+
+        // Test 2: Code block should NOT have wrap continuation indicators (↩)
+        // Even though prose might wrap with indicators, code blocks never should
+        let lines: Vec<&str> = content.split('\n').collect();
+        let code_block_lines: Vec<&&str> = lines
+            .iter()
+            .filter(|line| {
+                line.contains("fn very_long") || line.contains("let result =")
+            })
+            .collect();
+
+        for code_line in code_block_lines {
+            assert!(
+                !code_line.contains('↩'),
+                "FAIL: Code block line should NOT have wrap continuation indicator. \
+                 FR-053 requires code blocks never wrap. Line: {}",
+                code_line
+            );
+        }
+    }
+
+    /// Test that prose text DOES wrap with indicators while code blocks don't (FR-052 + FR-053).
+    ///
+    /// TODO: Ignored until both wrap indicators and code block exemption are implemented.
+    #[test]
+    #[ignore = "TODO: Requires both wrap indicators (cclv-07v.9.9) and code exemption (cclv-07v.9.10)"]
+    fn test_render_mixed_prose_and_code_wrap_behavior() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        let mut conversation = AgentConversation::new(None);
+
+        let mixed_content = r#"This is a very long prose paragraph that will definitely wrap in a narrow viewport and should show continuation indicators at wrap points.
+
+```rust
+let code_line = "This code line is also very long but should NOT wrap even in narrow viewport";
+```
+
+And here is more prose text that will wrap and show indicators."#;
+
+        let message = Message::new(Role::Assistant, MessageContent::Text(mixed_content.to_string()));
+
+        let uuid = EntryUuid::new("entry-mixed").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid,
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        let scroll_state = ScrollState::default();
+
+        let backend = TestBackend::new(50, 30);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                    WrapMode::Wrap,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // EXPECTED BEHAVIOR:
+        // 1. Prose text wraps and shows ↩ indicators at wrap points
+        // 2. Code block does NOT wrap (no ↩ in code section)
+        // 3. Both prose sections should have indicators, code section should not
+
+        // Prose should have wrap indicators
+        let prose_has_indicator = content.contains('↩');
+        assert!(
+            prose_has_indicator,
+            "FAIL: Prose text should wrap with continuation indicators. \
+             Content: {}",
+            content.chars().take(300).collect::<String>()
+        );
+
+        // Code block line should NOT have indicator
+        // (This is harder to verify without parsing the rendered output more carefully,
+        // but the visual test will make it obvious)
+    }
 }
