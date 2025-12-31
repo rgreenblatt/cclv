@@ -6,3 +6,4 @@
 //! in later phases following the Pure Core / Impure Shell architecture.
 
 pub mod model;
+pub mod parser;
