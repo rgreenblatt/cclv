@@ -1027,4 +1027,37 @@ mod tests {
             "Should accept snake_case session_id field"
         );
     }
+
+    // ===== Bug Fix: cclv-07v.11.2 - Optional timestamp field =====
+
+    #[test]
+    fn parse_entry_without_timestamp_succeeds() {
+        // RED TEST: Actual Claude Code entries do NOT have timestamp field
+        // Parser should accept entries without timestamp and use entry order for sequencing
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":"test-session"}"#;
+
+        let result = parse_entry(raw, 1);
+        assert!(
+            result.is_ok(),
+            "Should parse entry without timestamp field (actual Claude Code format)"
+        );
+        let entry = result.unwrap();
+        assert_eq!(entry.uuid().as_str(), "abc-123");
+        // Timestamp should exist (with some fallback value) even though field was missing
+        let _timestamp = entry.timestamp(); // Should not panic
+    }
+
+    #[test]
+    fn parse_entry_with_null_timestamp_succeeds() {
+        // Entries with explicit null timestamp should also work
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-456","session_id":"test-session","timestamp":null}"#;
+
+        let result = parse_entry(raw, 1);
+        assert!(
+            result.is_ok(),
+            "Should parse entry with null timestamp field"
+        );
+        let entry = result.unwrap();
+        assert_eq!(entry.uuid().as_str(), "abc-456");
+    }
 }
