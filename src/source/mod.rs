@@ -41,7 +41,10 @@ impl InputSource {
     ///
     /// Returns `InputError` for I/O errors.
     pub fn poll(&mut self) -> Result<Vec<LogEntry>, InputError> {
-        todo!("InputSource::poll")
+        match self {
+            InputSource::File(f) => f.drain_entries(),
+            InputSource::Stdin(s) => s.poll_and_parse(),
+        }
     }
 
     /// Check if the source is still live (can receive more data).
@@ -50,7 +53,10 @@ impl InputSource {
     /// - File: always false (static, read-once)
     /// - Stdin: true until EOF is reached
     pub fn is_live(&self) -> bool {
-        todo!("InputSource::is_live")
+        match self {
+            InputSource::File(_) => false,
+            InputSource::Stdin(s) => !s.is_complete(),
+        }
     }
 }
 
@@ -70,8 +76,11 @@ impl InputSource {
 /// Returns `InputError::NoInput` if no file is provided and stdin is not piped.
 /// Returns `InputError::FileNotFound` if file does not exist.
 /// Returns `InputError::Io` for I/O errors during file reading.
-pub fn detect_input_source(_file: Option<PathBuf>) -> Result<InputSource, InputError> {
-    todo!("detect_input_source")
+pub fn detect_input_source(file: Option<PathBuf>) -> Result<InputSource, InputError> {
+    match file {
+        Some(path) => Ok(InputSource::File(FileSource::new(path)?)),
+        None => Ok(InputSource::Stdin(StdinSource::new()?)),
+    }
 }
 
 #[cfg(test)]

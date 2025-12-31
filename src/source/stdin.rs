@@ -190,7 +190,22 @@ impl StdinSource {
     ///
     /// Returns `InputError` for I/O errors.
     pub fn poll_and_parse(&mut self) -> Result<Vec<crate::model::LogEntry>, InputError> {
-        todo!("StdinSource::poll_and_parse")
+        let mut entries = Vec::new();
+
+        // Drain all available lines from channel
+        while let Some(line) = self.poll()? {
+            // Skip empty lines
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            // Parse entry - malformed lines are silently skipped (FR-010)
+            if let Ok(entry) = crate::model::LogEntry::parse(&line) {
+                entries.push(entry);
+            }
+        }
+
+        Ok(entries)
     }
 
     /// Check if EOF has been reached (no more data will arrive).

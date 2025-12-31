@@ -16,7 +16,6 @@ use std::path::{Path, PathBuf};
 /// Read-once: loads all entries on construction, drains on first poll, empty after.
 /// No async, no channels, no file watching, no callbacks.
 #[derive(Debug)]
-#[allow(dead_code)] // Stub phase - will be used after implementation
 pub struct FileSource {
     /// Entries loaded from file. Some until drained, then None.
     entries: Option<Vec<LogEntry>>,
@@ -31,15 +30,18 @@ impl FileSource {
     ///
     /// Returns `InputError::FileNotFound` if file does not exist.
     /// Returns `InputError::Io` for I/O errors during reading.
-    pub fn new(_path: PathBuf) -> Result<Self, InputError> {
-        todo!("FileSource::new")
+    pub fn new(path: PathBuf) -> Result<Self, InputError> {
+        let entries = Self::read_all(&path)?;
+        Ok(Self {
+            entries: Some(entries),
+        })
     }
 
     /// Drain all entries from this source.
     ///
     /// Returns all entries on first call, empty vec on subsequent calls.
     pub fn drain_entries(&mut self) -> Result<Vec<LogEntry>, InputError> {
-        todo!("FileSource::drain_entries")
+        Ok(self.entries.take().unwrap_or_default())
     }
 
     /// Read entire file and parse into LogEntry vector (private helper).
@@ -51,7 +53,6 @@ impl FileSource {
     ///
     /// Returns `InputError::FileNotFound` if file does not exist.
     /// Returns `InputError::Io` for I/O errors during reading.
-    #[allow(dead_code)] // Stub phase - will be used in new() after implementation
     fn read_all(path: impl AsRef<Path>) -> Result<Vec<LogEntry>, InputError> {
         let path = path.as_ref();
 

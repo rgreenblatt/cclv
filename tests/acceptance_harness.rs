@@ -79,13 +79,14 @@ impl AcceptanceTestHarness {
         let terminal = Terminal::new(backend)?;
 
         // Load fixture file using FileSource
-        let entries = FileSource::read(PathBuf::from(path))?;
+        let mut file_source = FileSource::new(PathBuf::from(path))?;
+        let entries = file_source.drain_entries()?;
 
         // Track entry count for line counter
         let entry_count = entries.len();
 
         // Build session from entries
-        let mut session = if let Some(first_entry) = entries.first() {
+        let mut session = if let Some(ref first_entry) = entries.first() {
             Session::new(first_entry.session_id().clone())
         } else {
             Session::new(SessionId::unknown())
