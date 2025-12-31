@@ -7,10 +7,11 @@
 #![allow(missing_docs)] // criterion macros generate undocumented items
 
 use cclv::model::{
-    AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, Message, MessageContent, Role,
-    Session, SessionId,
+    AgentId, ContentBlock, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry,
+    Message, MessageContent, Role, SessionId,
 };
 use cclv::state::search::{execute_search, SearchQuery};
+use cclv::view_state::session::SessionViewState;
 use chrono::Utc;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
@@ -21,9 +22,9 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 /// - Target ~50MB total by generating enough entries with substantial text
 /// - Include both main agent and subagent entries
 /// - Mix different content types (text, thinking, tool results)
-fn generate_large_session() -> Session {
+fn generate_large_session() -> SessionViewState {
     let session_id = SessionId::new("benchmark-session").expect("valid session id");
-    let mut session = Session::new(session_id.clone());
+    let mut session_view = SessionViewState::new(session_id.clone());
 
     // Estimate: Each entry with ~10KB text = ~5,000 entries for 50MB
     // To be safe and hit 50MB, generate 6,000 entries
@@ -76,21 +77,28 @@ fn generate_large_session() -> Session {
             None
         };
 
-        let entry = cclv::model::LogEntry::new(
+        let entry = LogEntry::new(
             uuid,
             None,
             session_id.clone(),
-            agent_id,
+            agent_id.clone(),
             timestamp,
             entry_type,
             message,
             EntryMetadata::default(),
         );
 
-        session.add_entry(entry);
+        let conv_entry = ConversationEntry::Valid(Box::new(entry));
+
+        // Add to appropriate conversation
+        if let Some(aid) = agent_id {
+            session_view.add_subagent_entry(aid, conv_entry);
+        } else {
+            session_view.add_main_entry(conv_entry);
+        }
     }
 
-    session
+    session_view
 }
 
 /// Benchmark search performance on large session data.
@@ -99,7 +107,7 @@ fn benchmark_search(c: &mut Criterion) {
     let session = generate_large_session();
 
     // Verify we have substantial data
-    let main_entries = session.main_agent().len();
+    let main_entries = session.main().len();
     let subagent_count = session.subagents().len();
     println!(
         "Benchmark session: {} main entries, {} subagents",
