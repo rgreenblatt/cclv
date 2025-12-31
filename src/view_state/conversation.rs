@@ -329,6 +329,27 @@ impl ConversationViewState {
     pub fn entry_cumulative_y(&self, index: EntryIndex) -> Option<LineOffset> {
         self.entries.get(index.get()).map(|e| e.layout().cumulative_y())
     }
+
+    /// Check if entry with given UUID is expanded.
+    ///
+    /// This is a compatibility helper for the view layer which still works with UUIDs.
+    /// Returns false if no entry with this UUID is found.
+    ///
+    /// **Note**: This is O(n) lookup. The view layer should eventually be refactored
+    /// to work with EntryIndex instead of UUID for expand state queries.
+    pub fn is_expanded_by_uuid(&self, uuid: &crate::model::EntryUuid) -> bool {
+        self.entries
+            .iter()
+            .find(|entry_view| {
+                entry_view
+                    .entry()
+                    .uuid()
+                    .map(|entry_uuid| entry_uuid == uuid)
+                    .unwrap_or(false)
+            })
+            .map(|entry_view| entry_view.is_expanded())
+            .unwrap_or(false)
+    }
 }
 
 #[cfg(test)]

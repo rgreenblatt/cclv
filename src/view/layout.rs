@@ -249,11 +249,20 @@ fn calculate_horizontal_constraints(has_subagents: bool) -> (Constraint, Constra
 
 /// Render the main agent pane using shared ConversationView widget.
 fn render_main_pane(frame: &mut Frame, area: Rect, state: &AppState, styles: &MessageStyles) {
+    // Get view-state for main conversation (fallback to empty if no session yet)
+    let empty_view_state = crate::view_state::conversation::ConversationViewState::empty();
+    let view_state = state
+        .log_view()
+        .current_session()
+        .map(|s| s.main())
+        .unwrap_or(&empty_view_state);
+
     message::render_conversation_view_with_search(
         frame,
         area,
         state.session().main_agent(),
         &state.main_scroll,
+        view_state,
         &state.search,
         styles,
         state.focus == FocusPane::Main,
@@ -307,12 +316,16 @@ fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState, styles:
     };
 
     // Render the selected conversation
+    // TODO(cclv-5ur): Wire up subagent view-state once we have read-only access
+    // For now, use empty view-state (all entries collapsed by default)
     if let Some(conversation) = selected_conversation {
+        let view_state = crate::view_state::conversation::ConversationViewState::empty();
         message::render_conversation_view_with_search(
             frame,
             content_area,
             conversation,
             &state.subagent_scroll,
+            &view_state,
             &state.search,
             styles,
             state.focus == FocusPane::Subagent,

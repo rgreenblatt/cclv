@@ -81,6 +81,12 @@ impl SessionViewState {
         self.subagents.contains_key(id)
     }
 
+    /// Get subagent view-state without creating it.
+    /// Returns None if subagent hasn't been initialized yet.
+    pub fn get_subagent(&self, id: &AgentId) -> Option<&ConversationViewState> {
+        self.subagents.get(id)
+    }
+
     /// List all known subagent IDs (initialized or pending).
     pub fn subagent_ids(&self) -> impl Iterator<Item = &AgentId> {
         self.subagents.keys().chain(self.pending_subagent_entries.keys())

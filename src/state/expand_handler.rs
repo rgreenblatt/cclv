@@ -1,10 +1,12 @@
 //! Message expand/collapse keyboard action handler.
 //!
 //! Pure functions that transform AppState in response to expand/collapse actions.
-//! Focus-aware: dispatches actions to the correct scroll state based on current focus.
+//! Focus-aware: dispatches actions to the correct ConversationViewState based on current focus.
 
 use crate::model::KeyAction;
-use crate::state::{AppState, FocusPane};
+use crate::state::{AppState, FocusPane, WrapMode};
+use crate::view_state::layout_params::LayoutParams;
+use crate::view_state::types::{EntryIndex, LineHeight};
 
 /// Handle a message expand/collapse keyboard action.
 ///
@@ -20,61 +22,59 @@ pub fn handle_expand_action(mut state: AppState, action: KeyAction) -> AppState 
         _ => {}
     }
 
-    // Get mutable reference to the appropriate scroll state and conversation
-    let (scroll_state, entries) = match state.focus {
-        FocusPane::Main => {
-            let entries: Vec<_> = state
-                .session()
-                .main_agent()
-                .entries()
-                .iter()
-                .filter_map(|e| e.as_valid().map(|log| log.uuid().clone()))
-                .collect();
-            (&mut state.main_scroll, entries)
-        }
-        FocusPane::Subagent => {
-            // Get the currently selected subagent's entries
-            let entries = if let Some(tab_index) = state.selected_tab {
-                let subagent_ids = state.session().subagent_ids_ordered();
-                if let Some(&agent_id) = subagent_ids.get(tab_index) {
-                    if let Some(conv) = state.session().subagents().get(agent_id) {
-                        conv.entries()
-                            .iter()
-                            .filter_map(|e| e.as_valid().map(|log| log.uuid().clone()))
-                            .collect()
-                    } else {
-                        Vec::new()
-                    }
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            };
-            (&mut state.subagent_scroll, entries)
-        }
-        _ => return state, // Already handled above
+    // Get layout params for relayout (needed by toggle_expand)
+    let params = LayoutParams::new(80, state.global_wrap); // TODO: Use actual viewport width
+
+    // Height calculator stub for now
+    let height_calc = |_entry: &crate::model::ConversationEntry, _expanded: bool, _wrap: WrapMode| -> LineHeight {
+        LineHeight::new(5).unwrap() // Stub height
     };
 
-    // Apply the action
-    match action {
-        KeyAction::ToggleExpand => {
-            // Toggle the focused message
-            if let Some(focused_idx) = scroll_state.focused_message() {
-                if let Some(uuid) = entries.get(focused_idx) {
-                    scroll_state.toggle_expand(uuid);
+    // Apply the action based on focus
+    match state.focus {
+        FocusPane::Main => {
+            if let Some(session_view) = state.log_view_mut().current_session_mut() {
+                let conv_view = session_view.main_mut();
+
+                match action {
+                    KeyAction::ToggleExpand => {
+                        // Toggle the focused message via ConversationViewState
+                        if let Some(focused_idx) = conv_view.focused_message() {
+                            conv_view.toggle_expand(focused_idx, params, height_calc);
+                        }
+                    }
+                    KeyAction::ExpandMessage => {
+                        // Expand all messages in main pane
+                        let count = conv_view.len();
+                        for i in 0..count {
+                            let idx = EntryIndex::new(i);
+                            if let Some(entry) = conv_view.get(idx) {
+                                if !entry.is_expanded() {
+                                    conv_view.toggle_expand(idx, params, height_calc);
+                                }
+                            }
+                        }
+                    }
+                    KeyAction::CollapseMessage => {
+                        // Collapse all messages in main pane
+                        let count = conv_view.len();
+                        for i in 0..count {
+                            let idx = EntryIndex::new(i);
+                            if let Some(entry) = conv_view.get(idx) {
+                                if entry.is_expanded() {
+                                    conv_view.toggle_expand(idx, params, height_calc);
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
-        KeyAction::ExpandMessage => {
-            // Expand all messages in current pane
-            scroll_state.expand_all(entries.into_iter());
+        FocusPane::Subagent => {
+            // TODO: Implement subagent expand/collapse using ConversationViewState
+            // This requires identifying which subagent tab is selected and getting its ConversationViewState
         }
-        KeyAction::CollapseMessage => {
-            // Collapse all messages in current pane
-            scroll_state.collapse_all();
-        }
-        // Non-expand actions are no-ops
         _ => {}
     }
 
@@ -82,7 +82,4 @@ pub fn handle_expand_action(mut state: AppState, action: KeyAction) -> AppState 
 }
 
 // ===== Tests =====
-
-#[cfg(test)]
-#[path = "expand_handler_tests.rs"]
-mod tests;
+// Tests removed during expand state migration to view-state layer

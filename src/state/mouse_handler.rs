@@ -214,43 +214,46 @@ pub fn detect_entry_click(
 /// Updated AppState with entry expansion toggled if an entry was clicked.
 ///
 /// # Behavior
-/// - If entry was clicked, looks up its EntryUuid and toggles expansion state
-/// - Main pane entries toggle in main_scroll.expanded_messages
-/// - Subagent pane entries toggle in subagent_scroll.expanded_messages
+/// - If entry was clicked, toggles expansion state via ConversationViewState
+/// - Main pane entries toggle via main ConversationViewState
+/// - Subagent pane entries toggle via selected subagent's ConversationViewState
 /// - If click was outside entries, state is unchanged
 pub fn handle_entry_click(mut state: AppState, entry_click: EntryClickResult) -> AppState {
+    use crate::state::WrapMode;
+    use crate::view_state::layout_params::LayoutParams;
+    use crate::view_state::types::{EntryIndex, LineHeight};
+
+    // Layout params for relayout (TODO: Use actual viewport width)
+    let params = LayoutParams::new(80, state.global_wrap);
+
+    // Height calculator stub
+    let height_calc = |_entry: &crate::model::ConversationEntry, _expanded: bool, _wrap: WrapMode| -> LineHeight {
+        LineHeight::new(5).unwrap() // Stub height
+    };
+
     match entry_click {
         EntryClickResult::MainPaneEntry(index) => {
-            // Get the UUID of the clicked entry (clone to avoid borrow conflict)
-            let uuid_opt = state
-                .session()
-                .main_agent()
-                .entries()
-                .get(index)
-                .and_then(|entry| entry.uuid())
-                .cloned();
-
-            if let Some(uuid) = uuid_opt {
-                state.main_scroll.toggle_expand(&uuid);
+            // Toggle expand via ConversationViewState
+            if let Some(session_view) = state.log_view_mut().current_session_mut() {
+                let conv_view = session_view.main_mut();
+                let idx = EntryIndex::new(index);
+                conv_view.toggle_expand(idx, params, height_calc);
             }
             state
         }
         EntryClickResult::SubagentPaneEntry(index) => {
-            // Get the current selected tab's conversation and clone UUID
-            let uuid_opt = if let Some(tab_index) = state.selected_tab {
-                let agent_ids = state.session().subagent_ids_ordered();
-                agent_ids
+            // Toggle expand via selected subagent's ConversationViewState
+            if let Some(tab_index) = state.selected_tab {
+                // Convert tab index to agent ID
+                let agent_id_opt = state.session().subagent_ids_ordered()
                     .get(tab_index)
-                    .and_then(|agent_id| state.session().subagents().get(agent_id))
-                    .and_then(|conversation| conversation.entries().get(index))
-                    .and_then(|entry| entry.uuid())
-                    .cloned()
-            } else {
-                None
-            };
+                    .map(|id| (*id).clone());
 
-            if let Some(uuid) = uuid_opt {
-                state.subagent_scroll.toggle_expand(&uuid);
+                if let (Some(agent_id), Some(session_view)) = (agent_id_opt, state.log_view_mut().current_session_mut()) {
+                    let conv_view = session_view.subagent_mut(&agent_id);
+                    let idx = EntryIndex::new(index);
+                    conv_view.toggle_expand(idx, params, height_calc);
+                }
             }
             state
         }

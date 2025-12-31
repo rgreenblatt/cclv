@@ -11,6 +11,9 @@ use cclv::model::{
 };
 use cclv::state::{ScrollState, WrapMode};
 use cclv::view::{tabs, ConversationView, MessageStyles, StatsPanel};
+use cclv::view_state::conversation::ConversationViewState;
+use cclv::view_state::layout_params::LayoutParams;
+use cclv::view_state::types::{EntryIndex, LineHeight};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use std::collections::{HashMap, HashSet};
@@ -317,12 +320,13 @@ fn snapshot_message_collapsed_multiline() {
 
     let conversation = create_test_conversation(vec![entry]);
     let scroll_state = ScrollState::default();
+    let view_state = ConversationViewState::new(conversation.entries().to_vec());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 15);
     terminal
         .draw(|frame| {
-            let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+            let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                 .global_wrap(WrapMode::Wrap);
             frame.render_widget(widget, frame.area());
         })
@@ -344,15 +348,21 @@ fn snapshot_message_expanded_multiline() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut scroll_state = ScrollState::default();
-    // Expand the message
-    scroll_state.toggle_expand(entry.uuid());
+    let scroll_state = ScrollState::default();
+    // Create view state and expand the message
+    let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    view_state.toggle_expand(
+        EntryIndex::new(0),
+        params,
+        |_, _, _| LineHeight::new(100).unwrap(), // Mock height calculation
+    ).expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 20);
     terminal
         .draw(|frame| {
-            let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+            let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                 .global_wrap(WrapMode::Wrap);
             frame.render_widget(widget, frame.area());
         })
@@ -383,15 +393,17 @@ That's the code."#;
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut scroll_state = ScrollState::default();
+    let scroll_state = ScrollState::default();
     // Expand to see full code block
-    scroll_state.toggle_expand(entry.uuid());
+    let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(70, 25);
     terminal
         .draw(|frame| {
-            let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+            let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                 .global_wrap(WrapMode::Wrap);
             frame.render_widget(widget, frame.area());
         })
@@ -428,14 +440,16 @@ fn snapshot_message_with_tool_use() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut scroll_state = ScrollState::default();
-    scroll_state.toggle_expand(entry.uuid());
+    let scroll_state = ScrollState::default();
+    let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
     terminal
         .draw(|frame| {
-            let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+            let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                 .global_wrap(WrapMode::Wrap);
             frame.render_widget(widget, frame.area());
         })
@@ -469,14 +483,16 @@ Total lines: 3"#;
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut scroll_state = ScrollState::default();
-    scroll_state.toggle_expand(entry.uuid());
+    let scroll_state = ScrollState::default();
+    let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
     terminal
         .draw(|frame| {
-            let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+            let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                 .global_wrap(WrapMode::Wrap);
             frame.render_widget(widget, frame.area());
         })
@@ -508,14 +524,16 @@ fn snapshot_message_with_thinking_block() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut scroll_state = ScrollState::default();
-    scroll_state.toggle_expand(entry.uuid());
+    let scroll_state = ScrollState::default();
+    let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
     terminal
         .draw(|frame| {
-            let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+            let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                 .global_wrap(WrapMode::Wrap);
             frame.render_widget(widget, frame.area());
         })
@@ -543,8 +561,10 @@ fn snapshot_message_with_search_highlighting() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut scroll_state = ScrollState::default();
-    scroll_state.toggle_expand(entry.uuid());
+    let scroll_state = ScrollState::default();
+    let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     // Create active search state with query "test"
@@ -563,6 +583,7 @@ fn snapshot_message_with_search_highlighting() {
                 frame.area(),
                 &conversation,
                 &scroll_state,
+                &view_state,
                 &search,
                 &styles,
                 false,
@@ -609,6 +630,7 @@ fn bug_scroll_offset_adds_blank_lines_instead_of_moving_viewport() {
         .collect();
 
     let conversation = create_test_conversation(entries);
+    let view_state = ConversationViewState::new(conversation.entries().to_vec());
     let styles = MessageStyles::new();
 
     // Render at offset 0 and offset 10 - they should show DIFFERENT content
@@ -620,7 +642,7 @@ fn bug_scroll_offset_adds_blank_lines_instead_of_moving_viewport() {
         let mut terminal = create_terminal(60, 10);
         terminal
             .draw(|frame| {
-                let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+                let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                     .global_wrap(WrapMode::Wrap);
                 frame.render_widget(widget, frame.area());
             })
@@ -668,6 +690,7 @@ fn diagnostic_scroll_rendering_with_many_entries() {
         .collect();
 
     let conversation = create_test_conversation(entries);
+    let view_state = ConversationViewState::new(conversation.entries().to_vec());
     let styles = MessageStyles::new();
 
     // Test at different scroll offsets
@@ -682,7 +705,7 @@ fn diagnostic_scroll_rendering_with_many_entries() {
         let mut terminal = create_terminal(60, viewport_height);
         terminal
             .draw(|frame| {
-                let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+                let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                     .global_wrap(WrapMode::Wrap);
                 frame.render_widget(widget, frame.area());
             })
@@ -722,13 +745,14 @@ fn bug_entry_indices_not_visible_in_rendered_output() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
+    let view_state = ConversationViewState::new(conversation.entries().to_vec());
     let scroll_state = ScrollState::default();
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 10);
     terminal
         .draw(|frame| {
-            let widget = ConversationView::new(&conversation, &scroll_state, &styles, false)
+            let widget = ConversationView::new(&conversation, &view_state, &scroll_state, &styles, false)
                 .global_wrap(WrapMode::Wrap);
             frame.render_widget(widget, frame.area());
         })

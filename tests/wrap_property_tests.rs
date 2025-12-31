@@ -73,7 +73,6 @@ proptest! {
         let mut state = ScrollState {
             vertical_offset: 0,
             horizontal_offset: 0,
-            expanded_messages: Default::default(),
             focused_message: None,
             wrap_overrides: Default::default(),
         };
@@ -153,7 +152,6 @@ proptest! {
         let mut scroll = ScrollState {
             vertical_offset: 0,
             horizontal_offset: 0,
-            expanded_messages: Default::default(),
             focused_message: None,
             wrap_overrides: Default::default(),
         };
@@ -249,7 +247,6 @@ proptest! {
         let mut state = ScrollState {
             vertical_offset: 0,
             horizontal_offset: 0,
-            expanded_messages: Default::default(),
             focused_message: None,
             wrap_overrides: Default::default(),
         };
@@ -337,7 +334,6 @@ proptest! {
         let scroll = ScrollState {
             vertical_offset: 0,
             horizontal_offset: 0,
-            expanded_messages: Default::default(),
             focused_message: None,
             wrap_overrides: Default::default(),
         };
@@ -405,7 +401,6 @@ proptest! {
         let scroll = ScrollState {
             vertical_offset: 0,
             horizontal_offset: 0,
-            expanded_messages: Default::default(),
             focused_message: None,
             wrap_overrides: Default::default(),
         };

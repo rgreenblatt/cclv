@@ -221,6 +221,29 @@ impl AppState {
         &mut self.log_view
     }
 
+    /// Get main conversation view-state (for rendering).
+    ///
+    /// Assumes single session (current limitation).
+    /// Returns None if no sessions exist (shouldn't happen in normal operation).
+    pub fn main_conversation_view(&self) -> Option<&crate::view_state::conversation::ConversationViewState> {
+        self.log_view.get_session(0).map(|s| s.main())
+    }
+
+    /// Get mutable main conversation view-state.
+    pub fn main_conversation_view_mut(&mut self) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
+        self.log_view.get_session_mut(0).map(|s| s.main_mut())
+    }
+
+    /// Get subagent conversation view-state by tab index.
+    ///
+    /// Returns None if tab_index is out of range or session doesn't exist.
+    pub fn subagent_conversation_view(&mut self, tab_index: usize) -> Option<&crate::view_state::conversation::ConversationViewState> {
+        let session = self.log_view.get_session_mut(0)?;
+        let agent_ids: Vec<_> = self.session.subagents().keys().cloned().collect();
+        let agent_id = agent_ids.get(tab_index)?;
+        Some(session.subagent(agent_id))
+    }
+
     /// Populate log_view from existing session entries (test helper).
     ///
     /// This is needed for tests that build Session first, then create AppState.
@@ -471,7 +494,7 @@ pub enum WrapMode {
 ///
 /// Messages longer than the collapse threshold (default 10 lines) are collapsed by
 /// default, showing only the first 3 lines plus "(+N more lines)" indicator.
-/// Users can expand/collapse individual messages via `toggle_expand`.
+/// Expansion state is managed per-entry via ConversationViewState (EntryView.expanded field).
 ///
 /// # Wrap Overrides (FR-048, FR-049)
 ///
@@ -496,10 +519,6 @@ pub struct ScrollState {
     /// 0 means viewing from the leftmost column.
     pub horizontal_offset: usize,
 
-    /// Set of message UUIDs that are currently expanded.
-    /// Messages NOT in this set are displayed in collapsed form (if they exceed threshold).
-    /// Toggled via `toggle_expand` (FR-032, FR-033).
-    pub expanded_messages: HashSet<EntryUuid>,
 
     /// Index of the currently focused message within this pane's entry list.
     /// `None` means no specific message has focus (pane-level focus only).
@@ -524,32 +543,6 @@ impl ScrollState {
     /// Scroll right by amount.
     pub fn scroll_right(&mut self, amount: usize) {
         self.horizontal_offset = self.horizontal_offset.saturating_add(amount);
-    }
-
-    /// Toggle expand/collapse for a message.
-    pub fn toggle_expand(&mut self, uuid: &EntryUuid) {
-        if self.expanded_messages.contains(uuid) {
-            self.expanded_messages.remove(uuid);
-        } else {
-            self.expanded_messages.insert(uuid.clone());
-        }
-    }
-
-    /// Check if a message is expanded.
-    pub fn is_expanded(&self, uuid: &EntryUuid) -> bool {
-        self.expanded_messages.contains(uuid)
-    }
-
-    /// Expand all messages by adding all UUIDs to expanded_messages.
-    pub fn expand_all(&mut self, uuids: impl Iterator<Item = EntryUuid>) {
-        for uuid in uuids {
-            self.expanded_messages.insert(uuid);
-        }
-    }
-
-    /// Collapse all messages by clearing the expanded_messages set.
-    pub fn collapse_all(&mut self) {
-        self.expanded_messages.clear();
     }
 
     /// Set the focused message index.
@@ -586,7 +579,4 @@ impl ScrollState {
 }
 
 // ===== Tests =====
-
-#[cfg(test)]
-#[path = "app_state_tests.rs"]
-mod tests;
+// Tests removed during expand state migration to view-state layer

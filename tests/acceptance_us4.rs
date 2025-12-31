@@ -419,9 +419,11 @@ fn us4_scenario6_expand_collapsed_message() {
     // VERIFY: Message starts collapsed (not in expanded set)
     assert!(
         !initial_state
-            .main_scroll
-            .expanded_messages
-            .contains(&first_uuid),
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&first_uuid),
         "Long message should be collapsed by default"
     );
 
@@ -432,9 +434,11 @@ fn us4_scenario6_expand_collapsed_message() {
     let state_after_enter = harness.state();
     assert!(
         state_after_enter
-            .main_scroll
-            .expanded_messages
-            .contains(&first_uuid),
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&first_uuid),
         "Pressing Enter should expand the focused message"
     );
 
@@ -459,9 +463,11 @@ fn us4_scenario6_expand_collapsed_message() {
     let state_after_space = harness2.state();
     assert!(
         state_after_space
-            .main_scroll
-            .expanded_messages
-            .contains(&first_uuid2),
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&first_uuid2),
         "Pressing Space should expand the focused message"
     );
 
@@ -499,9 +505,11 @@ fn us4_scenario7_collapse_expanded_message() {
     let state_after_expand = harness.state();
     assert!(
         state_after_expand
-            .main_scroll
-            .expanded_messages
-            .contains(&first_uuid),
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&first_uuid),
         "Message should be expanded before collapse test"
     );
 
@@ -512,9 +520,11 @@ fn us4_scenario7_collapse_expanded_message() {
     let state_after_collapse = harness.state();
     assert!(
         !state_after_collapse
-            .main_scroll
-            .expanded_messages
-            .contains(&first_uuid),
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&first_uuid),
         "Pressing Enter on expanded message should collapse it"
     );
 
@@ -525,9 +535,11 @@ fn us4_scenario7_collapse_expanded_message() {
     let state_after_space_expand = harness.state();
     assert!(
         state_after_space_expand
-            .main_scroll
-            .expanded_messages
-            .contains(&first_uuid),
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&first_uuid),
         "Space should expand the message again"
     );
 
@@ -537,9 +549,11 @@ fn us4_scenario7_collapse_expanded_message() {
     let state_after_space_collapse = harness.state();
     assert!(
         !state_after_space_collapse
-            .main_scroll
-            .expanded_messages
-            .contains(&first_uuid),
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&first_uuid),
         "Pressing Space on expanded message should collapse it"
     );
 
