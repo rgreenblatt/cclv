@@ -5,8 +5,8 @@
 
 use crate::model::{
     AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry, Message,
-    MessageContent, ModelInfo, ParseError, Role, SessionId, SystemMetadata, TokenUsage, ToolCall,
-    ToolName, ToolUseId,
+    MessageContent, ModelInfo, ParseError, ResultMetadata, Role, SessionId, SystemMetadata,
+    TokenUsage, ToolCall, ToolName, ToolUseId,
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -47,6 +47,17 @@ struct RawLogEntry {
     agents: Option<Vec<String>>,
     #[serde(default)]
     skills: Option<Vec<String>>,
+    // Result entry fields (FMT-007)
+    #[serde(default)]
+    is_error: Option<bool>,
+    #[serde(default)]
+    duration_ms: Option<u64>,
+    #[serde(default)]
+    num_turns: Option<u32>,
+    #[serde(default)]
+    total_cost_usd: Option<f64>,
+    #[serde(default)]
+    result: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -254,11 +265,18 @@ pub fn parse_entry(raw: &str, line_number: usize) -> Result<LogEntry, ParseError
         None
     };
 
-    // Parse message (optional for system entries)
+    // Parse result metadata for Result entries BEFORE consuming raw_entry (FMT-007)
+    let result_metadata = if entry_type == EntryType::Result {
+        parse_result_metadata(&raw_entry)
+    } else {
+        None
+    };
+
+    // Parse message (optional for system and result entries)
     let message = match raw_entry.message {
         Some(raw_msg) => parse_message(raw_msg)?,
         None => {
-            // System entries may not have a message - create empty assistant message as placeholder
+            // System and Result entries may not have a message - create empty assistant message as placeholder
             Message::new(Role::Assistant, MessageContent::Text(String::new()))
         }
     };
@@ -271,17 +289,32 @@ pub fn parse_entry(raw: &str, line_number: usize) -> Result<LogEntry, ParseError
         is_sidechain: raw_entry.is_sidechain,
     };
 
-    Ok(LogEntry::new_with_system_metadata(
-        uuid,
-        parent_uuid,
-        session_id,
-        agent_id,
-        timestamp,
-        entry_type,
-        message,
-        metadata,
-        system_metadata,
-    ))
+    // Use appropriate constructor based on entry type
+    if result_metadata.is_some() {
+        Ok(LogEntry::new_with_result_metadata(
+            uuid,
+            parent_uuid,
+            session_id,
+            agent_id,
+            timestamp,
+            entry_type,
+            message,
+            metadata,
+            result_metadata,
+        ))
+    } else {
+        Ok(LogEntry::new_with_system_metadata(
+            uuid,
+            parent_uuid,
+            session_id,
+            agent_id,
+            timestamp,
+            entry_type,
+            message,
+            metadata,
+            system_metadata,
+        ))
+    }
 }
 
 /// Parse the "type" field into EntryType enum.
@@ -311,6 +344,27 @@ fn parse_system_metadata(raw: &RawLogEntry) -> Option<SystemMetadata> {
         tools: raw.tools.clone().unwrap_or_default(),
         agents: raw.agents.clone().unwrap_or_default(),
         skills: raw.skills.clone().unwrap_or_default(),
+    })
+}
+
+/// Parse result metadata from a RawLogEntry for Result entries.
+///
+/// Extracts is_error, duration_ms, num_turns, total_cost_usd, and result text.
+/// Returns None if required fields are missing.
+fn parse_result_metadata(raw: &RawLogEntry) -> Option<ResultMetadata> {
+    // All fields are required for result metadata
+    let is_error = raw.is_error?;
+    let duration_ms = raw.duration_ms?;
+    let num_turns = raw.num_turns?;
+    let total_cost_usd = raw.total_cost_usd?;
+    let result_text = raw.result.as_ref()?.clone();
+
+    Some(ResultMetadata {
+        is_error,
+        duration_ms,
+        num_turns,
+        total_cost_usd,
+        result_text,
     })
 }
 
