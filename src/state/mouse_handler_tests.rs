@@ -876,7 +876,7 @@ fn test_mouse_expand_maintains_height_index_invariant() {
 
     // Initialize HeightIndex via relayout
     if let Some(view) = state.main_conversation_view_mut() {
-        view.relayout(80, crate::state::WrapMode::Wrap);
+        view.relayout(80, crate::state::WrapMode::Wrap, &crate::state::SearchState::Inactive);
     }
 
     // Simulate mouse click on entry 0 to toggle expand

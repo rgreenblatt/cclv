@@ -76,7 +76,7 @@ fn relayout_populates_height_index() {
     assert_eq!(state.height_index.len(), 0);
 
     // Relayout with width=80, wrap=Wrap
-    state.relayout(80, WrapMode::Wrap);
+    state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     // After relayout: index should match entries
     assert_eq!(state.height_index.len(), 3);
@@ -114,13 +114,13 @@ fn toggle_entry_expanded_updates_height_index() {
     );
 
     // Initial relayout
-    state.relayout(80, WrapMode::Wrap);
+    state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     let height_before = state.entries[1].height().get() as usize;
     let total_before = state.total_height();
 
     // Toggle expand on entry 1
-    state.toggle_entry_expanded(1);
+    state.toggle_entry_expanded(1, &crate::state::SearchState::Inactive);
 
     let height_after = state.entries[1].height().get() as usize;
     let total_after = state.total_height();
@@ -163,12 +163,12 @@ fn set_entry_wrap_override_updates_height_index() {
     );
 
     // Initial relayout with Wrap mode
-    state.relayout(80, WrapMode::Wrap);
+    state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     let _height_before = state.entries[0].height().get() as usize;
 
     // Set wrap override to NoWrap
-    state.set_entry_wrap_override(0, Some(WrapMode::NoWrap));
+    state.set_entry_wrap_override(0, Some(WrapMode::NoWrap), &crate::state::SearchState::Inactive);
 
     let height_after = state.entries[0].height().get() as usize;
 
@@ -192,14 +192,14 @@ fn append_entries_updates_height_index() {
     );
 
     // Initial relayout
-    state.relayout(80, WrapMode::Wrap);
+    state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
     assert_eq!(state.height_index.len(), 1);
 
     let total_before = state.total_height();
 
     // Append new entries
     let new_entries = vec![make_valid_entry("uuid-2"), make_valid_entry("uuid-3")];
-    state.append_entries(new_entries);
+    state.append_entries(new_entries, &crate::state::SearchState::Inactive);
 
     // HeightIndex should be updated
     assert_eq!(state.height_index.len(), 3);
@@ -240,7 +240,7 @@ fn visible_range_uses_height_index() {
         crate::model::PricingConfig::default(),
     );
 
-    state.relayout(80, WrapMode::Wrap);
+    state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     let viewport = ViewportDimensions::new(80, 24);
     let range = state.visible_range(viewport);
@@ -291,16 +291,16 @@ fn total_height_equals_height_index_total() {
         crate::model::PricingConfig::default(),
     );
 
-    state.relayout(80, WrapMode::Wrap);
+    state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     // Core invariant: total_height() == height_index.total()
     assert_eq!(state.total_height(), state.height_index.total());
 
     // After mutation, invariant should still hold
-    state.toggle_entry_expanded(1);
+    state.toggle_entry_expanded(1, &crate::state::SearchState::Inactive);
     assert_eq!(state.total_height(), state.height_index.total());
 
-    state.set_entry_wrap_override(0, Some(WrapMode::NoWrap));
+    state.set_entry_wrap_override(0, Some(WrapMode::NoWrap), &crate::state::SearchState::Inactive);
     assert_eq!(state.total_height(), state.height_index.total());
 }
 
@@ -317,23 +317,23 @@ fn height_index_invariant_maintained_across_operations() {
         crate::model::PricingConfig::default(),
     );
 
-    state.relayout(80, WrapMode::Wrap);
+    state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
     verify_height_index_invariant(&state);
 
     // Toggle expand
-    state.toggle_entry_expanded(2);
+    state.toggle_entry_expanded(2, &crate::state::SearchState::Inactive);
     verify_height_index_invariant(&state);
 
     // Set wrap override
-    state.set_entry_wrap_override(1, Some(WrapMode::NoWrap));
+    state.set_entry_wrap_override(1, Some(WrapMode::NoWrap), &crate::state::SearchState::Inactive);
     verify_height_index_invariant(&state);
 
     // Append
-    state.append_entries(vec![make_valid_entry("uuid-new")]);
+    state.append_entries(vec![make_valid_entry("uuid-new")], &crate::state::SearchState::Inactive);
     verify_height_index_invariant(&state);
 
     // Relayout
-    state.relayout(120, WrapMode::NoWrap);
+    state.relayout(120, WrapMode::NoWrap, &crate::state::SearchState::Inactive);
     verify_height_index_invariant(&state);
 }
 

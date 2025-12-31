@@ -60,7 +60,7 @@ fn test_toggle_expand_calls_toggle_entry_expanded() {
 
     // Initialize HeightIndex by calling relayout
     if let Some(view) = state.main_conversation_view_mut() {
-        view.relayout(80, crate::state::WrapMode::Wrap);
+        view.relayout(80, crate::state::WrapMode::Wrap, &crate::state::SearchState::Inactive);
         view.set_focused_message(Some(EntryIndex::new(1)));
     }
 
@@ -94,7 +94,7 @@ fn test_expand_all_uses_toggle_entry_expanded() {
 
     // Initialize HeightIndex
     if let Some(view) = state.main_conversation_view_mut() {
-        view.relayout(80, crate::state::WrapMode::Wrap);
+        view.relayout(80, crate::state::WrapMode::Wrap, &crate::state::SearchState::Inactive);
     }
 
     // Expand all
@@ -124,7 +124,7 @@ fn test_toggle_maintains_height_index_invariant() {
 
     // Initialize HeightIndex and set focused message
     if let Some(view) = state.main_conversation_view_mut() {
-        view.relayout(80, crate::state::WrapMode::Wrap);
+        view.relayout(80, crate::state::WrapMode::Wrap, &crate::state::SearchState::Inactive);
         view.set_focused_message(Some(EntryIndex::new(0)));
     }
 

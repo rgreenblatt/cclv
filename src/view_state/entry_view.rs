@@ -213,11 +213,18 @@ impl EntryView {
     /// - Viewport width changes
     /// - Wrap mode changes
     /// - Entry expand/collapse state changes
+    /// - Search state changes (for highlighting)
     ///
     /// This is `pub(crate)` because only ConversationViewState should
     /// trigger recomputation (to maintain HeightIndex consistency).
     #[allow(dead_code)] // Will be used by ConversationViewState in future tasks
-    pub(crate) fn recompute_lines(&mut self, wrap_mode: WrapMode, width: u16, focused: bool) {
+    pub(crate) fn recompute_lines(
+        &mut self,
+        wrap_mode: WrapMode,
+        width: u16,
+        search_state: &crate::state::SearchState,
+        focused: bool,
+    ) {
         // Bug fix cclv-5ur.22: Create WrapContext that encodes override status
         let wrap_ctx = match self.wrap_override {
             Some(override_mode) => WrapContext::from_override(override_mode),
@@ -235,7 +242,7 @@ impl EntryView {
             &styles,
             Some(self.index.get()), // Pass entry index for prefixing
             false,                  // TODO: Pass is_subagent_view from caller
-            &crate::state::SearchState::Inactive, // TODO: Pass search_state from caller
+            search_state,           // Bug fix cclv-5ur.73: Pass search_state for highlighting
             focused,
             self.accumulated_tokens as u64,
             self.max_context_tokens as u64,

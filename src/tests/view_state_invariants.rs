@@ -152,7 +152,7 @@ proptest! {
         // Malformed entries get default height of ZERO when not laid out
         // After relayout(), they get rendered height based on content
         let mut state = ConversationViewState::new(None, None, vec![entry], 200_000, PricingConfig::default());
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         // After relayout, malformed entries still get a small height for the error message
         // The ZERO height is only for the sentinel value, not actual malformed entry rendering
@@ -175,7 +175,7 @@ proptest! {
         }
 
         let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         // Check monotonicity: forall i < j: entries[i].cumulative_y <= entries[j].cumulative_y
         for i in 0..state.len() {
@@ -204,7 +204,7 @@ proptest! {
         }
 
         let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         // Check: forall i: entries[i].cumulative_y == sum(entries[0..i].height)
         let mut cumulative = 0usize;
@@ -228,7 +228,7 @@ proptest! {
     #[test]
     fn total_height_equals_sum_of_all_heights(entries in arb_entry_list(50)) {
         let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         let expected_total: usize = (0..state.len())
             .map(|i| {
@@ -259,7 +259,7 @@ proptest! {
         viewport in arb_viewport()
     ) {
         let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
-        state.relayout(viewport.width, WrapMode::Wrap);
+        state.relayout(viewport.width, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         let total_height = state.total_height();
         let viewport_height = viewport.height as usize;
@@ -290,7 +290,7 @@ proptest! {
         viewport in arb_viewport()
     ) {
         let mut state = ConversationViewState::new(None, None, entries.clone(), 200_000, PricingConfig::default());
-        state.relayout(viewport.width, WrapMode::Wrap);
+        state.relayout(viewport.width, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         let visible = state.visible_range(viewport);
 
@@ -325,7 +325,7 @@ proptest! {
         }
 
         let mut state = ConversationViewState::new(None, None, entries.clone(), 200_000, PricingConfig::default());
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         let result = state.hit_test(screen_y, screen_x, scroll_offset);
 
@@ -528,7 +528,7 @@ proptest! {
         let params = LayoutParams::new(80, WrapMode::Wrap);
         let viewport = ViewportDimensions::new(80, 24);
 
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         // Get initial expanded state
         let original = state.get(EntryIndex::new(0)).unwrap().is_expanded();
@@ -567,13 +567,13 @@ proptest! {
         }
 
         let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         // Pick a valid relayout index and toggle to trigger relayout
         let from_index = EntryIndex::new(relayout_from_idx.min(state.len().saturating_sub(1)));
 
         // Use toggle_entry_expanded to trigger relayout from this index
-        state.toggle_entry_expanded(from_index.get());
+        state.toggle_entry_expanded(from_index.get(), &crate::state::SearchState::Inactive);
 
         // Verify invariant: forall j >= from_index:
         // entries[j].cumulative_y == entries[j-1].bottom_y() (or 0 if j==0)

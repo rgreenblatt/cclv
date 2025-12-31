@@ -30,8 +30,9 @@ pub fn handle_toggle_wrap(mut state: AppState, _viewport_width: u16) -> AppState
         _ => {}
     }
 
-    // Read global wrap mode before borrowing conversation mutably
+    // Read global wrap mode and clone search state before borrowing conversation mutably
     let global = state.global_wrap;
+    let search_state = state.search.clone();
 
     // Get mutable reference to the selected conversation using central routing
     let conversation = if let Some(conv) = state.selected_conversation_view_mut() {
@@ -53,7 +54,7 @@ pub fn handle_toggle_wrap(mut state: AppState, _viewport_width: u16) -> AppState
             }),
         };
 
-        conversation.set_entry_wrap_override(index.get(), new_override);
+        conversation.set_entry_wrap_override(index.get(), new_override, &search_state);
     }
 
     state

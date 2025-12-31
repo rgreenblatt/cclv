@@ -922,7 +922,7 @@ fn render_layout_uses_search_highlighting_when_search_active() {
         .current_session_mut()
         .unwrap()
         .main_mut()
-        .relayout(78, wrap_mode);
+        .relayout(78, wrap_mode, &crate::state::SearchState::Inactive);
 
     // Activate search for "world"
     use crate::state::search::{execute_search, SearchQuery};
@@ -997,7 +997,7 @@ fn render_layout_no_search_highlighting_when_search_inactive() {
         .current_session_mut()
         .unwrap()
         .main_mut()
-        .relayout(78, wrap_mode);
+        .relayout(78, wrap_mode, &crate::state::SearchState::Inactive);
 
     terminal
         .draw(|frame| {

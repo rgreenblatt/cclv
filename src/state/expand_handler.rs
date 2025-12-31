@@ -34,6 +34,9 @@ pub fn handle_expand_action(
         _ => {}
     }
 
+    // Clone search state before getting mutable borrows (to avoid borrow checker issues)
+    let search_state = state.search.clone();
+
     // Get mutable reference to the selected conversation using central routing
     let conversation = if let Some(conv) = state.selected_conversation_view_mut() {
         conv
@@ -49,7 +52,7 @@ pub fn handle_expand_action(
 
             // Only toggle if the entry exists
             if idx_to_toggle.get() < conversation.len() {
-                conversation.toggle_entry_expanded(idx_to_toggle.get());
+                conversation.toggle_entry_expanded(idx_to_toggle.get(), &search_state);
             }
         }
         KeyAction::ExpandMessage => {
@@ -58,7 +61,7 @@ pub fn handle_expand_action(
             for i in 0..count {
                 if let Some(entry) = conversation.get(EntryIndex::new(i)) {
                     if !entry.is_expanded() {
-                        conversation.toggle_entry_expanded(i);
+                        conversation.toggle_entry_expanded(i, &search_state);
                     }
                 }
             }
@@ -69,7 +72,7 @@ pub fn handle_expand_action(
             for i in 0..count {
                 if let Some(entry) = conversation.get(EntryIndex::new(i)) {
                     if entry.is_expanded() {
-                        conversation.toggle_entry_expanded(i);
+                        conversation.toggle_entry_expanded(i, &search_state);
                     }
                 }
             }

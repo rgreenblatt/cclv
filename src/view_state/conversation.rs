@@ -316,7 +316,7 @@ impl ConversationViewState {
     /// # Deprecated
     /// This method exists for backward compatibility. New code should use `relayout()`.
     pub fn recompute_layout(&mut self, params: LayoutParams) {
-        self.relayout(params.width, params.global_wrap);
+        self.relayout(params.width, params.global_wrap, &crate::state::SearchState::Inactive);
     }
 
     /// Relayout from a specific entry index onward.
@@ -332,7 +332,7 @@ impl ConversationViewState {
 
         // For simplicity, just do a full relayout (same as new API)
         // The optimization of relayout_from vs full relayout is not critical
-        self.relayout(params.width, params.global_wrap);
+        self.relayout(params.width, params.global_wrap, &crate::state::SearchState::Inactive);
     }
 
     /// Toggle expand state for entry at index and relayout.
@@ -599,7 +599,12 @@ impl ConversationViewState {
     /// This replaces `recompute_layout` with a simpler API that doesn't require
     /// an external height_calculator function. Heights are computed from
     /// entry.rendered_lines after recomputing them.
-    pub fn relayout(&mut self, width: u16, wrap: WrapMode) {
+    ///
+    /// # Arguments
+    /// * `width` - Viewport width
+    /// * `wrap` - Global wrap mode
+    /// * `search_state` - Current search state (for highlighting matches)
+    pub fn relayout(&mut self, width: u16, wrap: WrapMode, search_state: &crate::state::SearchState) {
         self.viewport_width = width;
         self.global_wrap = wrap;
         self.height_index.clear();
@@ -607,7 +612,7 @@ impl ConversationViewState {
         for (idx, entry_view) in self.entries.iter_mut().enumerate() {
             let effective_wrap = entry_view.effective_wrap(wrap);
             let is_focused = self.focused_message.is_some_and(|f| f.get() == idx);
-            entry_view.recompute_lines(effective_wrap, width, is_focused);
+            entry_view.recompute_lines(effective_wrap, width, search_state, is_focused);
 
             let height = entry_view.height().get() as usize;
             self.height_index.push(height);
@@ -620,7 +625,11 @@ impl ConversationViewState {
     /// Toggle expanded state for entry. O(log n).
     ///
     /// Atomically updates both the entry state and HeightIndex to maintain invariant.
-    pub fn toggle_entry_expanded(&mut self, index: usize) {
+    ///
+    /// # Arguments
+    /// * `index` - Entry index to toggle
+    /// * `search_state` - Current search state (for highlighting matches)
+    pub fn toggle_entry_expanded(&mut self, index: usize, search_state: &crate::state::SearchState) {
         if index >= self.entries.len() {
             return;
         }
@@ -633,7 +642,7 @@ impl ConversationViewState {
         // Recompute lines with new expand state
         let effective_wrap = entry.effective_wrap(self.global_wrap);
         let is_focused = self.focused_message.is_some_and(|f| f.get() == index);
-        entry.recompute_lines(effective_wrap, self.viewport_width, is_focused);
+        entry.recompute_lines(effective_wrap, self.viewport_width, search_state, is_focused);
 
         let new_height = entry.height().get() as usize;
 
@@ -647,7 +656,12 @@ impl ConversationViewState {
     /// Set wrap override for entry. O(log n).
     ///
     /// Atomically updates both the entry state and HeightIndex to maintain invariant.
-    pub fn set_entry_wrap_override(&mut self, index: usize, mode: Option<WrapMode>) {
+    ///
+    /// # Arguments
+    /// * `index` - Entry index to modify
+    /// * `mode` - Wrap mode override (None to use global)
+    /// * `search_state` - Current search state (for highlighting matches)
+    pub fn set_entry_wrap_override(&mut self, index: usize, mode: Option<WrapMode>, search_state: &crate::state::SearchState) {
         if index >= self.entries.len() {
             return;
         }
@@ -660,7 +674,7 @@ impl ConversationViewState {
         // Recompute lines with new wrap mode
         let effective_wrap = entry.effective_wrap(self.global_wrap);
         let is_focused = self.focused_message.is_some_and(|f| f.get() == index);
-        entry.recompute_lines(effective_wrap, self.viewport_width, is_focused);
+        entry.recompute_lines(effective_wrap, self.viewport_width, search_state, is_focused);
 
         let new_height = entry.height().get() as usize;
 
@@ -674,7 +688,11 @@ impl ConversationViewState {
     /// Append new entries (streaming mode). O(n log n) where n is new entries.
     ///
     /// Updates HeightIndex for all new entries.
-    pub fn append_entries(&mut self, entries: Vec<ConversationEntry>) {
+    ///
+    /// # Arguments
+    /// * `entries` - New conversation entries to append
+    /// * `search_state` - Current search state (for highlighting matches)
+    pub fn append_entries(&mut self, entries: Vec<ConversationEntry>, search_state: &crate::state::SearchState) {
         let start_idx = self.entries.len();
 
         // Get accumulated tokens from last entry (or 0 if empty)
@@ -701,7 +719,7 @@ impl ConversationViewState {
             let is_focused = self
                 .focused_message
                 .is_some_and(|f| f.get() == (start_idx + offset));
-            entry_view.recompute_lines(effective_wrap, self.viewport_width, is_focused);
+            entry_view.recompute_lines(effective_wrap, self.viewport_width, search_state, is_focused);
 
             let height = entry_view.height().get() as usize;
 
@@ -2252,7 +2270,7 @@ mod tests {
         );
 
         // Relayout so we have known total_height
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         let height_before = state.total_height();
         assert!(
@@ -2262,7 +2280,7 @@ mod tests {
 
         // Append new entry using NEW append_entries() method
         let new_entries = vec![make_entry_with_n_lines("uuid-3", 5)];
-        state.append_entries(new_entries);
+        state.append_entries(new_entries, &crate::state::SearchState::Inactive);
 
         let height_after = state.total_height();
 
@@ -2297,7 +2315,7 @@ mod tests {
         );
 
         // Relayout so we have known total_height
-        state.relayout(80, WrapMode::Wrap);
+        state.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
         let height_before = state.total_height();
         assert!(
@@ -2307,7 +2325,7 @@ mod tests {
 
         // Now use NEW append_entries() method
         let new_entries = vec![make_entry_with_n_lines("uuid-3", 5)];
-        state.append_entries(new_entries);
+        state.append_entries(new_entries, &crate::state::SearchState::Inactive);
 
         let height_after = state.total_height();
 

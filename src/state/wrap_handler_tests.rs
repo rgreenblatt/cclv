@@ -51,7 +51,7 @@ fn handle_toggle_wrap_adds_override_on_first_toggle() {
     // Focus on Main pane and set focused message in view-state
     state.focus = FocusPane::Main;
     if let Some(view) = state.main_conversation_view_mut() {
-        view.relayout(80, WrapMode::Wrap); // Initialize HeightIndex
+        view.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive); // Initialize HeightIndex
         view.set_focused_message(Some(EntryIndex::new(0)));
     }
 
@@ -102,7 +102,7 @@ fn handle_toggle_wrap_clears_override_on_second_toggle() {
     // Focus on Main pane and set focused message in view-state
     state.focus = FocusPane::Main;
     if let Some(view) = state.main_conversation_view_mut() {
-        view.relayout(80, WrapMode::Wrap); // Initialize HeightIndex
+        view.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive); // Initialize HeightIndex
         view.set_focused_message(Some(EntryIndex::new(0)));
     }
 
@@ -174,7 +174,7 @@ fn test_toggle_wrap_maintains_height_index_invariant() {
     // Focus and set focused message
     state.focus = FocusPane::Main;
     if let Some(view) = state.main_conversation_view_mut() {
-        view.relayout(80, WrapMode::Wrap);
+        view.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
         view.set_focused_message(Some(EntryIndex::new(0)));
     }
 
@@ -256,11 +256,11 @@ fn test_toggle_wrap_subagent_correct_indexing() {
 
     // Initialize view states for both subagents
     if let Some(view) = state.subagent_conversation_view_mut(0) {
-        view.relayout(80, WrapMode::Wrap);
+        view.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
         view.set_focused_message(Some(EntryIndex::new(0)));
     }
     if let Some(view) = state.subagent_conversation_view_mut(1) {
-        view.relayout(80, WrapMode::Wrap);
+        view.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
         view.set_focused_message(Some(EntryIndex::new(0)));
     }
 

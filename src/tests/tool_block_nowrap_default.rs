@@ -106,7 +106,7 @@ fn test_tooluse_defaults_to_nowrap_despite_global_wrap() {
         ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport (60 chars)
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     // Expand the entry to see full ToolUse block
     let params = LayoutParams::new(60, WrapMode::Wrap);
@@ -161,7 +161,7 @@ fn test_tooluse_respects_explicit_wrap_override() {
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     // EXPLICITLY override THIS entry to Wrap
     view_state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::Wrap), params);
@@ -214,7 +214,7 @@ fn test_toolresult_defaults_to_nowrap_despite_global_wrap() {
         ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport (60 chars)
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     // Expand to see full ToolResult block
     let params = LayoutParams::new(60, WrapMode::Wrap);
@@ -270,7 +270,7 @@ fn test_toolresult_respects_explicit_wrap_override() {
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     // EXPLICITLY override THIS entry to Wrap
     view_state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::Wrap), params);
@@ -329,7 +329,7 @@ fn test_text_block_still_respects_global_wrap() {
         ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     let styles = MessageStyles::new();
     let mut terminal = Terminal::new(TestBackend::new(60, 24)).unwrap();

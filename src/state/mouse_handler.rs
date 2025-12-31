@@ -233,12 +233,15 @@ pub fn handle_entry_click(
     entry_click: EntryClickResult,
     _viewport_width: u16,
 ) -> AppState {
+    // Clone search state before getting mutable borrows
+    let search_state = state.search.clone();
+
     match entry_click {
         EntryClickResult::MainPaneEntry(index) => {
             // Toggle expand via ConversationViewState
             if let Some(session_view) = state.log_view_mut().current_session_mut() {
                 let conv_view = session_view.main_mut();
-                conv_view.toggle_entry_expanded(index);
+                conv_view.toggle_entry_expanded(index, &search_state);
             }
             state
         }
@@ -248,7 +251,7 @@ pub fn handle_entry_click(
             if let Some(agent_id) = state.selected_agent_id() {
                 if let Some(session_view) = state.log_view_mut().current_session_mut() {
                     let conv_view = session_view.subagent_mut(&agent_id);
-                    conv_view.toggle_entry_expanded(index);
+                    conv_view.toggle_entry_expanded(index, &search_state);
                 }
             }
             state

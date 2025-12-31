@@ -338,7 +338,7 @@ fn snapshot_message_collapsed_multiline() {
         200_000,
         PricingConfig::default(),
     );
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 15);
@@ -777,7 +777,7 @@ fn bug_entry_indices_not_visible_in_rendered_output() {
         200_000,
         PricingConfig::default(),
     );
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 10);
@@ -1986,7 +1986,7 @@ fn snapshot_wrap_mode_global_wrap() {
     );
 
     // Use narrow viewport (60 chars) to force wrapping
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 15);
@@ -2038,7 +2038,7 @@ fn snapshot_wrap_mode_global_nowrap() {
     );
 
     // Use narrow viewport (60 chars) but disable wrapping
-    view_state.relayout(60, WrapMode::NoWrap);
+    view_state.relayout(60, WrapMode::NoWrap, &crate::state::SearchState::Inactive);
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 15);
@@ -2094,7 +2094,7 @@ fn snapshot_wrap_mode_per_entry_override() {
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);
-    view_state.relayout(60, WrapMode::Wrap);
+    view_state.relayout(60, WrapMode::Wrap, &crate::state::SearchState::Inactive);
 
     // Override THIS entry to NoWrap
     view_state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::NoWrap), params);

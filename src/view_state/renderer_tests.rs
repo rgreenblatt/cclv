@@ -2211,3 +2211,94 @@ fn test_entry_index_prefix_width_consistent_for_all_indices() {
         );
     }
 }
+
+// ===== Search Highlighting Tests (FR-012) =====
+
+#[test]
+fn test_search_highlights_matches_in_text() {
+    // FR-012: System MUST highlight all search matches in the visible pane
+    //
+    // Given: Entry containing "error" multiple times
+    // When: Search is active with query "error"
+    // Then: All occurrences should be highlighted with yellow background
+
+    let text = "This is an error message. Another error occurred. No errors here.";
+    let entry = create_entry_with_text(text);
+    let entry_uuid = match &entry {
+        ConversationEntry::Valid(log_entry) => log_entry.uuid().clone(),
+        _ => panic!("Expected valid entry"),
+    };
+
+    // Create search state with matches for "error"
+    use crate::state::{SearchMatch, SearchQuery};
+    let query = SearchQuery::new("error").expect("valid query");
+    let matches = vec![
+        SearchMatch {
+            agent_id: None,
+            entry_uuid: entry_uuid.clone(),
+            block_index: 0, // Text content is block 0
+            char_offset: 11, // First "error" at position 11
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: None,
+            entry_uuid: entry_uuid.clone(),
+            block_index: 0,
+            char_offset: 35, // Second "error" at position 35
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: None,
+            entry_uuid: entry_uuid.clone(),
+            block_index: 0,
+            char_offset: 56, // Third "errors" at position 56 (substring match)
+            length: 5,
+        },
+    ];
+
+    let search_state = crate::state::SearchState::Active {
+        query,
+        matches,
+        current_match: 0, // First match is current
+    };
+
+    let styles = default_styles();
+    let lines = compute_test_lines(
+        &entry,
+        true, // expanded (highlighting only works when expanded)
+        WrapContext::from_global(WrapMode::Wrap),
+        80,
+        10,
+        3,
+        &styles,
+        None,  // No index prefix for simplicity
+        false, // Not a subagent view
+        &search_state,
+        false, // Not focused
+    );
+
+    // Verify that at least one line contains yellow background highlighting
+    let has_yellow_bg = lines.iter().any(|line| {
+        line.spans.iter().any(|span| {
+            span.style.bg == Some(ratatui::style::Color::Yellow)
+        })
+    });
+
+    assert!(
+        has_yellow_bg,
+        "Search matches should be highlighted with yellow background (FR-012)"
+    );
+
+    // Verify current match has REVERSED modifier (in addition to yellow bg)
+    let has_reversed = lines.iter().any(|line| {
+        line.spans.iter().any(|span| {
+            span.style.bg == Some(ratatui::style::Color::Yellow)
+                && span.style.add_modifier == ratatui::style::Modifier::REVERSED
+        })
+    });
+
+    assert!(
+        has_reversed,
+        "Current search match should be highlighted with REVERSED modifier"
+    );
+}

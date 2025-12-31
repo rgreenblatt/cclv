@@ -588,17 +588,18 @@ where
                     _ => 80, // Fallback for errors OR zero width (cclv-5ur.58)
                 };
                 let wrap = self.app_state.global_wrap;
+                let search_state = self.app_state.search.clone();
 
                 // Relayout main conversation
                 if let Some(main_view) = self.app_state.main_conversation_view_mut() {
-                    main_view.relayout(width, wrap);
+                    main_view.relayout(width, wrap, &search_state);
                 }
 
                 // Relayout all subagent conversations
                 let subagent_count = self.app_state.session_view().subagent_ids().count();
                 for idx in 0..subagent_count {
                     if let Some(sub_view) = self.app_state.subagent_conversation_view_mut(idx) {
-                        sub_view.relayout(width, wrap);
+                        sub_view.relayout(width, wrap, &search_state);
                     }
                 }
             }
@@ -1818,7 +1819,7 @@ mod tests {
 
         // Initialize layout so entries have heights
         if let Some(view) = app.app_state.main_conversation_view_mut() {
-            view.relayout(80, crate::state::WrapMode::Wrap);
+            view.relayout(80, crate::state::WrapMode::Wrap, &crate::state::SearchState::Inactive);
         }
 
         // Focus on Main pane and use Ctrl+j to focus first entry
@@ -2209,7 +2210,7 @@ mod tests {
         // Focus on Main pane and set focused message in view-state
         app.app_state.focus = FocusPane::Main;
         if let Some(view) = app.app_state.main_conversation_view_mut() {
-            view.relayout(80, WrapMode::Wrap); // Initialize HeightIndex
+            view.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive); // Initialize HeightIndex
             view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(0)));
         }
 
@@ -2304,7 +2305,7 @@ mod tests {
 
         // Initialize main view HeightIndex
         if let Some(view) = app.app_state.main_conversation_view_mut() {
-            view.relayout(80, crate::state::WrapMode::Wrap);
+            view.relayout(80, crate::state::WrapMode::Wrap, &crate::state::SearchState::Inactive);
         }
 
         // Add entry to subagent pane
@@ -2330,7 +2331,7 @@ mod tests {
         app.app_state.focus = FocusPane::Subagent;
         app.app_state.selected_conversation = ConversationSelection::Subagent(sub_agent_id.clone());
         if let Some(view) = app.app_state.subagent_conversation_view_mut(0) {
-            view.relayout(80, crate::state::WrapMode::Wrap); // Initialize HeightIndex
+            view.relayout(80, crate::state::WrapMode::Wrap, &crate::state::SearchState::Inactive); // Initialize HeightIndex
             view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(0)));
         }
 
@@ -2506,10 +2507,10 @@ mod tests {
 
         // Initial relayout at 80 columns
         if let Some(view) = app.app_state.main_conversation_view_mut() {
-            view.relayout(80, WrapMode::Wrap);
+            view.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
         }
         if let Some(view) = app.app_state.subagent_conversation_view_mut(0) {
-            view.relayout(80, WrapMode::Wrap);
+            view.relayout(80, WrapMode::Wrap, &crate::state::SearchState::Inactive);
         }
 
         let initial_main_height = app
