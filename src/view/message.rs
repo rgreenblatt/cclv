@@ -527,7 +527,20 @@ impl<'a> Widget for ConversationView<'a> {
             }
         }
 
-        let paragraph = Paragraph::new(lines).block(block);
+        // Apply horizontal scroll offset if in NoWrap mode
+        let horizontal_offset = self.view_state.horizontal_offset();
+        let final_lines: Vec<Line<'static>> = if self.global_wrap == WrapMode::NoWrap && horizontal_offset > 0 {
+            lines
+                .into_iter()
+                .map(|line| apply_horizontal_offset(line, horizontal_offset as usize))
+                .collect()
+        } else {
+            lines
+        };
+
+        // Render paragraph without additional wrapping
+        // Lines are already pre-wrapped by compute_entry_lines based on wrap mode
+        let paragraph = Paragraph::new(final_lines).block(block);
         paragraph.render(area, buf);
     }
 }
@@ -1052,7 +1065,6 @@ fn apply_highlights_to_text(
 /// If offset exceeds line length, returns empty line (or just index if present).
 ///
 /// Uses character-based indexing (not byte-based) for UTF-8 safety.
-#[allow(dead_code)]
 fn apply_horizontal_offset(line: Line<'static>, offset: usize) -> Line<'static> {
     if offset == 0 {
         return line;

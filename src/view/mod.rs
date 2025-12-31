@@ -572,6 +572,23 @@ where
             // Line wrapping - global toggle (W key)
             KeyAction::ToggleGlobalWrap => {
                 self.app_state.toggle_global_wrap();
+
+                // Trigger relayout of all conversation views with new wrap mode
+                let width = self.terminal.size().map(|r| r.width).unwrap_or(80);
+                let wrap = self.app_state.global_wrap;
+
+                // Relayout main conversation
+                if let Some(main_view) = self.app_state.main_conversation_view_mut() {
+                    main_view.relayout(width, wrap);
+                }
+
+                // Relayout all subagent conversations
+                let subagent_count = self.app_state.session_view().subagent_ids().count();
+                for idx in 0..subagent_count {
+                    if let Some(sub_view) = self.app_state.subagent_conversation_view_mut(idx) {
+                        sub_view.relayout(width, wrap);
+                    }
+                }
             }
 
             // Not yet implemented

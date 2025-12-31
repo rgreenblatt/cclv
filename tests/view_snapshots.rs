@@ -1298,7 +1298,6 @@ fn bug_thinking_blocks_not_wrapped_like_prose() {
 /// 4. Press Right arrow multiple times
 /// 5. Observe: Content does not shift horizontally
 #[test]
-#[ignore = "cclv-lo7: horizontal scroll has no visual effect"]
 fn bug_horizontal_scroll_does_not_work() {
     use cclv::source::FileSource;
     use cclv::state::AppState;
@@ -1337,8 +1336,14 @@ fn bug_horizontal_scroll_does_not_work() {
     // Initial render
     app.render_test().expect("Initial render should succeed");
 
+    // Toggle to NoWrap mode (default is Wrap)
+    // Press 'W' (Shift+w) to toggle GLOBAL wrap mode
+    let toggle_global_wrap = KeyEvent::new(KeyCode::Char('W'), KeyModifiers::SHIFT);
+    app.handle_key_test(toggle_global_wrap);
+    app.render_test().expect("Render after wrap toggle should succeed");
+
     // Capture initial state - tool block JSON line should be truncated, MARKER not visible
-    // Tool blocks render as JSON which does NOT wrap regardless of wrap mode
+    // Tool blocks render as JSON which should NOT wrap in NoWrap mode
     let initial_output = buffer_to_string(app.terminal().backend().buffer());
 
     // The fixture contains a tool_use with file_path ending in "MARKER_END_OF_LINE.txt"
@@ -1350,9 +1355,10 @@ fn bug_horizontal_scroll_does_not_work() {
          Output:\n{initial_output}"
     );
 
-    // Simulate pressing Right arrow 50 times to scroll horizontally
+    // Simulate pressing Right arrow 120 times to scroll horizontally
+    // Need to scroll far enough to reveal MARKER_END_OF_LINE at the end of the long path
     let right_key = KeyEvent::new(KeyCode::Right, KeyModifiers::NONE);
-    for _ in 0..50 {
+    for _ in 0..120 {
         let _ = app.handle_key_test(right_key);
     }
     app.render_test()

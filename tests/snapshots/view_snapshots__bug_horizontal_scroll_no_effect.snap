@@ -4,10 +4,10 @@ expression: scrolled_output
 ---
 Model: Unknown | Main Agent
 ┌Main Agent (1 entries)────────────────────────────────────┐
-│Tool: Read                                                │
-│  {                                                       │
-│    "file_path": "/this/is/a/very/long/path/that/exceeds/t│
-│  }                                                       │
+│                                                          │
+│                                                          │
+│mplete/content/MARKER_END_OF_LINE.txt"                    │
+│                                                          │
 │                                                          │
 │                                                          │
 │                                                          │
@@ -16,4 +16,4 @@ Model: Unknown | Main Agent
 │                                                          │
 │                                                          │
 └──────────────────────────────────────────────────────────┘
-[LIVE] Wrap: On | q: Quit | ?: Help | /: Search
+[LIVE] Wrap: Off | q: Quit | ?: Help | /: Search
