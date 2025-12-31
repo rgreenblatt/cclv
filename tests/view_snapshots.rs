@@ -2111,3 +2111,83 @@ fn bug_subagent_entries_not_in_separate_tabs() {
          Output:\n{output}"
     );
 }
+
+/// Bug reproduction: Tab key press does not change conversation pane content.
+///
+/// EXPECTED: When pressing Tab or number keys (1-9) to switch tabs, the conversation
+/// pane displays the selected tab's content (main agent or subagent).
+///
+/// ACTUAL: Only the status bar title updates. The conversation pane:
+/// 1. Always shows "Main Agent (N entries)" as title
+/// 2. Always displays Main Agent content regardless of which tab is selected
+///
+/// Steps to reproduce manually:
+/// 1. cargo run --release -- tests/fixtures/subagent_tab_repro.jsonl
+/// 2. Press Tab or '2' to switch to first subagent tab
+/// 3. Observe: Status bar says "Subagent toolu_..." but content pane still shows Main Agent
+///
+/// Fixture: tests/fixtures/subagent_tab_repro.jsonl
+#[test]
+#[ignore = "cclv-5ur.40: tab keypress does not change conversation pane content"]
+fn bug_tab_keypress_does_not_change_conversation_content() {
+    use cclv::config::keybindings::KeyBindings;
+    use cclv::source::{FileSource, InputSource, StdinSource};
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use std::path::PathBuf;
+
+    // Load fixture with subagent entries
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/subagent_tab_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal with standard dimensions
+    let backend = TestBackend::new(120, 30);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Verify subagents exist before testing tab switching
+    assert!(
+        app.app_state().session_view().has_subagents(),
+        "Test precondition: fixture must have subagent entries"
+    );
+
+    // Initial render - should show Main Agent (tab 0)
+    app.render_test().expect("Initial render should succeed");
+    let output_before_tab = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_tab_keypress_before", output_before_tab.clone());
+
+    // Press '2' to switch to first subagent tab (tab index 1)
+    let key_2 = KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE);
+    app.handle_key_test(key_2);
+    app.render_test().expect("Render after pressing 2 should succeed");
+    let output_after_tab = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_tab_keypress_after", output_after_tab.clone());
+
+    // After pressing '2', the pane title should show Subagent, not Main Agent
+    // BUG: Status bar correctly shows "Subagent toolu_..." but pane still shows "Main Agent"
+    assert!(
+        !output_after_tab.contains("┌Main Agent"),
+        "BUG: Tab switching does not update conversation pane.\n\
+         After pressing '2' to switch to subagent tab:\n\
+         - Status bar correctly shows 'Subagent toolu_...'\n\
+         - BUT pane title STILL shows 'Main Agent (N entries)'\n\
+         - Content also remains Main Agent's conversation\n\n\
+         Expected: Pane should show 'Subagent toolu_... (N entries)'\n\
+         Actual output:\n{output_after_tab}"
+    );
+}
