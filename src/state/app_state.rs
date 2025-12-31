@@ -82,9 +82,11 @@ pub struct AppState {
     /// See `FocusPane` for valid states and transitions.
     pub focus: FocusPane,
 
-    /// Currently selected subagent tab index (0-based).
-    /// `None` means no tab is selected (e.g., no subagents exist).
-    /// Valid range: `0..session.subagents().len()`.
+    /// Currently selected tab index in unified tab model (FR-086).
+    /// - `Some(0)` = main agent tab
+    /// - `Some(1)` = first subagent (alphabetically sorted)
+    /// - `Some(n)` = (n-1)th subagent
+    /// - `None` = no tab selected (initial state before first render)
     pub selected_tab: Option<usize>,
 
     /// Current search state (inactive, typing, or active with results).
