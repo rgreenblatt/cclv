@@ -296,7 +296,6 @@ impl ConversationViewState {
     /// - `index`: Entry to toggle
     /// - `params`: Layout parameters
     /// - `viewport`: Current viewport dimensions (needed for scroll stability)
-    /// - `height_calculator`: Function to compute entry heights
     pub fn toggle_expand(
         &mut self,
         index: EntryIndex,

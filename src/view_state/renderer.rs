@@ -308,9 +308,7 @@ fn render_markdown_with_style(markdown_text: &str, base_style: Style) -> Vec<Lin
 /// Wrap lines to match height calculation behavior.
 ///
 /// Takes source lines and wraps them at the viewport width boundary
-/// to match the wrapping logic in layout.rs count_text_lines().
-///
-/// This ensures rendered line count matches calculated height.
+/// ensuring rendered line count matches calculated height.
 ///
 /// # Arguments
 /// * `source_lines` - Original lines from content (split on '\n')
@@ -425,7 +423,7 @@ fn render_block(
                 serde_json::to_string_pretty(tool_call.input()).unwrap_or_default();
             let input_lines: Vec<_> = input_json.lines().collect();
 
-            // Wrap lines to match height calculation (layout.rs count_text_lines)
+            // Wrap lines to match height calculation
             let wrapped_lines = wrap_lines(&input_lines, wrap_mode, width);
             let total_lines = wrapped_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
@@ -460,7 +458,7 @@ fn render_block(
             let mut lines = Vec::new();
             let content_lines: Vec<_> = content.lines().collect();
 
-            // Wrap lines to match height calculation (layout.rs count_text_lines)
+            // Wrap lines to match height calculation
             let wrapped_lines = wrap_lines(&content_lines, wrap_mode, width);
             let total_lines = wrapped_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
@@ -493,7 +491,7 @@ fn render_block(
             // AND wrap long lines to match height calculation
             let thinking_lines: Vec<_> = thinking.lines().collect();
 
-            // Wrap lines to match height calculation (layout.rs count_text_lines)
+            // Wrap lines to match height calculation
             let wrapped_lines = wrap_lines(&thinking_lines, wrap_mode, width);
             let total_lines = wrapped_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;

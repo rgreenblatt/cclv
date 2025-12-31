@@ -15,7 +15,7 @@ use cclv::view_state::{
     conversation::ConversationViewState,
     layout_params::LayoutParams,
     scroll::ScrollPosition,
-    types::{EntryIndex, LineHeight, ViewportDimensions},
+    types::{EntryIndex, ViewportDimensions},
 };
 use chrono::Utc;
 use std::time::Instant;
@@ -49,27 +49,6 @@ fn create_long_entry(uuid_str: &str) -> ConversationEntry {
         .collect::<Vec<_>>()
         .join("\n");
     create_test_entry(uuid_str, &long_text)
-}
-
-/// Height calculator: collapsed entries = 3 lines, expanded = 50 lines.
-/// Simulates a long message that's much taller when expanded.
-#[allow(dead_code)]
-fn variable_height_calculator(
-    entry: &ConversationEntry,
-    expanded: bool,
-    _wrap: WrapMode,
-    _width: u16,
-) -> LineHeight {
-    match entry {
-        ConversationEntry::Valid(_) => {
-            if expanded {
-                LineHeight::new(50).unwrap() // Expanded: tall
-            } else {
-                LineHeight::new(3).unwrap() // Collapsed: summary
-            }
-        }
-        ConversationEntry::Malformed(_) => LineHeight::ZERO,
-    }
 }
 
 // ===== US2 Scenario 1: Expand Collapsed Entry, Remains Visible =====
