@@ -100,11 +100,13 @@ pub fn compute_entry_lines(
 
     let message = valid_entry.message();
 
+    // Get role-based style for this entry
+    let role_style = styles.style_for_role(message.role());
+
     // Handle message content
-    // TODO: Use styles.style_for_role(message.role()) for base text styling
     match message.content() {
         MessageContent::Text(text) => {
-            // Render plain text with collapse support
+            // Render plain text with collapse support and role-based styling
             let text_lines: Vec<_> = text.lines().collect();
 
             // Wrap lines to match height calculation (layout.rs count_text_lines)
@@ -113,9 +115,9 @@ pub fn compute_entry_lines(
             let should_collapse = total_lines > collapse_threshold && !expanded;
 
             if should_collapse {
-                // Show summary lines
+                // Show summary lines with role styling
                 for line in wrapped_lines.iter().take(summary_lines) {
-                    lines.push(Line::from(line.clone()));
+                    lines.push(Line::from(Span::styled(line.clone(), role_style)));
                 }
                 // Add collapse indicator
                 let remaining = total_lines - summary_lines;
@@ -124,9 +126,9 @@ pub fn compute_entry_lines(
                     Style::default().add_modifier(Modifier::DIM),
                 )));
             } else {
-                // Show all lines
+                // Show all lines with role styling
                 for line in wrapped_lines {
-                    lines.push(Line::from(line));
+                    lines.push(Line::from(Span::styled(line, role_style)));
                 }
             }
 
@@ -134,9 +136,9 @@ pub fn compute_entry_lines(
             lines.push(Line::from(""));
         }
         MessageContent::Blocks(blocks) => {
-            // Render each content block
+            // Render each content block with role-based styling
             for block in blocks {
-                let block_lines = render_block(block, expanded, wrap_mode, width, collapse_threshold, summary_lines, styles);
+                let block_lines = render_block(block, expanded, wrap_mode, width, collapse_threshold, summary_lines, role_style, styles);
                 lines.extend(block_lines);
             }
 
@@ -196,7 +198,11 @@ fn wrap_lines(source_lines: &[&str], wrap_mode: WrapMode, width: u16) -> Vec<Str
     }
 }
 
-/// Render a single content block with collapse support.
+/// Render a single content block with collapse support and styling.
+///
+/// Applies both role-based styling (from parent message) and block-specific
+/// styling (ToolUse=Yellow, Error=Red).
+#[allow(clippy::too_many_arguments)]
 fn render_block(
     block: &ContentBlock,
     expanded: bool,
@@ -204,9 +210,12 @@ fn render_block(
     width: u16,
     collapse_threshold: usize,
     summary_lines: usize,
-    _styles: &MessageStyles,
+    role_style: Style,
+    styles: &MessageStyles,
 ) -> Vec<Line<'static>> {
-    // TODO: Use styles.style_for_content_block() to apply block-specific colors
+    // Get block-specific style if applicable, otherwise use role style
+    let base_style = styles.style_for_content_block(block).unwrap_or(role_style);
+
     match block {
         ContentBlock::Text { text } => {
             let text_lines: Vec<_> = text.lines().collect();
@@ -219,9 +228,9 @@ fn render_block(
             let mut lines = Vec::new();
 
             if should_collapse {
-                // Show summary lines
+                // Show summary lines with role styling
                 for line in wrapped_lines.iter().take(summary_lines) {
-                    lines.push(Line::from(line.clone()));
+                    lines.push(Line::from(Span::styled(line.clone(), base_style)));
                 }
                 // Add collapse indicator
                 let remaining = total_lines - summary_lines;
@@ -230,9 +239,9 @@ fn render_block(
                     Style::default().add_modifier(Modifier::DIM),
                 )));
             } else {
-                // Show all lines
+                // Show all lines with role styling
                 for line in wrapped_lines {
-                    lines.push(Line::from(line));
+                    lines.push(Line::from(Span::styled(line, base_style)));
                 }
             }
 
@@ -241,12 +250,12 @@ fn render_block(
         ContentBlock::ToolUse(tool_call) => {
             let mut lines = Vec::new();
 
-            // Tool name header (always visible)
+            // Tool name header (always visible) with ToolUse color (Yellow)
             let tool_name = tool_call.name().as_str();
             let header = format!("Tool: {}", tool_name);
             lines.push(Line::from(Span::styled(
                 header,
-                Style::default().add_modifier(Modifier::BOLD),
+                base_style.add_modifier(Modifier::BOLD),
             )));
 
             // Tool input/parameters - collapsible
@@ -260,9 +269,12 @@ fn render_block(
             let should_collapse = total_lines > collapse_threshold && !expanded;
 
             if should_collapse {
-                // Show summary lines
+                // Show summary lines with ToolUse styling
                 for line in wrapped_lines.iter().take(summary_lines) {
-                    lines.push(Line::from(format!("  {}", line)));
+                    lines.push(Line::from(Span::styled(
+                        format!("  {}", line),
+                        base_style,
+                    )));
                 }
                 // Add collapse indicator
                 let remaining = total_lines - summary_lines;
@@ -271,15 +283,18 @@ fn render_block(
                     Style::default().add_modifier(Modifier::DIM),
                 )));
             } else {
-                // Show all lines
+                // Show all lines with ToolUse styling
                 for line in wrapped_lines {
-                    lines.push(Line::from(format!("  {}", line)));
+                    lines.push(Line::from(Span::styled(
+                        format!("  {}", line),
+                        base_style,
+                    )));
                 }
             }
 
             lines
         }
-        ContentBlock::ToolResult { content, is_error, .. } => {
+        ContentBlock::ToolResult { content, .. } => {
             let mut lines = Vec::new();
             let content_lines: Vec<_> = content.lines().collect();
 
@@ -295,17 +310,9 @@ fn render_block(
                 total_lines
             };
 
-            // Render the visible lines with styling
+            // Render the visible lines with styling (base_style is Red if is_error=true)
             for line in wrapped_lines.iter().take(lines_to_show) {
-                let rendered_line = if *is_error {
-                    Line::from(Span::styled(
-                        line.clone(),
-                        Style::default().fg(ratatui::style::Color::Red),
-                    ))
-                } else {
-                    Line::from(line.clone())
-                };
-                lines.push(rendered_line);
+                lines.push(Line::from(Span::styled(line.clone(), base_style)));
             }
 
             // Add collapse indicator if collapsed
@@ -332,11 +339,11 @@ fn render_block(
             let mut lines = Vec::new();
 
             if should_collapse {
-                // Show summary lines with thinking style
+                // Show summary lines with thinking style (role color + italic/dim)
                 for line in wrapped_lines.iter().take(summary_lines) {
                     lines.push(Line::from(Span::styled(
                         line.clone(),
-                        Style::default()
+                        base_style
                             .add_modifier(Modifier::ITALIC)
                             .add_modifier(Modifier::DIM),
                     )));
@@ -348,11 +355,11 @@ fn render_block(
                     Style::default().add_modifier(Modifier::DIM),
                 )));
             } else {
-                // Show all lines with thinking style
+                // Show all lines with thinking style (role color + italic/dim)
                 for line in wrapped_lines {
                     lines.push(Line::from(Span::styled(
                         line,
-                        Style::default()
+                        base_style
                             .add_modifier(Modifier::ITALIC)
                             .add_modifier(Modifier::DIM),
                     )));
