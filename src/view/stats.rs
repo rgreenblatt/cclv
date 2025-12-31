@@ -218,7 +218,6 @@ mod tests {
 
     #[test]
     fn stats_panel_renders_without_panic_empty_stats() {
-        use ratatui::backend::TestBackend;
         use ratatui::buffer::Buffer;
         use ratatui::layout::Rect;
 
@@ -237,7 +236,6 @@ mod tests {
     #[test]
     fn stats_panel_renders_without_panic_with_data() {
         use crate::model::{TokenUsage, ToolName};
-        use ratatui::backend::TestBackend;
         use ratatui::buffer::Buffer;
         use ratatui::layout::Rect;
         use std::collections::HashMap;
