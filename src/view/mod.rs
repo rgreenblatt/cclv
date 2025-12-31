@@ -67,7 +67,7 @@ use crate::view_state::types::LineHeight;
 /// - Content blocks with basic line counting
 /// - Wrapping estimation for long lines (when width > 80 chars and wrap=true)
 /// - Collapsed state returns summary height (1-3 lines)
-fn calculate_entry_height(
+pub fn calculate_entry_height(
     entry: &ConversationEntry,
     expanded: bool,
     wrap: WrapMode,
