@@ -4,7 +4,7 @@
 //! into validated LogEntry structs.
 
 use crate::model::{
-    AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+    AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry, Message,
     MessageContent, ModelInfo, ParseError, Role, SessionId, ToolCall, ToolName, ToolUseId,
     TokenUsage,
 };
@@ -70,6 +70,34 @@ struct RawTokenUsage {
     cache_creation_input_tokens: u64,
     #[serde(default)]
     cache_read_input_tokens: u64,
+}
+
+/// Result of parsing a JSONL line with graceful error handling.
+///
+/// This allows the parser to continue processing subsequent lines
+/// even when encountering malformed JSON.
+#[derive(Debug, Clone)]
+pub enum ParseResult {
+    /// Successfully parsed a valid log entry.
+    Valid(LogEntry),
+    /// Encountered a malformed line that could not be parsed.
+    Malformed(MalformedEntry),
+}
+
+/// Parse a single JSONL line gracefully.
+///
+/// Unlike `parse_entry()`, this function never returns an error.
+/// Instead, it returns either a valid LogEntry or a MalformedEntry
+/// that can be displayed inline.
+///
+/// This satisfies FR-010: handle malformed JSON lines gracefully.
+///
+/// # Arguments
+///
+/// * `raw` - The raw JSONL line to parse
+/// * `line_number` - The line number (1-indexed) for error reporting
+pub fn parse_entry_graceful(_raw: &str, _line_number: usize) -> ParseResult {
+    todo!("parse_entry_graceful")
 }
 
 /// Parse a single JSONL line into a LogEntry.
@@ -529,6 +557,203 @@ mod tests {
         assert_eq!(parse_entry_type("unknown"), None);
         assert_eq!(parse_entry_type(""), None);
         assert_eq!(parse_entry_type("USER"), None); // Case sensitive
+    }
+
+    // ===== Graceful Parsing Tests =====
+
+    #[test]
+    fn parse_entry_graceful_returns_valid_for_correct_json() {
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Hello"},"sessionId":"session-123","uuid":"uuid-001","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let result = parse_entry_graceful(raw, 1);
+
+        match result {
+            ParseResult::Valid(entry) => {
+                assert_eq!(entry.uuid().as_str(), "uuid-001");
+                assert_eq!(entry.session_id().as_str(), "session-123");
+            }
+            ParseResult::Malformed(_) => panic!("Expected Valid, got Malformed"),
+        }
+    }
+
+    #[test]
+    fn parse_entry_graceful_returns_malformed_for_invalid_json() {
+        let raw = r#"{"type":"user","message":{"role":"user""#;
+        let result = parse_entry_graceful(raw, 42);
+
+        match result {
+            ParseResult::Malformed(malformed) => {
+                assert_eq!(malformed.line_number(), 42, "Should preserve line number");
+                assert_eq!(
+                    malformed.raw_line(),
+                    raw,
+                    "Should preserve raw line content"
+                );
+                assert!(
+                    !malformed.error_message().is_empty(),
+                    "Should have error message"
+                );
+            }
+            ParseResult::Valid(_) => panic!("Expected Malformed, got Valid"),
+        }
+    }
+
+    #[test]
+    fn parse_entry_graceful_returns_malformed_for_missing_required_field() {
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"sessionId":"s1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let result = parse_entry_graceful(raw, 15);
+
+        match result {
+            ParseResult::Malformed(malformed) => {
+                assert_eq!(malformed.line_number(), 15);
+                assert_eq!(malformed.raw_line(), raw);
+                assert!(
+                    malformed.error_message().contains("uuid")
+                        || malformed.error_message().contains("missing"),
+                    "Error message should mention missing field, got: {}",
+                    malformed.error_message()
+                );
+            }
+            ParseResult::Valid(_) => panic!("Expected Malformed for missing uuid"),
+        }
+    }
+
+    #[test]
+    fn parse_entry_graceful_returns_malformed_for_invalid_timestamp() {
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"sessionId":"s1","uuid":"u1","timestamp":"not-a-timestamp"}"#;
+        let result = parse_entry_graceful(raw, 99);
+
+        match result {
+            ParseResult::Malformed(malformed) => {
+                assert_eq!(malformed.line_number(), 99);
+                assert!(
+                    malformed.error_message().contains("timestamp")
+                        || malformed.error_message().contains("not-a-timestamp"),
+                    "Error should mention timestamp issue, got: {}",
+                    malformed.error_message()
+                );
+            }
+            ParseResult::Valid(_) => panic!("Expected Malformed for invalid timestamp"),
+        }
+    }
+
+    #[test]
+    fn parse_entry_graceful_preserves_raw_line_exactly() {
+        let raw = r#"{"malformed":true, "weird": "spacing"   }"#;
+        let result = parse_entry_graceful(raw, 5);
+
+        match result {
+            ParseResult::Malformed(malformed) => {
+                assert_eq!(
+                    malformed.raw_line(),
+                    raw,
+                    "Should preserve exact raw line including spacing"
+                );
+            }
+            ParseResult::Valid(_) => panic!("Expected Malformed"),
+        }
+    }
+
+    #[test]
+    fn parse_entry_graceful_extracts_session_id_when_possible() {
+        // Malformed due to missing uuid, but session_id is present and extractable
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"sessionId":"extractable-session","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let result = parse_entry_graceful(raw, 10);
+
+        match result {
+            ParseResult::Malformed(malformed) => {
+                // Session ID extraction is optional/best-effort
+                // This test documents the behavior but doesn't require it
+                let _session_id = malformed.session_id();
+                // Test passes as long as it's Malformed (session_id extraction is optional)
+            }
+            ParseResult::Valid(_) => panic!("Expected Malformed for missing uuid"),
+        }
+    }
+
+    #[test]
+    fn parse_entry_graceful_handles_empty_line() {
+        let raw = "";
+        let result = parse_entry_graceful(raw, 1);
+
+        match result {
+            ParseResult::Malformed(malformed) => {
+                assert_eq!(malformed.line_number(), 1);
+                assert_eq!(malformed.raw_line(), "");
+            }
+            ParseResult::Valid(_) => panic!("Expected Malformed for empty line"),
+        }
+    }
+
+    #[test]
+    fn parse_entry_graceful_handles_whitespace_only() {
+        let raw = "   \t  \n  ";
+        let result = parse_entry_graceful(raw, 7);
+
+        match result {
+            ParseResult::Malformed(malformed) => {
+                assert_eq!(malformed.line_number(), 7);
+                assert_eq!(malformed.raw_line(), raw);
+            }
+            ParseResult::Valid(_) => panic!("Expected Malformed for whitespace"),
+        }
+    }
+
+    #[test]
+    fn parse_entry_graceful_handles_non_json_text() {
+        let raw = "This is just plain text, not JSON at all";
+        let result = parse_entry_graceful(raw, 23);
+
+        match result {
+            ParseResult::Malformed(malformed) => {
+                assert_eq!(malformed.line_number(), 23);
+                assert_eq!(malformed.raw_line(), raw);
+                assert!(!malformed.error_message().is_empty());
+            }
+            ParseResult::Valid(_) => panic!("Expected Malformed for non-JSON text"),
+        }
+    }
+
+    // ===== MalformedEntry Tests =====
+
+    #[test]
+    fn malformed_entry_stores_all_fields() {
+        let malformed = MalformedEntry::new(
+            42,
+            "bad json",
+            "Parse error: unexpected token",
+            None,
+        );
+
+        assert_eq!(malformed.line_number(), 42);
+        assert_eq!(malformed.raw_line(), "bad json");
+        assert_eq!(malformed.error_message(), "Parse error: unexpected token");
+        assert!(malformed.session_id().is_none());
+    }
+
+    #[test]
+    fn malformed_entry_stores_session_id_when_provided() {
+        let session_id = SessionId::new("session-123").unwrap();
+        let malformed = MalformedEntry::new(
+            10,
+            "partial json",
+            "Missing field",
+            Some(session_id.clone()),
+        );
+
+        assert_eq!(malformed.session_id(), Some(&session_id));
+    }
+
+    #[test]
+    fn malformed_entry_accepts_string_types() {
+        let malformed = MalformedEntry::new(
+            1,
+            String::from("owned string"),
+            String::from("owned error"),
+            None,
+        );
+
+        assert_eq!(malformed.raw_line(), "owned string");
+        assert_eq!(malformed.error_message(), "owned error");
     }
 
     // ===== ContentBlock Variant Tests =====

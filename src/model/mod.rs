@@ -5,6 +5,7 @@
 pub mod error;
 pub mod identifiers;
 pub mod log_entry;
+pub mod malformed_entry;
 pub mod message;
 pub mod session;
 pub mod stats;
@@ -17,6 +18,7 @@ pub use identifiers::{
     SessionId, ToolUseId,
 };
 pub use log_entry::{EntryMetadata, EntryType, LogEntry};
+pub use malformed_entry::MalformedEntry;
 pub use message::{ContentBlock, Message, MessageContent, Role, ToolCall, ToolName};
 pub use session::{AgentConversation, Session};
 pub use stats::{ModelPricing, PricingConfig, SessionStats, StatsFilter};
