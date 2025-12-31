@@ -1,0 +1,28 @@
+---
+source: tests/acceptance_scroll.rs
+expression: bottom_output
+---
+Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
+│{"FEATURE_DIR":"/home/claude/cclv/specs/001-claude-code-log-viewer","AVAILABLE│
+│                                                                              │
+│001-claude-code-log-viewer                                                    │
+│                                                                              │
+│[                                                                             │
+│  {                                                                           │
+│    "id": "cclv-07v.1",                                                       │
+│(+47 more lines)                                                              │
+│                                                                              │
+│[                                                                             │
+│  {                                                                           │
+│    "id": "cclv-07v",                                                         │
+│(+97 more lines)                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

@@ -1,0 +1,28 @@
+---
+source: tests/acceptance_scroll.rs
+expression: paged_up_output
+---
+Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
+│(+177 more lines)                                                             │
+│                                                                              │
+│Launching skill: beads-project-tracking                                       │
+│                                                                              │
+│Base directory for this skill: /home/claude/.claude/skills/beads-project-track│
+│                                                                              │
+│# Beads Project Tracking                                                      │
+│(+202 more lines)                                                             │
+│                                                                              │
+│Now let me follow the coordinator protocol:                                   │
+│                                                                              │
+│1. **Setup**: Run the prerequisites check                                     │
+│2. **Get feature branch and epic**: Get current branch and find epic          │
+│3. **Check checklists**: Check if there are any checklists                    │
+│4. **Load implementation context**: Read the spec files                       │
+│5. **Find ready work**: Use bd ready to find available work                   │
+│6. **Execute implementation loop**: Delegate to subagents                     │
+│                                                                              │
+│Let me start with steps 1-3 in parallel.                                      │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

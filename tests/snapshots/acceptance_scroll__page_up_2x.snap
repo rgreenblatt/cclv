@@ -1,0 +1,28 @@
+---
+source: tests/acceptance_scroll.rs
+expression: second_page_up_output
+---
+Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
+│🔧  Tool: Bash                                                                 │
+│  {                                                                           │
+│    "command": "./.specify/scripts/bash/check-prerequisites.sh --json 2>/dev/n│
+│    "description": "Check prerequisites for spec setup"                       │
+│  }                                                                           │
+│                                                                              │
+│🔧  Tool: Bash                                                                 │
+│  {                                                                           │
+│    "command": "git branch --show-current",                                   │
+│    "description": "Get current git branch"                                   │
+│  }                                                                           │
+│                                                                              │
+│🔧+ Tool: Bash                                                                 │
+│  {                                                                           │
+│    "command": "bd ready --json 2>/dev/null | head -50",                      │
+│    "description": "Find ready work items"                                    │
+│  }                                                                           │
+│                                                                              │
+│🔧  Tool: Bash                                                                 │
+│  {                                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

@@ -81,12 +81,9 @@ fn scroll_up_with_k_key_changes_viewport() {
     let mut harness = AcceptanceTestHarness::from_fixture_with_size(SCROLL_FIXTURE, 80, 24)
         .expect("Should load fixture");
 
-    harness.render_to_string();
-
-    // Scroll down first to have room to scroll back up
-    for _ in 0..10 {
-        harness.send_key(KeyCode::Char('j'));
-    }
+    // Scroll down using Page Down to ensure we're past the first screen
+    harness.send_key(KeyCode::PageDown);
+    harness.send_key(KeyCode::PageDown);
 
     let scrolled_down_output = harness.render_to_string();
 

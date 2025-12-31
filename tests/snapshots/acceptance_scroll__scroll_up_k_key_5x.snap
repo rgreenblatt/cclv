@@ -1,0 +1,28 @@
+---
+source: tests/acceptance_scroll.rs
+expression: scrolled_up_output
+---
+Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
+│I'll start by loading the required skill and then following the coordinator pr│
+│                                                                              │
+│🔧  Tool: Skill                                                                │
+│  {                                                                           │
+│    "skill": "efficient-subagent-orchestration"                               │
+│  }                                                                           │
+│                                                                              │
+│🔧  Tool: Skill                                                                │
+│  {                                                                           │
+│    "skill": "beads-project-tracking"                                         │
+│  }                                                                           │
+│                                                                              │
+│Launching skill: efficient-subagent-orchestration                             │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

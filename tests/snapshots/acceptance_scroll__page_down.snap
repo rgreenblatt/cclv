@@ -1,0 +1,28 @@
+---
+source: tests/acceptance_scroll.rs
+expression: paged_output
+---
+Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
+│🔧  Tool: Skill                                                                │
+│  {                                                                           │
+│    "skill": "efficient-subagent-orchestration"                               │
+│  }                                                                           │
+│                                                                              │
+│🔧. Tool: Skill                                                                │
+│  {                                                                           │
+│    "skill": "beads-project-tracking"                                         │
+│  }                                                                           │
+│                                                                              │
+│Launching skill: efficient-subagent-orchestration                             │
+│                                                                              │
+│Base directory for this skill: /home/claude/.claude/skills/efficient-subagent-│
+│                                                                              │
+│# Efficient Subagent Orchestration for Main Agent                             │
+│(+177 more lines)                                                             │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

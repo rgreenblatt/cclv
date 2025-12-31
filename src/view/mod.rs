@@ -244,11 +244,29 @@ where
     #[doc(hidden)]
     pub fn new_for_test(
         terminal: Terminal<B>,
-        app_state: AppState,
+        mut app_state: AppState,
         input_source: InputSource,
         line_counter: usize,
         key_bindings: KeyBindings,
     ) -> Self {
+        // Recompute layout after test harness has added entries (matches production new())
+        // Get terminal dimensions for layout params
+        let width = terminal.size().map(|r| r.width).unwrap_or(80);
+        let params = LayoutParams::new(width, app_state.global_wrap);
+
+        // Recompute layout for main conversation
+        if let Some(main_view) = app_state.main_conversation_view_mut() {
+            main_view.recompute_layout(params, calculate_entry_height);
+        }
+
+        // Recompute layout for all subagent conversations
+        let subagent_count = app_state.session_view().subagent_ids().count();
+        for idx in 0..subagent_count {
+            if let Some(sub_view) = app_state.subagent_conversation_view_mut(idx) {
+                sub_view.recompute_layout(params, calculate_entry_height);
+            }
+        }
+
         Self {
             terminal,
             app_state,
