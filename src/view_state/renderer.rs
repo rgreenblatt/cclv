@@ -251,12 +251,21 @@ pub fn compute_entry_lines(
 
     // Apply entry index prefix if requested
     if let Some(index) = entry_index {
-        // Prepend index to all lines EXCEPT the separator (last line)
+        // Prepend index to FIRST content line only, continuation indent to rest
         let separator = lines.pop(); // Remove separator temporarily
-        lines = lines
-            .into_iter()
-            .map(|line| prepend_index_to_line(line, index, focused))
-            .collect();
+
+        let mut prefixed_lines = Vec::with_capacity(lines.len());
+        for (i, line) in lines.into_iter().enumerate() {
+            if i == 0 {
+                // First line: prepend entry index
+                prefixed_lines.push(prepend_index_to_line(line, index, focused));
+            } else {
+                // Continuation lines: prepend blank indent
+                prefixed_lines.push(prepend_continuation_indent(line, focused));
+            }
+        }
+        lines = prefixed_lines;
+
         if let Some(sep) = separator {
             lines.push(sep); // Re-add separator without prefix
         }
@@ -550,26 +559,42 @@ fn render_block(
     }
 }
 
-/// Format entry index as right-aligned 4-character string with separator.
+/// Format entry index for the first line of an entry.
 ///
-/// Converts 0-based index to 1-based display number, right-aligns in 4 characters,
-/// and appends the "│" separator.
+/// Converts 0-based index to 1-based display number, formats as "│ NNN "
+/// where NNN is right-aligned in 4 characters.
 ///
 /// # Arguments
 /// * `entry_index` - 0-based index of the entry in the conversation
 ///
 /// # Returns
-/// Formatted string like "   1│", "  42│", "1000│"
+/// Formatted string like "│   1 ", "│  42 ", "│1000 "
 ///
 /// # Examples
 /// ```ignore
-/// format_entry_index(0)   => "   1│"
-/// format_entry_index(41)  => "  42│"
-/// format_entry_index(999) => "1000│"
+/// format_entry_index(0)   => "│   1 "
+/// format_entry_index(41)  => "│  42 "
+/// format_entry_index(999) => "│1000 "
 /// ```
 fn format_entry_index(entry_index: usize) -> String {
     let display_num = entry_index + 1; // Convert 0-based to 1-based
-    format!("{:>4}│", display_num)
+    format!("│{:>4} ", display_num)
+}
+
+/// Format continuation indent for lines after the first line of an entry.
+///
+/// Returns blank space matching the width of the entry index, so continuation
+/// lines align with the content of the first line.
+///
+/// # Returns
+/// String "│     " (6 characters: │ + 4 spaces for number + 1 trailing space)
+///
+/// # Examples
+/// ```ignore
+/// format_continuation_indent() => "│     "
+/// ```
+fn format_continuation_indent() -> String {
+    "│     ".to_string()
 }
 
 /// Prepend the entry index to a line as a styled prefix.
@@ -591,10 +616,7 @@ fn prepend_index_to_line(line: Line<'static>, entry_index: usize, focused: bool)
     // Apply different styling based on focus state
     let index_span = if focused {
         // Focused: Cyan color (no DIM modifier for visibility)
-        Span::styled(
-            index_text,
-            Style::default().fg(Color::Cyan),
-        )
+        Span::styled(index_text, Style::default().fg(Color::Cyan))
     } else {
         // Unfocused: DarkGray + DIM (subdued)
         Span::styled(
@@ -607,6 +629,39 @@ fn prepend_index_to_line(line: Line<'static>, entry_index: usize, focused: bool)
 
     // Create new line with index span prepended
     let mut new_spans = vec![index_span];
+    new_spans.extend(line.spans);
+
+    Line::from(new_spans)
+}
+
+/// Prepend continuation indent to a line (for lines after the first line of an entry).
+///
+/// Takes an existing Line and prepends blank space matching the width of the entry index,
+/// ensuring continuation lines align with the content of the first line.
+///
+/// # Arguments
+/// * `line` - The line to prepend the indent to
+/// * `focused` - Whether this entry is currently focused (affects indent styling)
+///
+/// # Returns
+/// A new Line with the continuation indent prepended as the first span
+fn prepend_continuation_indent(line: Line<'static>, focused: bool) -> Line<'static> {
+    let indent_text = format_continuation_indent();
+
+    // Apply same styling as entry index for consistency
+    let indent_span = if focused {
+        Span::styled(indent_text, Style::default().fg(Color::Cyan))
+    } else {
+        Span::styled(
+            indent_text,
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::DIM),
+        )
+    };
+
+    // Create new line with indent span prepended
+    let mut new_spans = vec![indent_span];
     new_spans.extend(line.spans);
 
     Line::from(new_spans)

@@ -575,7 +575,7 @@ fn test_tool_result_wraps_long_lines() {
     // Render with EXPLICIT per-entry Wrap override (not just global)
     let lines = compute_entry_lines(
         &entry,
-        true, // expanded
+        true,                                       // expanded
         WrapContext::from_override(WrapMode::Wrap), // EXPLICIT override
         width,
         collapse_threshold,
@@ -725,7 +725,7 @@ fn test_tool_use_nowrap_does_not_wrap() {
     // Render with EXPLICIT Wrap override (should wrap)
     let wrapped_lines = compute_entry_lines(
         &entry,
-        true, // expanded
+        true,                                       // expanded
         WrapContext::from_override(WrapMode::Wrap), // EXPLICIT override
         width,
         collapse_threshold,
@@ -740,7 +740,7 @@ fn test_tool_use_nowrap_does_not_wrap() {
     // Render with global Wrap (defaults to NoWrap for ToolUse)
     let default_nowrap_lines = compute_entry_lines(
         &entry,
-        true, // expanded
+        true,                                     // expanded
         WrapContext::from_global(WrapMode::Wrap), // Global - ToolUse ignores this
         width,
         collapse_threshold,
@@ -810,7 +810,7 @@ fn test_tool_use_header_has_emoji_indicator() {
 
 #[test]
 fn test_entry_index_0_shows_as_1_prefix() {
-    // Create entry with simple text
+    // Create entry with simple text (single line)
     let text = "Test message";
     let entry = create_entry_with_text(text);
 
@@ -823,29 +823,24 @@ fn test_entry_index_0_shows_as_1_prefix() {
         10,
         3,
         &styles,
-        Some(0), // Entry index 0 should display as "   1│"
+        Some(0), // Entry index 0 should display as "│   1 " on first line
         false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
         false, // Not focused
     );
 
-    // ASSERTION: Every content line should have "   1│" prefix
-    // (excluding the separator line at the end)
-    let content_lines = &lines[..lines.len() - 1]; // All but last (separator)
+    // ASSERTION: First (and only) content line should have "│   1 " prefix
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect();
 
-    for line in content_lines {
-        let line_text: String = line
-            .spans
-            .iter()
-            .map(|span| span.content.as_ref())
-            .collect();
-
-        assert!(
-            line_text.starts_with("   1│"),
-            "Line should start with '   1│', got: '{}'",
-            line_text
-        );
-    }
+    assert!(
+        first_line_text.starts_with("│   1 "),
+        "Line should start with '│   1 ', got: '{}'",
+        first_line_text
+    );
 
     // Verify the prefix span has DarkGray color and DIM modifier
     let first_span = &lines[0].spans[0];
@@ -865,7 +860,7 @@ fn test_entry_index_0_shows_as_1_prefix() {
 
 #[test]
 fn test_entry_index_41_shows_as_42_prefix() {
-    // Create entry with simple text
+    // Create entry with simple text (single line)
     let text = "Test message";
     let entry = create_entry_with_text(text);
 
@@ -878,33 +873,29 @@ fn test_entry_index_41_shows_as_42_prefix() {
         10,
         3,
         &styles,
-        Some(41), // Entry index 41 should display as "  42│"
+        Some(41), // Entry index 41 should display as "│  42 "
         false,    // Not a subagent view
         &crate::state::SearchState::Inactive,
         false, // Not focused
     );
 
-    // ASSERTION: Every content line should have "  42│" prefix (right-aligned in 4 chars)
-    let content_lines = &lines[..lines.len() - 1]; // All but last (separator)
+    // ASSERTION: First (and only) content line should have "│  42 " prefix (right-aligned in 4 chars)
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect();
 
-    for line in content_lines {
-        let line_text: String = line
-            .spans
-            .iter()
-            .map(|span| span.content.as_ref())
-            .collect();
-
-        assert!(
-            line_text.starts_with("  42│"),
-            "Line should start with '  42│', got: '{}'",
-            line_text
-        );
-    }
+    assert!(
+        first_line_text.starts_with("│  42 "),
+        "Line should start with '│  42 ', got: '{}'",
+        first_line_text
+    );
 }
 
 #[test]
 fn test_entry_index_999_shows_as_1000_prefix() {
-    // Create entry with simple text
+    // Create entry with simple text (single line)
     let text = "Test message";
     let entry = create_entry_with_text(text);
 
@@ -917,28 +908,24 @@ fn test_entry_index_999_shows_as_1000_prefix() {
         10,
         3,
         &styles,
-        Some(999), // Entry index 999 should display as "1000│" (4 digits)
+        Some(999), // Entry index 999 should display as "│1000 " (4 digits)
         false,     // Not a subagent view
         &crate::state::SearchState::Inactive,
         false, // Not focused
     );
 
-    // ASSERTION: Every content line should have "1000│" prefix (right-aligned in 4 chars)
-    let content_lines = &lines[..lines.len() - 1]; // All but last (separator)
+    // ASSERTION: First (and only) content line should have "│1000 " prefix (right-aligned in 4 chars)
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect();
 
-    for line in content_lines {
-        let line_text: String = line
-            .spans
-            .iter()
-            .map(|span| span.content.as_ref())
-            .collect();
-
-        assert!(
-            line_text.starts_with("1000│"),
-            "Line should start with '1000│', got: '{}'",
-            line_text
-        );
-    }
+    assert!(
+        first_line_text.starts_with("│1000 "),
+        "Line should start with '│1000 ', got: '{}'",
+        first_line_text
+    );
 }
 
 #[test]
@@ -1004,22 +991,34 @@ fn test_entry_index_prefix_on_multiline_entry() {
         false, // Not focused
     );
 
-    // ASSERTION: All 5 content lines should have "   1│" prefix
+    // ASSERTION: First line should have "│   1 " prefix, continuation lines "│     "
     // Total lines = 5 content + 1 separator = 6
     assert_eq!(lines.len(), 6, "Should have 5 content lines + 1 separator");
 
-    let content_lines = &lines[..5]; // First 5 lines are content
+    // First line should have entry number
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect();
 
-    for (i, line) in content_lines.iter().enumerate() {
-        let line_text: String = line
+    assert!(
+        first_line_text.starts_with("│   1 "),
+        "First line should start with '│   1 ', got: '{}'",
+        first_line_text
+    );
+
+    // Continuation lines should have blank indent
+    for i in 1..5 {
+        let line_text: String = lines[i]
             .spans
             .iter()
             .map(|span| span.content.as_ref())
             .collect();
 
         assert!(
-            line_text.starts_with("   1│"),
-            "Line {} should start with '   1│', got: '{}'",
+            line_text.starts_with("│     "),
+            "Continuation line {} should start with '│     ', got: '{}'",
             i,
             line_text
         );
@@ -1115,7 +1114,7 @@ fn test_initial_prompt_label_does_not_appear_in_main_view() {
     );
 
     // ASSERTION: Should NOT have Initial Prompt label
-    // First line should be the content with index prefix "   1│First entry in main view"
+    // First line should be the content with index prefix "│   1 First entry in main view"
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -1129,8 +1128,8 @@ fn test_initial_prompt_label_does_not_appear_in_main_view() {
     );
 
     assert!(
-        first_line_text.starts_with("   1│"),
-        "First line should start with entry index prefix, got: '{}'",
+        first_line_text.starts_with("│   1 "),
+        "First line should start with entry index prefix '│   1 ', got: '{}'",
         first_line_text
     );
 }
@@ -1170,8 +1169,8 @@ fn test_initial_prompt_label_only_for_first_entry_in_subagent() {
     );
 
     assert!(
-        first_line_text.starts_with("   2│"),
-        "Second entry should have index prefix '   2│', got: '{}'",
+        first_line_text.starts_with("│   2 "),
+        "Second entry should have index prefix '│   2 ', got: '{}'",
         first_line_text
     );
 }
@@ -1242,19 +1241,30 @@ fn test_entry_index_prefix_on_collapsed_entry() {
     // ASSERTION: Should have 3 summary lines + 1 collapse indicator + 1 separator = 5 total
     assert_eq!(lines.len(), 5, "Collapsed entry should have 5 lines");
 
-    // All lines except separator should have "  10│" prefix
-    let content_lines = &lines[..4]; // 3 summary + 1 collapse indicator
+    // First line should have entry number "│  10 "
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect();
 
-    for (i, line) in content_lines.iter().enumerate() {
-        let line_text: String = line
+    assert!(
+        first_line_text.starts_with("│  10 "),
+        "First line should start with '│  10 ', got: '{}'",
+        first_line_text
+    );
+
+    // Continuation lines (2nd summary line, 3rd summary line, collapse indicator) should have "│     "
+    for i in 1..4 {
+        let line_text: String = lines[i]
             .spans
             .iter()
             .map(|span| span.content.as_ref())
             .collect();
 
         assert!(
-            line_text.starts_with("  10│"),
-            "Line {} should start with '  10│', got: '{}'",
+            line_text.starts_with("│     "),
+            "Continuation line {} should start with '│     ', got: '{}'",
             i,
             line_text
         );
@@ -1710,10 +1720,10 @@ fn test_focused_entry_has_cyan_index() {
         10,
         3,
         &styles,
-        Some(0),  // With index prefix
-        false,    // Not a subagent view
+        Some(0), // With index prefix
+        false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
-        true,     // FOCUSED
+        true, // FOCUSED
     );
 
     // Render entry as UNFOCUSED with index prefix
@@ -1725,10 +1735,10 @@ fn test_focused_entry_has_cyan_index() {
         10,
         3,
         &styles,
-        Some(0),  // With index prefix
-        false,    // Not a subagent view
+        Some(0), // With index prefix
+        false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
-        false,    // NOT FOCUSED
+        false, // NOT FOCUSED
     );
 
     // ASSERTION 1: Focused entry should have Cyan-colored INDEX PREFIX
@@ -1800,7 +1810,7 @@ fn test_entry_index_appears_only_on_first_line() {
         Some(570), // Entry index 570 should display as "│ 571 " on first line only
         false,     // Not a subagent view
         &crate::state::SearchState::Inactive,
-        false,     // Not focused
+        false, // Not focused
     );
 
     // ASSERTION 1: First content line should have entry number "│ 571 " (with space, no separator after)
