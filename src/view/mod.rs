@@ -546,7 +546,10 @@ mod tests {
 
     #[test]
     fn handle_key_hash_sets_subagent_filter_when_tab_selected() {
-        use crate::model::{AgentId, ConversationEntry, LogEntry, Message, MessageContent, Role, EntryType, EntryUuid, SessionId, EntryMetadata, TokenUsage};
+        use crate::model::{
+            AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId, TokenUsage,
+        };
         use chrono::Utc;
 
         let mut app = create_test_app();
@@ -565,7 +568,8 @@ mod tests {
             message,
             EntryMetadata::default(),
         );
-        app.app_state.add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
+        app.app_state
+            .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
 
         // Select the subagent tab (index 0)
         app.app_state.selected_tab = Some(0);

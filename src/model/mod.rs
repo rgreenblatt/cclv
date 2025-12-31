@@ -5,6 +5,7 @@
 pub mod conversation_entry;
 pub mod error;
 pub mod identifiers;
+pub mod key_action;
 pub mod log_entry;
 pub mod malformed_entry;
 pub mod message;
@@ -19,6 +20,7 @@ pub use identifiers::{
     AgentId, EntryUuid, InvalidAgentId, InvalidSessionId, InvalidToolUseId, InvalidUuid, SessionId,
     ToolUseId,
 };
+pub use key_action::KeyAction;
 pub use log_entry::{EntryMetadata, EntryType, LogEntry};
 pub use malformed_entry::MalformedEntry;
 pub use message::{ContentBlock, Message, MessageContent, Role, ToolCall, ToolName};
