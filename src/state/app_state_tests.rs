@@ -462,3 +462,135 @@ fn has_new_messages_indicator_returns_false_when_neither_live_nor_paused() {
 
     assert!(!state.has_new_messages_indicator());
 }
+
+// ===== AppState::cycle_focus Tests =====
+
+#[test]
+fn cycle_focus_moves_from_main_to_subagent() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Main;
+
+    state.cycle_focus();
+
+    assert_eq!(state.focus, FocusPane::Subagent);
+}
+
+#[test]
+fn cycle_focus_moves_from_subagent_to_stats() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Subagent;
+
+    state.cycle_focus();
+
+    assert_eq!(state.focus, FocusPane::Stats);
+}
+
+#[test]
+fn cycle_focus_moves_from_stats_to_main() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Stats;
+
+    state.cycle_focus();
+
+    assert_eq!(state.focus, FocusPane::Main);
+}
+
+#[test]
+fn cycle_focus_skips_search_pane() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Search;
+
+    state.cycle_focus();
+
+    // Search should cycle to Main (not stay on Search)
+    assert_eq!(state.focus, FocusPane::Main);
+}
+
+#[test]
+fn cycle_focus_full_cycle_returns_to_start() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Main;
+
+    state.cycle_focus(); // Main -> Subagent
+    state.cycle_focus(); // Subagent -> Stats
+    state.cycle_focus(); // Stats -> Main
+
+    assert_eq!(state.focus, FocusPane::Main);
+}
+
+// ===== AppState::focus_main Tests =====
+
+#[test]
+fn focus_main_sets_focus_to_main() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Subagent;
+
+    state.focus_main();
+
+    assert_eq!(state.focus, FocusPane::Main);
+}
+
+#[test]
+fn focus_main_when_already_on_main() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Main;
+
+    state.focus_main();
+
+    assert_eq!(state.focus, FocusPane::Main);
+}
+
+// ===== AppState::focus_subagent Tests =====
+
+#[test]
+fn focus_subagent_sets_focus_to_subagent() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Main;
+
+    state.focus_subagent();
+
+    assert_eq!(state.focus, FocusPane::Subagent);
+}
+
+#[test]
+fn focus_subagent_when_already_on_subagent() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Subagent;
+
+    state.focus_subagent();
+
+    assert_eq!(state.focus, FocusPane::Subagent);
+}
+
+// ===== AppState::focus_stats Tests =====
+
+#[test]
+fn focus_stats_sets_focus_to_stats() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Main;
+
+    state.focus_stats();
+
+    assert_eq!(state.focus, FocusPane::Stats);
+}
+
+#[test]
+fn focus_stats_when_already_on_stats() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Stats;
+
+    state.focus_stats();
+
+    assert_eq!(state.focus, FocusPane::Stats);
+}
