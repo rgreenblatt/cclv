@@ -316,3 +316,42 @@ fn handle_mouse_click_clicking_same_tab_is_idempotent() {
         "Clicking already-selected tab should keep it selected"
     );
 }
+
+// ===== Division by Zero Guard Tests =====
+
+#[test]
+fn detect_tab_click_returns_no_tab_when_tab_area_width_is_zero() {
+    let agent1 = agent_id("agent-1");
+    let agent_ids = vec![&agent1];
+
+    // Tab area with width == 0
+    let tab_area = Rect::new(0, 0, 0, 1);
+
+    // Click anywhere - should not panic
+    let result = detect_tab_click(5, 0, tab_area, &agent_ids);
+
+    assert_eq!(
+        result,
+        TabClickResult::NoTab,
+        "Zero width tab area should return NoTab (not panic)"
+    );
+}
+
+#[test]
+fn detect_tab_click_returns_no_tab_when_tab_width_rounds_to_zero() {
+    let agent1 = agent_id("agent-1");
+    let agent2 = agent_id("agent-2");
+    let agent_ids = vec![&agent1, &agent2];
+
+    // Tab area width 1 with 2 tabs = tab_width 0
+    let tab_area = Rect::new(0, 0, 1, 1);
+
+    // Click at x=0 (within bounds) - should not panic
+    let result = detect_tab_click(0, 0, tab_area, &agent_ids);
+
+    assert_eq!(
+        result,
+        TabClickResult::NoTab,
+        "Tab width rounding to zero should return NoTab (not panic)"
+    );
+}

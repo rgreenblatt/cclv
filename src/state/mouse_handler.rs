@@ -53,10 +53,20 @@ pub fn detect_tab_click(
         return TabClickResult::NoTab;
     }
 
+    // Guard: zero width tab area cannot have clickable tabs
+    if tab_area.width == 0 {
+        return TabClickResult::NoTab;
+    }
+
     // Calculate which tab was clicked
     // Each tab gets equal width
     let tab_count = agent_ids.len() as u16;
     let tab_width = tab_area.width / tab_count;
+
+    // Guard: if tabs are too narrow to render (width rounds to zero), no click
+    if tab_width == 0 {
+        return TabClickResult::NoTab;
+    }
 
     // Relative position within tab area
     let relative_x = click_x - tab_area.x;
