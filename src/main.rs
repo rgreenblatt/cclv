@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_source = cclv::source::detect_input_source(args.file.clone())?;
 
     // Create CliArgs for TUI using resolved config
-    let cli_args = cclv::view::CliArgs::new(config.show_stats, config.follow);
+    let cli_args = cclv::view::CliArgs::new(config.theme, config.show_stats, config.follow);
 
     // Run the TUI with the input source
     cclv::view::run_with_source(input_source, cli_args)?;
@@ -260,5 +260,53 @@ mod tests {
         assert_eq!(args.search, Some("error".to_string()));
         assert!(args.stats);
         assert_eq!(args.theme, "monokai");
+    }
+
+    #[test]
+    fn test_theme_flows_through_config_precedence_chain() {
+        use cclv::config::{apply_cli_overrides, apply_env_overrides, merge_config, ConfigFile};
+
+        // Simulate full precedence chain: Defaults → Config File → Env Vars → CLI Args
+        let config_file = ConfigFile {
+            theme: Some("solarized-dark".to_string()),
+            follow: None,
+            show_stats: None,
+            collapse_threshold: None,
+            summary_lines: None,
+            line_wrap: None,
+            log_buffer_capacity: None,
+            keybindings: None,
+            pricing: None,
+        };
+
+        // Step 1: Merge with defaults
+        let merged = merge_config(Some(config_file));
+        assert_eq!(
+            merged.theme, "solarized-dark",
+            "Config file should override default theme"
+        );
+
+        // Step 2: Apply env override (simulated - not actually setting env var)
+        let with_env = apply_env_overrides(merged);
+        // Theme unchanged since CCLV_THEME not set
+        assert_eq!(with_env.theme, "solarized-dark");
+
+        // Step 3: Apply CLI override
+        let with_cli = apply_cli_overrides(with_env, Some("monokai".to_string()), None, None);
+        assert_eq!(
+            with_cli.theme, "monokai",
+            "CLI theme should override all other sources"
+        );
+    }
+
+    #[test]
+    fn test_theme_default_is_base16_ocean() {
+        use cclv::config::ResolvedConfig;
+
+        let config = ResolvedConfig::default();
+        assert_eq!(
+            config.theme, "base16-ocean",
+            "Default theme should be base16-ocean per CLI contract"
+        );
     }
 }

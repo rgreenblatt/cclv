@@ -504,11 +504,22 @@ where
 /// use cclv::view::CliArgs;
 ///
 /// let args = CliArgs::new(
-///     true,   // Show stats panel on startup
-///     true,   // Enable live-follow mode
+///     "base16-ocean".to_string(),  // Theme name
+///     true,                         // Show stats panel on startup
+///     true,                         // Enable live-follow mode
 /// );
 /// ```
 pub struct CliArgs {
+    /// Theme name for syntax highlighting
+    ///
+    /// Maps to `--theme` CLI flag, `CCLV_THEME` env var, or config file.
+    /// Supported values: "base16-ocean", "solarized-dark", "solarized-light", "monokai".
+    ///
+    /// Note: Currently stored but not used for rendering due to tui-markdown limitations.
+    /// The library hardcodes "base16-ocean.dark" theme. This field is available for
+    /// future enhancement when theme selection is added to tui-markdown.
+    pub theme: String,
+
     /// Whether to show the statistics panel on startup
     ///
     /// Maps to `--stats` CLI flag. When true, the stats panel
@@ -527,9 +538,13 @@ pub struct CliArgs {
 }
 
 impl CliArgs {
-    /// Create new CliArgs
-    pub fn new(stats: bool, follow: bool) -> Self {
-        Self { stats, follow }
+    /// Create new CliArgs with theme configuration
+    pub fn new(theme: String, stats: bool, follow: bool) -> Self {
+        Self {
+            theme,
+            stats,
+            follow,
+        }
     }
 }
 
@@ -1841,10 +1856,12 @@ mod tests {
             "Should have consumed both log entries"
         );
         assert_eq!(
-            app.app_state.log_pane.entries()[0].message, "test message 1"
+            app.app_state.log_pane.entries()[0].message,
+            "test message 1"
         );
         assert_eq!(
-            app.app_state.log_pane.entries()[1].message, "test message 2"
+            app.app_state.log_pane.entries()[1].message,
+            "test message 2"
         );
     }
 
@@ -1877,5 +1894,37 @@ mod tests {
             "poll_log_entries should be non-blocking, took {:?}",
             elapsed
         );
+    }
+
+    // ===== CliArgs Tests =====
+
+    #[test]
+    fn cli_args_new_stores_theme() {
+        let args = CliArgs::new("monokai".to_string(), false, false);
+        assert_eq!(args.theme, "monokai", "CliArgs should store theme value");
+    }
+
+    #[test]
+    fn cli_args_new_stores_all_fields() {
+        let args = CliArgs::new("solarized-dark".to_string(), true, true);
+        assert_eq!(args.theme, "solarized-dark", "Theme should be stored");
+        assert!(args.stats, "Stats flag should be stored");
+        assert!(args.follow, "Follow flag should be stored");
+    }
+
+    #[test]
+    fn cli_args_supports_all_valid_themes() {
+        // Per CLI contract, these are the valid theme names
+        let valid_themes = vec![
+            "base16-ocean",
+            "solarized-dark",
+            "solarized-light",
+            "monokai",
+        ];
+
+        for theme in valid_themes {
+            let args = CliArgs::new(theme.to_string(), false, false);
+            assert_eq!(args.theme, theme, "CliArgs should accept theme: {}", theme);
+        }
     }
 }
