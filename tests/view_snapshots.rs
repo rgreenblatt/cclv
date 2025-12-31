@@ -786,6 +786,7 @@ fn bug_initial_screen_blank_until_keypress() {
     // Verify buffer has content after initial render
     let buffer = app.terminal().backend().buffer();
     let output = buffer_to_string(buffer);
+    insta::assert_snapshot!("bug_initial_screen_blank_until_keypress", output);
 
     assert!(
         !output.is_empty(),

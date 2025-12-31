@@ -404,6 +404,11 @@ where
                 );
             }
 
+            // Stats panel visibility
+            KeyAction::ToggleStats => {
+                self.app_state.stats_visible = !self.app_state.stats_visible;
+            }
+
             // Stats filters (legacy keybindings not yet in KeyBindings)
             KeyAction::FilterGlobal => {
                 self.app_state.stats_filter = crate::model::StatsFilter::Global;

@@ -1,0 +1,44 @@
+---
+source: tests/view_snapshots.rs
+expression: output
+---
+Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
+│                                                                              │
+│                                                                              │
+│Let me understand the task:                                                   │
+│                                                                              │
+│1. I'm a coordinator agent that CANNOT read/write code directly               │
+│2. I need to claim ONE bead from the epic cclv-07v                            │
+│3. I need to first run the efficient-subagent-orchestration skill             │
+│4. I need to follow the protocol: setup, find epic, check checklists, load con│
+│                                                                              │
+│Let me start by loading the required skill and then following the protocol.   │
+│                                                                              │
+│First, I'll invoke the efficient-subagent-orchestration skill as required.    │
+│                                                                              │
+│I'll start by loading the required skill and then following the coordinator pr│
+│                                                                              │
+│🔧  Tool: Skill                                                                │
+│  {                                                                           │
+│    "skill": "efficient-subagent-orchestration"                               │
+│  }                                                                           │
+│                                                                              │
+│🔧  Tool: Skill                                                                │
+│  {                                                                           │
+│    "skill": "beads-project-tracking"                                         │
+│  }                                                                           │
+│                                                                              │
+│Launching skill: efficient-subagent-orchestration                             │
+│                                                                              │
+│Base directory for this skill: /home/claude/.claude/skills/efficient-subagent-│
+│                                                                              │
+│# Efficient Subagent Orchestration for Main Agent                             │
+│(+177 more lines)                                                             │
+│                                                                              │
+│Launching skill: beads-project-tracking                                       │
+│                                                                              │
+│Base directory for this skill: /home/claude/.claude/skills/beads-project-track│
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

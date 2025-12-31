@@ -47,7 +47,6 @@ const WITH_SUBAGENTS_FIXTURE: &str = "tests/fixtures/with_subagents.jsonl";
 // ===== US3 Scenario 1: View Stats Panel =====
 
 #[test]
-#[ignore = "ToggleStats action not yet implemented - KeyAction::ToggleStats defined but no handler"]
 fn us3_scenario1_view_stats_panel() {
     // US3-SC1
     // GIVEN: A loaded session
@@ -182,7 +181,7 @@ fn us3_scenario2_filter_main_agent() {
 // ===== US3 Scenario 3: Tool Breakdown =====
 
 #[test]
-#[ignore = "Stats panel toggle and rendering not fully wired - need ToggleStats handler"]
+#[ignore = "Tool statistics collection not yet implemented - tool_use entries need to be tracked in SessionStats"]
 fn us3_scenario3_tool_breakdown() {
     // US3-SC3
     // GIVEN: Stats are displayed
@@ -244,7 +243,6 @@ fn us3_scenario3_tool_breakdown() {
 // ===== US3 Scenario 4: Filter Subagent =====
 
 #[test]
-#[ignore = "Subagent support not implemented - Session.subagents() returns empty"]
 fn us3_scenario4_filter_subagent() {
     // US3-SC4
     // GIVEN: A session with multiple subagents
@@ -258,7 +256,7 @@ fn us3_scenario4_filter_subagent() {
 
     // IF YES: Session loaded with subagents
     let initial_state = harness.state();
-    let subagent_count = initial_state.session_view().subagents().len();
+    let subagent_count = initial_state.session_view().subagent_ids().count();
 
     assert!(
         subagent_count > 0,

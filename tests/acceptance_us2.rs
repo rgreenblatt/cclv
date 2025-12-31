@@ -72,18 +72,10 @@ fn us2_scenario1_load_navigate() {
 // ===== US2 Scenario 2: Switch Subagent Tabs =====
 
 #[test]
-#[ignore = "Subagent tab switching not yet implemented - Session model needs parent_tool_use_id routing"]
 fn us2_scenario2_switch_subagent_tabs() {
     // GIVEN: A loaded session with subagents
     // WHEN: User clicks on a subagent tab
     // THEN: They see that subagent's full conversation including initial prompt
-
-    // TODO(US2): Implement subagent tab routing
-    // - Session.add_conversation_entry() must detect parent_tool_use_id
-    // - Route entries to appropriate subagent conversation
-    // - Create subagent tabs dynamically when first entry appears
-    // - Support tab switching via Tab key or mouse clicks
-    // - See specs/001-claude-code-log-viewer/data-model.md
 
     // DOING: Load fixture with subagent entries
     // EXPECT: Subagents detected, can switch tabs to view conversations
@@ -92,7 +84,7 @@ fn us2_scenario2_switch_subagent_tabs() {
 
     // IF YES: Session loaded with subagent data
     let state = harness.state();
-    let subagent_count = state.session_view().subagents().len();
+    let subagent_count = state.session_view().subagent_ids().count();
 
     assert!(
         subagent_count > 0,

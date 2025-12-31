@@ -12,6 +12,7 @@ use crossterm::event::KeyCode;
 
 const MINIMAL_FIXTURE: &str = "tests/fixtures/minimal_session.jsonl";
 const TOOL_CALLS_FIXTURE: &str = "tests/fixtures/tool_calls.jsonl";
+const WITH_SUBAGENTS_FIXTURE: &str = "tests/fixtures/with_subagents.jsonl";
 
 // ===== US1 Scenario 1: Realtime Display =====
 
@@ -94,34 +95,28 @@ fn us1_scenario2_stdin_input() {
 // ===== US1 Scenario 3: Subagent Tab Appears =====
 
 #[test]
-#[ignore = "Subagent tab detection not yet implemented - Session model treats subagent entries as main conversation"]
 fn us1_scenario3_subagent_tab_appears() {
     // GIVEN: Viewer is showing a live session
     // WHEN: Main agent spawns a subagent
     // THEN: A new tab appears within 1 second showing subagent's conversation
 
-    // TODO(US1): Implement subagent tab detection
-    // - Session.add_conversation_entry() currently adds all entries to main_agent
-    // - Need to detect parent_tool_use_id and route to subagent conversations
-    // - Need to create subagent tabs dynamically when first subagent entry appears
-    // - See specs/001-claude-code-log-viewer/data-model.md for Session.subagents design
-
-    // When implemented, this test should verify:
-    // 1. Load fixture with subagent entries (tool_calls.jsonl has parent_tool_use_id entries)
-    // 2. Assert state.session().subagents().len() > 0
-    // 3. Assert subagent tab appears in UI output
-    // 4. Assert can switch to subagent tab via Tab key
-
-    // DOING: Load fixture with tool calls (contains some subagent-spawned entries)
-    // EXPECT: Entries load successfully and app can switch focus panes
-    let mut harness = AcceptanceTestHarness::from_fixture(TOOL_CALLS_FIXTURE)
-        .expect("Should load session with tool calls");
+    // DOING: Load fixture with subagent entries
+    // EXPECT: Entries load successfully and app can detect subagents
+    let mut harness = AcceptanceTestHarness::from_fixture(WITH_SUBAGENTS_FIXTURE)
+        .expect("Should load session with subagents");
 
     // IF YES: Session loaded with entries
     let state = harness.state();
     let entry_count = state.session_view().main().entries().len();
 
     assert!(entry_count > 0, "Should have loaded entries from fixture");
+
+    // VERIFY: Subagents detected from fixture
+    let subagent_count = state.session_view().subagent_ids().count();
+    assert!(
+        subagent_count > 0,
+        "Should detect subagents from fixture (entries with agentId)"
+    );
 
     // VERIFY: Can cycle through focus panes (infrastructure for tabs exists)
     harness.send_key(KeyCode::Tab); // Cycle focus

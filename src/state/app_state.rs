@@ -271,6 +271,9 @@ impl AppState {
     /// Cycle focus between Main, Subagent, and Stats.
     /// Skip Search in the cycle.
     /// Order: Main -> Subagent -> Stats -> Main
+    ///
+    /// Auto-selects first subagent tab when switching to Subagent pane
+    /// if no tab is currently selected and subagents exist.
     pub fn cycle_focus(&mut self) {
         self.focus = match self.focus {
             FocusPane::Main => FocusPane::Subagent,
@@ -278,6 +281,15 @@ impl AppState {
             FocusPane::Stats => FocusPane::Main,
             FocusPane::Search => FocusPane::Main,
         };
+
+        // Auto-select first subagent tab when switching to Subagent pane
+        if self.focus == FocusPane::Subagent && self.selected_tab.is_none() {
+            if let Some(session) = self.log_view.current_session() {
+                if session.subagent_ids().next().is_some() {
+                    self.selected_tab = Some(0);
+                }
+            }
+        }
     }
 
     /// Set focus to Main pane.
@@ -286,8 +298,20 @@ impl AppState {
     }
 
     /// Set focus to Subagent pane.
+    ///
+    /// Auto-selects first subagent tab if no tab is currently selected
+    /// and subagents exist.
     pub fn focus_subagent(&mut self) {
         self.focus = FocusPane::Subagent;
+
+        // Auto-select first subagent tab if none selected
+        if self.selected_tab.is_none() {
+            if let Some(session) = self.log_view.current_session() {
+                if session.subagent_ids().next().is_some() {
+                    self.selected_tab = Some(0);
+                }
+            }
+        }
     }
 
     /// Set focus to Stats pane.
