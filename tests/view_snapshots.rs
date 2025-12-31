@@ -892,3 +892,102 @@ fn bug_excessive_blank_lines_in_entry_rendering() {
         output
     );
 }
+
+/// Bug reproduction: cclv-07v.12.21.5
+/// Page Down twice causes blank viewport despite having content.
+/// Observed in tmux pane (181x46) with 31210-entry log file.
+/// After 2 Page Downs (offset ~92), viewport shows 100% blank.
+///
+/// EXPECTED: Viewport should be filled with entries at any scroll position.
+/// ACTUAL: Viewport is 100% blank after 2 Page Downs.
+///
+/// Reproduce manually:
+///   cargo run --release -- tests/fixtures/cc-session-log.jsonl
+///   Press PageDown twice
+///   Observe blank screen
+///
+/// NOTE: This test uses TuiApp to simulate actual key handling, not just widget rendering.
+/// The ConversationView widget in isolation renders correctly at offset 92, but the
+/// bug manifests through TuiApp's scroll handling.
+#[test]
+#[ignore = "cclv-07v.12.21.5: page down twice causes blank viewport"]
+fn bug_page_down_twice_causes_blank_viewport() {
+    use cclv::model::Session;
+    use cclv::source::FileSource;
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+    use std::path::PathBuf;
+
+    // Load minimal fixture from real log data (300 lines → ~294 entries)
+    let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/page_down_repro.jsonl"))
+        .expect("Should load fixture");
+    let entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = entries.len();
+
+    // Build session
+    let mut session = Session::new(entries[0].session_id().clone());
+    for entry in entries {
+        session.add_entry(entry);
+    }
+
+    // Create TuiApp like the real app
+    let backend = TestBackend::new(100, 46); // Match tmux viewport
+    let terminal = Terminal::new(backend).unwrap();
+    let app_state = AppState::new(session);
+    let key_bindings = cclv::config::keybindings::KeyBindings::default();
+    let input_source =
+        cclv::source::InputSource::Stdin(cclv::source::StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Initial render
+    app.render_test().expect("Initial render should succeed");
+
+    // Simulate 2 Page Downs (render after each to update state)
+    let page_down = KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE);
+    let _ = app.handle_key_test(page_down);
+    app.render_test().expect("Render after first PageDown");
+    let _ = app.handle_key_test(page_down);
+    app.render_test().expect("Render after second PageDown");
+
+    // Capture output
+    let buffer = app.terminal().backend().buffer();
+    let mut lines = Vec::new();
+    for y in 0..buffer.area().height {
+        let mut line = String::new();
+        for x in 0..buffer.area().width {
+            let cell = &buffer[(x, y)];
+            line.push_str(cell.symbol());
+        }
+        lines.push(line.trim_end().to_string());
+    }
+    let output = lines.join("\n");
+
+    // Check that viewport has actual content (not just border)
+    let content_lines: Vec<&str> = lines
+        .iter()
+        .filter(|line| line.starts_with('│') && !line.ends_with("─┐") && !line.ends_with("─┘"))
+        .filter(|line| {
+            let inner = line.trim_start_matches('│').trim_end_matches('│').trim();
+            !inner.is_empty()
+        })
+        .map(|s| s.as_str())
+        .collect();
+
+    // BUG: After 2 Page Downs, viewport is completely blank
+    // We should see entries somewhere in the middle of the ~294 entry list
+    assert!(
+        !content_lines.is_empty(),
+        "Viewport should contain content after 2 Page Downs.\n\
+         Total entries: {}\n\
+         Expected: Entries visible in viewport\n\
+         Actual: Viewport is blank\n\
+         Output:\n{}",
+        entry_count,
+        output
+    );
+}
