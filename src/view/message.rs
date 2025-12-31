@@ -46,11 +46,13 @@ struct EntryLayout {
 /// Number of lines to skip from the top of the entry (0 if fully visible)
 #[allow(dead_code)]
 fn calculate_lines_to_skip(
-    _cumulative_y: usize,
-    _scroll_offset: usize,
+    cumulative_y: usize,
+    scroll_offset: usize,
     _entry_height: usize,
 ) -> usize {
-    todo!("calculate_lines_to_skip")
+    // If entry starts before scroll position, skip the lines above viewport
+    // saturating_sub returns 0 if cumulative_y >= scroll_offset (fully visible)
+    scroll_offset.saturating_sub(cumulative_y)
 }
 
 // ===== ConversationView Widget =====
