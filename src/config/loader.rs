@@ -65,6 +65,10 @@ pub struct ConfigFile {
     #[serde(default)]
     pub log_buffer_capacity: Option<usize>,
 
+    /// Path to log file for tracing output (FR-055).
+    #[serde(default)]
+    pub log_file_path: Option<PathBuf>,
+
     /// Custom key bindings (future use).
     #[serde(default)]
     pub keybindings: Option<toml::Value>,
@@ -131,6 +135,8 @@ pub struct ResolvedConfig {
     pub line_wrap: bool,
     /// Log buffer capacity.
     pub log_buffer_capacity: usize,
+    /// Path to log file for tracing output (FR-055).
+    pub log_file_path: PathBuf,
 }
 
 impl Default for ResolvedConfig {
@@ -143,8 +149,19 @@ impl Default for ResolvedConfig {
             summary_lines: 3,
             line_wrap: true,
             log_buffer_capacity: 1000,
+            log_file_path: default_log_path(),
         }
     }
+}
+
+/// Resolve default log file path.
+///
+/// Returns `~/.local/state/cclv/cclv.log` on Unix-like systems,
+/// or appropriate platform path on other systems (FR-055).
+///
+/// If state directory cannot be determined, falls back to current directory.
+pub fn default_log_path() -> PathBuf {
+    todo!("default_log_path")
 }
 
 /// Load configuration file from a specific path.
@@ -279,6 +296,7 @@ pub fn merge_config(config_file: Option<ConfigFile>) -> ResolvedConfig {
         log_buffer_capacity: config
             .log_buffer_capacity
             .unwrap_or(defaults.log_buffer_capacity),
+        log_file_path: config.log_file_path.unwrap_or(defaults.log_file_path),
     }
 }
 
@@ -326,3 +344,91 @@ pub fn apply_cli_overrides(
 #[cfg(test)]
 #[path = "loader_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod log_path_tests {
+    use super::*;
+
+    #[test]
+    fn default_log_path_ends_with_cclv_log() {
+        let path = default_log_path();
+        assert!(
+            path.to_string_lossy().ends_with("cclv.log"),
+            "Default log path should end with 'cclv.log', got: {:?}",
+            path
+        );
+    }
+
+    #[test]
+    fn default_log_path_contains_cclv_directory() {
+        let path = default_log_path();
+        let path_str = path.to_string_lossy();
+        assert!(
+            path_str.contains("cclv"),
+            "Default log path should contain 'cclv' directory, got: {:?}",
+            path
+        );
+    }
+
+    #[test]
+    fn default_log_path_is_absolute_or_relative() {
+        let path = default_log_path();
+        // Should return a PathBuf (either absolute or fallback to relative)
+        assert!(!path.as_os_str().is_empty(), "Path should not be empty");
+    }
+
+    #[test]
+    fn resolved_config_default_includes_log_path() {
+        let config = ResolvedConfig::default();
+        assert!(
+            !config.log_file_path.as_os_str().is_empty(),
+            "Default config should have non-empty log_file_path"
+        );
+    }
+
+    #[test]
+    fn config_file_log_path_overrides_default() {
+        let custom_path = PathBuf::from("/custom/path/to/app.log");
+        let config_file = ConfigFile {
+            theme: None,
+            follow: None,
+            show_stats: None,
+            collapse_threshold: None,
+            summary_lines: None,
+            line_wrap: None,
+            log_buffer_capacity: None,
+            log_file_path: Some(custom_path.clone()),
+            keybindings: None,
+            pricing: None,
+        };
+
+        let resolved = merge_config(Some(config_file));
+        assert_eq!(
+            resolved.log_file_path, custom_path,
+            "Config file log_file_path should override default"
+        );
+    }
+
+    #[test]
+    fn missing_config_file_log_path_uses_default() {
+        let config_file = ConfigFile {
+            theme: None,
+            follow: None,
+            show_stats: None,
+            collapse_threshold: None,
+            summary_lines: None,
+            line_wrap: None,
+            log_buffer_capacity: None,
+            log_file_path: None,
+            keybindings: None,
+            pricing: None,
+        };
+
+        let resolved = merge_config(Some(config_file));
+        assert_eq!(
+            resolved.log_file_path,
+            default_log_path(),
+            "Missing log_file_path in config should use default"
+        );
+    }
+}

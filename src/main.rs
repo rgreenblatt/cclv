@@ -51,8 +51,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("NO_COLOR", "1");
     }
 
-    info!(version = env!("CARGO_PKG_VERSION"), "cclv starting");
-
     // Load configuration with full precedence chain:
     // Defaults → Config File → Env Vars → CLI Args
     let config = {
@@ -74,6 +72,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         cclv::config::apply_cli_overrides(with_env, theme_override, follow_override, stats_override)
     };
+
+    // Initialize tracing with configured log file path (FR-054/055)
+    cclv::logging::init(&config.log_file_path)
+        .map_err(|e| format!("Failed to initialize logging: {}", e))?;
 
     info!(
         config = ?config,
@@ -275,6 +277,7 @@ mod tests {
             summary_lines: None,
             line_wrap: None,
             log_buffer_capacity: None,
+            log_file_path: None,
             keybindings: None,
             pricing: None,
         };

@@ -148,6 +148,7 @@ fn merge_config_overrides_with_config_file_values() {
         summary_lines: Some(2),
         line_wrap: Some(false),
         log_buffer_capacity: Some(2000),
+        log_file_path: None,
         keybindings: None,
         pricing: None,
     };
@@ -173,6 +174,7 @@ fn merge_config_uses_defaults_for_none_fields() {
         summary_lines: None,
         line_wrap: None,
         log_buffer_capacity: None,
+        log_file_path: None,
         keybindings: None,
         pricing: None,
     };
@@ -237,6 +239,7 @@ fn apply_env_overrides_leaves_other_fields_unchanged() {
         summary_lines: 7,
         line_wrap: false,
         log_buffer_capacity: 123,
+        log_file_path: default_log_path(),
     };
 
     // Set env var
@@ -595,6 +598,7 @@ fn apply_cli_overrides_theme_override() {
         summary_lines: 3,
         line_wrap: true,
         log_buffer_capacity: 1000,
+        log_file_path: default_log_path(),
     };
 
     let result = apply_cli_overrides(base.clone(), Some("monokai".to_string()), None, None);
@@ -634,6 +638,7 @@ fn apply_cli_overrides_multiple_overrides() {
         summary_lines: 3,
         line_wrap: true,
         log_buffer_capacity: 1000,
+        log_file_path: default_log_path(),
     };
 
     let result = apply_cli_overrides(
@@ -672,6 +677,7 @@ fn precedence_chain_defaults_to_config_file() {
         summary_lines: None,
         line_wrap: None,
         log_buffer_capacity: None,
+        log_file_path: None,
         keybindings: None,
         pricing: None,
     };
@@ -705,6 +711,7 @@ fn precedence_chain_config_file_to_env_vars() {
         summary_lines: None,
         line_wrap: None,
         log_buffer_capacity: None,
+        log_file_path: None,
         keybindings: None,
         pricing: None,
     };
@@ -740,6 +747,7 @@ fn precedence_chain_env_vars_to_cli_args() {
         summary_lines: 3,
         line_wrap: true,
         log_buffer_capacity: 1000,
+        log_file_path: default_log_path(),
     };
 
     // Apply env override
@@ -770,6 +778,7 @@ fn precedence_chain_full_defaults_to_cli() {
         summary_lines: None,
         line_wrap: None,
         log_buffer_capacity: None,
+        log_file_path: None,
         keybindings: None,
         pricing: None,
     };

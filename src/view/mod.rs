@@ -716,10 +716,9 @@ impl CliArgs {
 ///
 /// This is the main entry point for the TUI. It handles terminal
 /// setup, runs the event loop, and ensures cleanup on exit.
+///
+/// Note: Logging must be initialized by caller before calling this function.
 pub fn run_with_source(input_source: InputSource, args: CliArgs) -> Result<(), TuiError> {
-    // Initialize logging to file
-    crate::logging::init().map_err(|e| TuiError::Io(io::Error::other(e)))?;
-
     // Extract or create session ID
     // For now, use a default session ID. In the future, this could be
     // extracted from the first log entry or passed via args.
