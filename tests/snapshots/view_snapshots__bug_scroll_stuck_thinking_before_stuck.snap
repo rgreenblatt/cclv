@@ -1,0 +1,28 @@
+---
+source: tests/view_snapshots.rs
+expression: before_stuck
+---
+┌Main Agent (5 entries)────────────────────────────────────────────────────────┐
+│                                                                              │
+│Second, mapping out the data flow is essential.                               │
+│                                                                              │
+│Third, identifying potential bottlenecks.                                     │
+│                                                                              │
+│Fourth, considering scalability requirements.                                 │
+│                                                                              │
+│Fifth, evaluating security implications.                                      │
+│                                                                              │
+│Sixth, reviewing compliance requirements.                                     │
+│                                                                              │
+│Seventh, assessing integration points.                                        │
+│                                                                              │
+│Eighth, planning for failure scenarios.                                       │
+│                                                                              │
+│Ninth, designing recovery mechanisms.                                         │
+│                                                                              │
+│Tenth, establishing monitoring strategy.                                      │
+│                                                                              │
+│Eleventh, defining success metrics.                                           │
+│                                                                              │
+│Twelfth, creating rollback procedures.                                        │
+└──────────────────────────────────────────────────────────────────────────────┘

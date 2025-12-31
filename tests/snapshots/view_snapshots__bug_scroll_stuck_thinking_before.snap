@@ -1,0 +1,28 @@
+---
+source: tests/view_snapshots.rs
+expression: output_before
+---
+┌Main Agent (5 entries)────────────────────────────────────────────────────────┐
+│Let me think through this problem step by step.                               │
+│                                                                              │
+│First consideration: we need to understand the context of what the user is ask│
+│                                                                              │
+│Second thought: analyzing the requirements carefully to ensure we address all │
+│                                                                              │
+│Third point: this is a longer thinking block to test scroll behavior with suff│
+│                                                                              │
+│Fourth item: more content to ensure we have enough lines to fill the viewport.│
+│                                                                              │
+│Fifth point: checking assumptions about the implementation approach.          │
+│                                                                              │
+│Sixth consideration: validating our approach against best practices.          │
+│                                                                              │
+│Seventh item: planning the next steps in detail.                              │
+│                                                                              │
+│Eighth point: reviewing all findings so far.                                  │
+│                                                                              │
+│Ninth consideration: documenting final thoughts.                              │
+│                                                                              │
+│Tenth item: reaching a preliminary conclusion.                                │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘

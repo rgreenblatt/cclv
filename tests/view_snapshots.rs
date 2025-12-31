@@ -1604,3 +1604,112 @@ fn bug_collapsed_entry_height_mismatch() {
         max_stuck_run, test_range
     );
 }
+
+/// Bug reproduction: Scroll is stuck with thinking block entries
+///
+/// EXPECTED: Each 'j' press should shift content up by 1 line
+/// ACTUAL: Content stays identical - scroll does not move at all
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/scroll_jump_thinking_repro.jsonl
+/// 2. Press 'j' multiple times to scroll down
+/// 3. Observe: First line stays the same, scroll is stuck
+///
+/// Fixture: 5 entries with thinking blocks + text content
+/// The bug occurs when trying to scroll line-by-line through thinking blocks.
+#[test]
+#[ignore = "cclv-5ur.14: scroll stuck with thinking block entries"]
+fn bug_scroll_stuck_with_thinking_blocks() {
+    use cclv::source::FileSource;
+    use cclv::view::calculate_entry_height;
+    use cclv::view_state::scroll::ScrollPosition;
+    use cclv::view_state::types::LineOffset;
+    use std::path::PathBuf;
+
+    // Load fixture with thinking block entries
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/scroll_jump_thinking_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    assert!(
+        !entries.is_empty(),
+        "Fixture should have entries with thinking blocks"
+    );
+
+    // Create view state with entries COLLAPSED (default state)
+    // This is how entries appear initially in the TUI
+    let mut state = ConversationViewState::new(None, None, entries.clone());
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    state.recompute_layout(params, calculate_entry_height);
+
+    // Helper to render and get output as string
+    let render = |s: &ConversationViewState| -> String {
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+        terminal
+            .draw(|frame| {
+                let styles = MessageStyles::default();
+                let widget = ConversationView::new(s, &styles, false);
+                frame.render_widget(widget, frame.area());
+            })
+            .unwrap();
+        let buffer = terminal.backend().buffer();
+        buffer_to_string(buffer)
+    };
+
+    // Test consecutive scrolls to find where scroll gets stuck
+    // Similar to bug_collapsed_entry_height_mismatch approach
+    let total_height = state.total_height();
+    let mut stuck_positions = Vec::new();
+
+    state.set_scroll(ScrollPosition::Top);
+    let mut prev_output = render(&state);
+
+    // Test first 50 scroll positions (thinking blocks should be visible in this range)
+    let test_range = total_height.min(50);
+    for offset in 1..test_range {
+        state.set_scroll(ScrollPosition::AtLine(LineOffset::new(offset)));
+        let current_output = render(&state);
+
+        if current_output == prev_output {
+            stuck_positions.push(offset);
+        }
+        prev_output = current_output;
+    }
+
+    // Capture snapshots at positions where scroll gets stuck (if any)
+    if let Some(&first_stuck) = stuck_positions.first() {
+        // Render at position before stuck
+        state.set_scroll(ScrollPosition::AtLine(LineOffset::new(first_stuck - 1)));
+        let before_stuck = render(&state);
+
+        // Render at stuck position
+        state.set_scroll(ScrollPosition::AtLine(LineOffset::new(first_stuck)));
+        let at_stuck = render(&state);
+
+        insta::assert_snapshot!("bug_scroll_stuck_thinking_before_stuck", before_stuck);
+        insta::assert_snapshot!("bug_scroll_stuck_thinking_at_stuck", at_stuck);
+    }
+
+    // THE KEY ASSERTION: Scroll should never get stuck
+    // Every line offset should produce different rendered output
+    assert!(
+        stuck_positions.is_empty(),
+        "BUG: Scroll got stuck at {} positions with thinking blocks.\n\
+         Stuck positions (consecutive identical outputs): {:?}\n\
+         Tested {} scroll positions (0 to {}).\n\
+         Total document height: {} lines.\n\n\
+         This violates the core scroll contract: each line offset should \
+         produce different visible content.",
+        stuck_positions.len(),
+        stuck_positions,
+        test_range,
+        test_range - 1,
+        total_height
+    );
+}
