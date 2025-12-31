@@ -135,7 +135,8 @@ impl<'a> Widget for StatsPanel<'a> {
                         .add_modifier(Modifier::BOLD),
                 ),
             );
-            let tool_lines = format_tool_breakdown(self.stats.filtered_tool_counts(self.filter), 10);
+            let tool_lines =
+                format_tool_breakdown(self.stats.filtered_tool_counts(self.filter), 10);
             lines.extend(tool_lines);
             lines.push(Line::from(""));
         }
@@ -162,10 +163,7 @@ impl<'a> Widget for StatsPanel<'a> {
                     .add_modifier(Modifier::BOLD),
             ),
         );
-        lines.push(Line::from(format!(
-            "  Count: {}",
-            self.stats.entry_count
-        )));
+        lines.push(Line::from(format!("  Count: {}", self.stats.entry_count)));
 
         // Render the paragraph
         let paragraph = Paragraph::new(lines);

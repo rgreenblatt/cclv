@@ -853,7 +853,10 @@ fn select_tab_ignores_zero() {
 // ===== Test Helper for Subagent Entries =====
 
 fn make_subagent_entry(agent_id: &str) -> crate::model::ConversationEntry {
-    use crate::model::{AgentId, ConversationEntry, EntryMetadata, EntryType, LogEntry, Message, MessageContent, Role};
+    use crate::model::{
+        AgentId, ConversationEntry, EntryMetadata, EntryType, LogEntry, Message, MessageContent,
+        Role,
+    };
     use chrono::Utc;
 
     let log_entry = LogEntry::new(
@@ -1158,7 +1161,10 @@ fn effective_wrap_different_uuids_independent() {
         scroll.effective_wrap(&uuid1, WrapMode::Wrap),
         WrapMode::NoWrap
     );
-    assert_eq!(scroll.effective_wrap(&uuid2, WrapMode::Wrap), WrapMode::Wrap);
+    assert_eq!(
+        scroll.effective_wrap(&uuid2, WrapMode::Wrap),
+        WrapMode::Wrap
+    );
 }
 
 // ===== AppState::toggle_global_wrap Tests =====

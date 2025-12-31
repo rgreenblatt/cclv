@@ -66,11 +66,17 @@ impl SessionStats {
             // Per-agent count
             if let Some(agent_id) = entry.agent_id() {
                 // Subagent tool count
-                let agent_tools = self.subagent_tool_counts.entry(agent_id.clone()).or_default();
+                let agent_tools = self
+                    .subagent_tool_counts
+                    .entry(agent_id.clone())
+                    .or_default();
                 *agent_tools.entry(tool.name().clone()).or_default() += 1;
             } else {
                 // Main agent tool count
-                *self.main_agent_tool_counts.entry(tool.name().clone()).or_default() += 1;
+                *self
+                    .main_agent_tool_counts
+                    .entry(tool.name().clone())
+                    .or_default() += 1;
             }
         }
 
@@ -225,7 +231,6 @@ impl PricingConfig {
 
         &self.default_pricing
     }
-
 }
 
 // ===== ModelPricing =====
@@ -998,7 +1003,10 @@ mod tests {
 
         // Should track in subagent_tool_counts under the agent
         let agent_id = make_agent_id("agent-123");
-        let agent_tools = stats.subagent_tool_counts.get(&agent_id).expect("subagent tools");
+        let agent_tools = stats
+            .subagent_tool_counts
+            .get(&agent_id)
+            .expect("subagent tools");
         assert_eq!(agent_tools.get(&ToolName::Bash), Some(&1));
         assert_eq!(agent_tools.get(&ToolName::Grep), Some(&1));
         // Should NOT track in main_agent_tool_counts
@@ -1032,7 +1040,10 @@ mod tests {
         stats.record_entry(&entry2);
 
         let agent_id = make_agent_id("agent-abc");
-        let agent_tools = stats.subagent_tool_counts.get(&agent_id).expect("subagent tools");
+        let agent_tools = stats
+            .subagent_tool_counts
+            .get(&agent_id)
+            .expect("subagent tools");
         assert_eq!(agent_tools.get(&ToolName::Edit), Some(&2));
         assert_eq!(agent_tools.get(&ToolName::Read), Some(&1));
     }
@@ -1051,11 +1062,17 @@ mod tests {
         let agent1 = make_agent_id("agent-1");
         let agent2 = make_agent_id("agent-2");
 
-        let agent1_tools = stats.subagent_tool_counts.get(&agent1).expect("agent-1 tools");
+        let agent1_tools = stats
+            .subagent_tool_counts
+            .get(&agent1)
+            .expect("agent-1 tools");
         assert_eq!(agent1_tools.get(&ToolName::Bash), Some(&1));
         assert_eq!(agent1_tools.get(&ToolName::Read), None);
 
-        let agent2_tools = stats.subagent_tool_counts.get(&agent2).expect("agent-2 tools");
+        let agent2_tools = stats
+            .subagent_tool_counts
+            .get(&agent2)
+            .expect("agent-2 tools");
         assert_eq!(agent2_tools.get(&ToolName::Read), Some(&1));
         assert_eq!(agent2_tools.get(&ToolName::Bash), None);
     }

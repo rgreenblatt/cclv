@@ -452,9 +452,6 @@ mod tests {
             .content()
             .iter()
             .any(|cell| cell.fg == ratatui::style::Color::Yellow);
-        assert!(
-            has_yellow,
-            "Selected tab should be highlighted in yellow"
-        );
+        assert!(has_yellow, "Selected tab should be highlighted in yellow");
     }
 }

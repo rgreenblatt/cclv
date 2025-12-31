@@ -100,10 +100,7 @@ mod tests {
     fn toggle_wrap_clone_equals_original() {
         let action = KeyAction::ToggleWrap;
         let cloned = action.clone();
-        assert_eq!(
-            action, cloned,
-            "Cloned ToggleWrap should equal original"
-        );
+        assert_eq!(action, cloned, "Cloned ToggleWrap should equal original");
     }
 
     // ===== ToggleGlobalWrap Tests =====

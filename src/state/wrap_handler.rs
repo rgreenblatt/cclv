@@ -38,16 +38,12 @@ pub fn handle_toggle_wrap(mut state: AppState) -> AppState {
                 if let Some(tab_index) = state.selected_tab {
                     let subagent_ids = state.session().subagent_ids_ordered();
                     if let Some(&agent_id) = subagent_ids.get(tab_index) {
-                        state
-                            .session()
-                            .subagents()
-                            .get(agent_id)
-                            .and_then(|conv| {
-                                conv.entries()
-                                    .get(focused_index)
-                                    .and_then(|e| e.as_valid())
-                                    .map(|log| log.uuid().clone())
-                            })
+                        state.session().subagents().get(agent_id).and_then(|conv| {
+                            conv.entries()
+                                .get(focused_index)
+                                .and_then(|e| e.as_valid())
+                                .map(|log| log.uuid().clone())
+                        })
                     } else {
                         None
                     }

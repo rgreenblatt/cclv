@@ -204,33 +204,30 @@ where
                     KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
                         self.app_state.search = search_input_handler::handle_char_input(
                             self.app_state.search.clone(),
-                            ch
+                            ch,
                         );
                         return false;
                     }
                     KeyCode::Backspace => {
-                        self.app_state.search = search_input_handler::handle_backspace(
-                            self.app_state.search.clone()
-                        );
+                        self.app_state.search =
+                            search_input_handler::handle_backspace(self.app_state.search.clone());
                         return false;
                     }
                     KeyCode::Left => {
-                        self.app_state.search = search_input_handler::handle_cursor_left(
-                            self.app_state.search.clone()
-                        );
+                        self.app_state.search =
+                            search_input_handler::handle_cursor_left(self.app_state.search.clone());
                         return false;
                     }
                     KeyCode::Right => {
                         self.app_state.search = search_input_handler::handle_cursor_right(
-                            self.app_state.search.clone()
+                            self.app_state.search.clone(),
                         );
                         return false;
                     }
                     KeyCode::Enter => {
                         // Submit search on Enter when typing
-                        self.app_state.search = search_input_handler::submit_search(
-                            self.app_state.search.clone()
-                        );
+                        self.app_state.search =
+                            search_input_handler::submit_search(self.app_state.search.clone());
                         // Keep focus on Search pane after submit (stays active)
                         return false;
                     }
@@ -340,24 +337,20 @@ where
 
             // Message expand/collapse - delegate to pure expand handler
             KeyAction::ToggleExpand | KeyAction::ExpandMessage | KeyAction::CollapseMessage => {
-                let new_state = expand_handler::handle_expand_action(
-                    self.app_state.clone(),
-                    action,
-                );
+                let new_state =
+                    expand_handler::handle_expand_action(self.app_state.clone(), action);
                 self.app_state = new_state;
             }
 
             // Search actions - delegate to pure search input handler
             KeyAction::StartSearch => {
-                self.app_state.search = search_input_handler::activate_search_input(
-                    self.app_state.search.clone()
-                );
+                self.app_state.search =
+                    search_input_handler::activate_search_input(self.app_state.search.clone());
                 self.app_state.focus = FocusPane::Search;
             }
             KeyAction::SubmitSearch => {
-                self.app_state.search = search_input_handler::submit_search(
-                    self.app_state.search.clone()
-                );
+                self.app_state.search =
+                    search_input_handler::submit_search(self.app_state.search.clone());
                 // Execute search to populate matches
                 use crate::state::{execute_search, SearchState};
                 if let SearchState::Active { query, .. } = &self.app_state.search {
@@ -371,9 +364,8 @@ where
                 // Keep focus on Search pane after submit (stays active)
             }
             KeyAction::CancelSearch => {
-                self.app_state.search = search_input_handler::cancel_search(
-                    self.app_state.search.clone()
-                );
+                self.app_state.search =
+                    search_input_handler::cancel_search(self.app_state.search.clone());
                 // Return focus to Main pane after cancel
                 self.app_state.focus = FocusPane::Main;
             }
@@ -1170,8 +1162,9 @@ mod tests {
         let agent_id_2 = AgentId::new("agent-2").unwrap();
 
         for (idx, agent_id) in [&agent_id_1, &agent_id_2].iter().enumerate() {
-            let message = Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
-                .with_usage(TokenUsage::default());
+            let message =
+                Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
+                    .with_usage(TokenUsage::default());
             let entry = LogEntry::new(
                 EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
                 None,
@@ -1217,8 +1210,9 @@ mod tests {
         let agent_id_2 = AgentId::new("agent-2").unwrap();
 
         for (idx, agent_id) in [&agent_id_1, &agent_id_2].iter().enumerate() {
-            let message = Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
-                .with_usage(TokenUsage::default());
+            let message =
+                Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
+                    .with_usage(TokenUsage::default());
             let entry = LogEntry::new(
                 EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
                 None,
@@ -1262,8 +1256,9 @@ mod tests {
         // Add 5 subagent entries
         for idx in 0..5 {
             let agent_id = AgentId::new(&format!("agent-{}", idx)).unwrap();
-            let message = Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
-                .with_usage(TokenUsage::default());
+            let message =
+                Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
+                    .with_usage(TokenUsage::default());
             let entry = LogEntry::new(
                 EntryUuid::new(&format!("uuid-{}", idx)).unwrap(),
                 None,
@@ -1624,9 +1619,8 @@ mod tests {
         // Add entry to subagent pane
         let agent_id = AgentId::new("test-agent").unwrap();
         let sub_uuid = EntryUuid::new("sub-uuid").unwrap();
-        let sub_message =
-            Message::new(Role::Assistant, MessageContent::Text("sub".to_string()))
-                .with_usage(TokenUsage::default());
+        let sub_message = Message::new(Role::Assistant, MessageContent::Text("sub".to_string()))
+            .with_usage(TokenUsage::default());
         let sub_entry = LogEntry::new(
             sub_uuid.clone(),
             None,
@@ -1650,11 +1644,17 @@ mod tests {
         app.handle_key(key);
 
         assert!(
-            app.app_state.subagent_scroll.wrap_overrides.contains(&sub_uuid),
+            app.app_state
+                .subagent_scroll
+                .wrap_overrides
+                .contains(&sub_uuid),
             "'w' should toggle wrap in subagent_scroll when Subagent pane is focused"
         );
         assert!(
-            !app.app_state.main_scroll.wrap_overrides.contains(&main_uuid),
+            !app.app_state
+                .main_scroll
+                .wrap_overrides
+                .contains(&main_uuid),
             "'w' should not affect main_scroll when Subagent pane is focused"
         );
     }

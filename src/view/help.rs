@@ -57,9 +57,7 @@ pub fn render_help_overlay(frame: &mut Frame) {
 
     let hint = Paragraph::new(Line::from(vec![Span::styled(
         " Press Esc or ? to close ",
-        Style::default()
-            .fg(Color::Gray)
-            .add_modifier(Modifier::DIM),
+        Style::default().fg(Color::Gray).add_modifier(Modifier::DIM),
     )]))
     .alignment(Alignment::Center);
 

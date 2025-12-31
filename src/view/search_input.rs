@@ -34,7 +34,10 @@ impl Widget for SearchInput<'_> {
                 let (cursor_char, after_text) = if *cursor == query.len() {
                     (" ".to_string(), String::new())
                 } else {
-                    let cursor_ch = after_chars.first().map(|c| c.to_string()).unwrap_or_default();
+                    let cursor_ch = after_chars
+                        .first()
+                        .map(|c| c.to_string())
+                        .unwrap_or_default();
                     let remaining: String = after_chars.iter().skip(1).collect();
                     (cursor_ch, remaining)
                 };

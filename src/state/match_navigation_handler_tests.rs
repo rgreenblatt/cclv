@@ -174,9 +174,7 @@ fn next_match_switches_to_main_pane_when_match_in_main_agent() {
 
 #[test]
 fn next_match_switches_to_subagent_pane_when_match_in_subagent() {
-    use crate::model::{
-        EntryMetadata, EntryType, LogEntry, Message, MessageContent, Role,
-    };
+    use crate::model::{EntryMetadata, EntryType, LogEntry, Message, MessageContent, Role};
     use chrono::Utc;
 
     let mut session = Session::new(make_session_id("test-session"));
@@ -219,9 +217,7 @@ fn next_match_switches_to_subagent_pane_when_match_in_subagent() {
 
 #[test]
 fn next_match_selects_correct_subagent_tab() {
-    use crate::model::{
-        EntryMetadata, EntryType, LogEntry, Message, MessageContent, Role,
-    };
+    use crate::model::{EntryMetadata, EntryType, LogEntry, Message, MessageContent, Role};
     use chrono::Utc;
 
     let mut session = Session::new(make_session_id("test-session"));
@@ -417,9 +413,7 @@ fn prev_match_switches_to_main_pane_when_match_in_main_agent() {
 
 #[test]
 fn prev_match_switches_to_subagent_pane_when_match_in_subagent() {
-    use crate::model::{
-        EntryMetadata, EntryType, LogEntry, Message, MessageContent, Role,
-    };
+    use crate::model::{EntryMetadata, EntryType, LogEntry, Message, MessageContent, Role};
     use chrono::Utc;
 
     let mut session = Session::new(make_session_id("test-session"));

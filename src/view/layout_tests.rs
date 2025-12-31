@@ -593,7 +593,10 @@ fn render_layout_highlights_stats_border_when_focused() {
     for cell in buffer.content.iter() {
         // Look for border characters (│ ─ ┌ ┐ └ ┘) with focus color
         let symbol = cell.symbol();
-        if matches!(symbol, "│" | "─" | "┌" | "┐" | "└" | "┘" | "┤" | "├" | "┬" | "┴") {
+        if matches!(
+            symbol,
+            "│" | "─" | "┌" | "┐" | "└" | "┘" | "┤" | "├" | "┬" | "┴"
+        ) {
             // Check if this border cell has the focus color (typically cyan or highlighted)
             // The exact color depends on StatsPanel implementation
             if cell.fg == Color::Yellow || cell.fg == Color::Cyan {
@@ -664,9 +667,7 @@ fn render_layout_allocates_stats_panel_height_approximately_10_lines() {
             .map(|x| buffer[(x, y)].symbol())
             .collect();
 
-        if row.contains("Statistics")
-            || row.contains("Tokens:")
-            || row.contains("Estimated Cost:")
+        if row.contains("Statistics") || row.contains("Tokens:") || row.contains("Estimated Cost:")
         {
             stats_rows += 1;
         }
@@ -928,7 +929,10 @@ fn render_layout_uses_search_highlighting_when_search_active() {
         None,
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("hello world test".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("hello world test".to_string()),
+        ),
         EntryMetadata::default(),
     );
     session.add_entry(entry);
@@ -989,7 +993,10 @@ fn render_layout_no_search_highlighting_when_search_inactive() {
         None,
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("hello world test".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("hello world test".to_string()),
+        ),
         EntryMetadata::default(),
     );
     session.add_entry(entry);

@@ -26,8 +26,7 @@ fn create_test_state_with_entries(main_entries: usize, subagent_entries: usize) 
         let agent_id = crate::model::AgentId::new("test-agent").unwrap();
         for i in 0..subagent_entries {
             let entry = create_test_log_entry(format!("sub-{}", i), Some(agent_id.clone()));
-            session
-                .add_conversation_entry(crate::model::ConversationEntry::Valid(Box::new(entry)));
+            session.add_conversation_entry(crate::model::ConversationEntry::Valid(Box::new(entry)));
         }
     }
 

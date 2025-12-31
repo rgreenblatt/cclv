@@ -69,10 +69,7 @@ pub struct SearchMatch {
 /// Main agent matches are ignored (agent_id = None).
 /// If no matches exist, returns an empty set.
 pub fn agent_ids_with_matches(matches: &[SearchMatch]) -> std::collections::HashSet<AgentId> {
-    matches
-        .iter()
-        .filter_map(|m| m.agent_id.clone())
-        .collect()
+    matches.iter().filter_map(|m| m.agent_id.clone()).collect()
 }
 
 // ===== Search Execution =====
@@ -91,7 +88,12 @@ pub fn execute_search(session: &Session, query: &SearchQuery) -> Vec<SearchMatch
 
     // Search all subagents
     for (agent_id, conversation) in session.subagents() {
-        search_conversation(conversation, Some(agent_id.clone()), &query_lower, &mut matches);
+        search_conversation(
+            conversation,
+            Some(agent_id.clone()),
+            &query_lower,
+            &mut matches,
+        );
     }
 
     matches

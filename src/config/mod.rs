@@ -39,10 +39,7 @@ mod tests {
     fn default_config_is_cloneable() {
         let config = AppConfig::default();
         let cloned = config.clone();
-        assert_eq!(
-            config, cloned,
-            "Cloned config should equal original"
-        );
+        assert_eq!(config, cloned, "Cloned config should equal original");
     }
 
     #[test]

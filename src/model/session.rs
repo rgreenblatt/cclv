@@ -613,7 +613,11 @@ mod tests {
             subagent.is_incomplete(),
             "Subagent created on-the-fly should be marked incomplete"
         );
-        assert_eq!(subagent.len(), 1, "Entry should be added despite incomplete");
+        assert_eq!(
+            subagent.len(),
+            1,
+            "Entry should be added despite incomplete"
+        );
     }
 
     #[test]

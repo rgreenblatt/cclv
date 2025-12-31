@@ -140,7 +140,7 @@ impl AppState {
         }
 
         self.selected_tab = match self.selected_tab {
-            None => Some(0), // Initialize to first tab
+            None => Some(0),                    // Initialize to first tab
             Some(0) => Some(num_subagents - 1), // Wrap to last
             Some(current) => Some(current - 1), // Move to previous
         };

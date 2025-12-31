@@ -29,7 +29,8 @@ fn generate_large_session() -> Session {
     const TEXT_SIZE_PER_ENTRY: usize = 10_000; // ~10KB per entry
 
     // Create a large text block template
-    let text_template = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(TEXT_SIZE_PER_ENTRY / 60);
+    let text_template = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+        .repeat(TEXT_SIZE_PER_ENTRY / 60);
 
     for i in 0..NUM_ENTRIES {
         let uuid = EntryUuid::new(format!("entry-{:06}", i)).expect("valid uuid");

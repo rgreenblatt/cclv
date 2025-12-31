@@ -2,8 +2,8 @@
 
 use super::*;
 use crate::model::{
-    EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, Session,
-    SessionId, ContentBlock,
+    ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
+    Session, SessionId,
 };
 use chrono::Utc;
 
@@ -276,7 +276,11 @@ fn execute_search_finds_matches_across_multiple_entries() {
 fn execute_search_finds_match_in_subagent() {
     let mut session = Session::new(make_session_id("session-1"));
     let agent_id = make_agent_id("agent-123");
-    session.add_entry(make_text_entry("entry-1", Some(agent_id.clone()), "subagent error"));
+    session.add_entry(make_text_entry(
+        "entry-1",
+        Some(agent_id.clone()),
+        "subagent error",
+    ));
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(&session, &query);
@@ -292,7 +296,11 @@ fn execute_search_finds_matches_in_main_and_subagent() {
     let agent_id = make_agent_id("agent-abc");
 
     session.add_entry(make_text_entry("entry-1", None, "main error"));
-    session.add_entry(make_text_entry("entry-2", Some(agent_id.clone()), "sub error"));
+    session.add_entry(make_text_entry(
+        "entry-2",
+        Some(agent_id.clone()),
+        "sub error",
+    ));
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(&session, &query);
@@ -378,11 +386,9 @@ fn execute_search_stores_correct_match_length() {
 #[test]
 fn execute_search_searches_thinking_blocks() {
     let mut session = Session::new(make_session_id("session-1"));
-    let blocks = vec![
-        ContentBlock::Thinking {
-            thinking: "I'm thinking about the error".to_string(),
-        },
-    ];
+    let blocks = vec![ContentBlock::Thinking {
+        thinking: "I'm thinking about the error".to_string(),
+    }];
     session.add_entry(make_blocks_entry("entry-1", None, blocks));
 
     let query = SearchQuery::new("error").expect("valid query");
@@ -397,13 +403,11 @@ fn execute_search_searches_tool_result_blocks() {
     use crate::model::ToolUseId;
 
     let mut session = Session::new(make_session_id("session-1"));
-    let blocks = vec![
-        ContentBlock::ToolResult {
-            tool_use_id: ToolUseId::new("tool-1").expect("valid id"),
-            content: "command failed with error".to_string(),
-            is_error: true,
-        },
-    ];
+    let blocks = vec![ContentBlock::ToolResult {
+        tool_use_id: ToolUseId::new("tool-1").expect("valid id"),
+        content: "command failed with error".to_string(),
+        is_error: true,
+    }];
     session.add_entry(make_blocks_entry("entry-1", None, blocks));
 
     let query = SearchQuery::new("error").expect("valid query");
@@ -420,7 +424,10 @@ fn agent_ids_with_matches_returns_empty_for_empty_matches() {
     let matches: Vec<SearchMatch> = vec![];
     let agent_ids = agent_ids_with_matches(&matches);
 
-    assert!(agent_ids.is_empty(), "Should return empty set for no matches");
+    assert!(
+        agent_ids.is_empty(),
+        "Should return empty set for no matches"
+    );
 }
 
 #[test]
@@ -444,21 +451,22 @@ fn agent_ids_with_matches_ignores_main_agent_matches() {
 
     let agent_ids = agent_ids_with_matches(&matches);
 
-    assert!(agent_ids.is_empty(), "Should ignore main agent matches (agent_id = None)");
+    assert!(
+        agent_ids.is_empty(),
+        "Should ignore main agent matches (agent_id = None)"
+    );
 }
 
 #[test]
 fn agent_ids_with_matches_returns_single_agent() {
     let agent = make_agent_id("agent-123");
-    let matches = vec![
-        SearchMatch {
-            agent_id: Some(agent.clone()),
-            entry_uuid: make_entry_uuid("entry-1"),
-            block_index: 0,
-            char_offset: 0,
-            length: 5,
-        },
-    ];
+    let matches = vec![SearchMatch {
+        agent_id: Some(agent.clone()),
+        entry_uuid: make_entry_uuid("entry-1"),
+        block_index: 0,
+        char_offset: 0,
+        length: 5,
+    }];
 
     let agent_ids = agent_ids_with_matches(&matches);
 
@@ -596,7 +604,10 @@ fn execute_search_handles_emoji_in_content_before_match() {
     assert_eq!(matches.len(), 1);
     // char_offset should be 5 (byte offset after "🦀 ")
     // If it were character offset, it would be 2 (crab + space)
-    assert_eq!(matches[0].char_offset, 5, "Should use byte offset, not char offset");
+    assert_eq!(
+        matches[0].char_offset, 5,
+        "Should use byte offset, not char offset"
+    );
     assert_eq!(matches[0].length, 5, "Length of 'error' in bytes");
 }
 
@@ -635,7 +646,11 @@ fn execute_search_handles_multibyte_unicode_characters() {
 #[test]
 fn execute_search_finds_japanese_text() {
     let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "Searching for 日本語 here"));
+    session.add_entry(make_text_entry(
+        "entry-1",
+        None,
+        "Searching for 日本語 here",
+    ));
 
     let query = SearchQuery::new("日本語").expect("valid query");
     let matches = execute_search(&session, &query);
