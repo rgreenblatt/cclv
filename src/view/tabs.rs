@@ -181,7 +181,10 @@ mod tests {
             .collect::<String>();
 
         // Main Agent and all three subagent IDs should be present
-        assert!(buffer_str.contains("Main Agent"), "Should contain Main Agent");
+        assert!(
+            buffer_str.contains("Main Agent"),
+            "Should contain Main Agent"
+        );
         assert!(buffer_str.contains("agent-1"), "Should contain agent-1");
         assert!(buffer_str.contains("agent-2"), "Should contain agent-2");
         assert!(buffer_str.contains("agent-3"), "Should contain agent-3");
@@ -645,9 +648,18 @@ mod tests {
             .collect::<String>();
 
         // All tabs should be present
-        assert!(buffer_str.contains("Main Agent"), "Should contain Main Agent");
-        assert!(buffer_str.contains("subagent-alpha"), "Should contain subagent-alpha");
-        assert!(buffer_str.contains("subagent-beta"), "Should contain subagent-beta");
+        assert!(
+            buffer_str.contains("Main Agent"),
+            "Should contain Main Agent"
+        );
+        assert!(
+            buffer_str.contains("subagent-alpha"),
+            "Should contain subagent-alpha"
+        );
+        assert!(
+            buffer_str.contains("subagent-beta"),
+            "Should contain subagent-beta"
+        );
 
         // Main Agent should appear before subagents in buffer
         let main_pos = buffer_str.find("Main Agent").unwrap();

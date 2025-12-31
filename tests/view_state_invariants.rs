@@ -21,7 +21,7 @@
 
 use cclv::model::{
     AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry,
-    Message, MessageContent, Role, SessionId,
+    Message, MessageContent, PricingConfig, Role, SessionId,
 };
 use cclv::state::WrapMode;
 use cclv::view_state::{
@@ -151,7 +151,7 @@ proptest! {
     fn malformed_entries_always_get_zero_height(entry in arb_malformed_entry()) {
         // Malformed entries get default height of ZERO when not laid out
         // After relayout(), they get rendered height based on content
-        let mut state = ConversationViewState::new(None, None, vec![entry]);
+        let mut state = ConversationViewState::new(None, None, vec![entry], 200_000, PricingConfig::default());
         state.relayout(80, WrapMode::Wrap);
 
         // After relayout, malformed entries still get a small height for the error message
@@ -174,7 +174,7 @@ proptest! {
             return Ok(());
         }
 
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
         state.relayout(80, WrapMode::Wrap);
 
         // Check monotonicity: forall i < j: entries[i].cumulative_y <= entries[j].cumulative_y
@@ -203,7 +203,7 @@ proptest! {
             return Ok(());
         }
 
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
         state.relayout(80, WrapMode::Wrap);
 
         // Check: forall i: entries[i].cumulative_y == sum(entries[0..i].height)
@@ -227,7 +227,7 @@ proptest! {
 proptest! {
     #[test]
     fn total_height_equals_sum_of_all_heights(entries in arb_entry_list(50)) {
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
         state.relayout(80, WrapMode::Wrap);
 
         let expected_total: usize = (0..state.len())
@@ -258,7 +258,7 @@ proptest! {
         scroll in arb_scroll_position(),
         viewport in arb_viewport()
     ) {
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
         state.relayout(viewport.width, WrapMode::Wrap);
 
         let total_height = state.total_height();
@@ -289,7 +289,7 @@ proptest! {
         entries in arb_entry_list(50),
         viewport in arb_viewport()
     ) {
-        let mut state = ConversationViewState::new(None, None, entries.clone());
+        let mut state = ConversationViewState::new(None, None, entries.clone(), 200_000, PricingConfig::default());
         state.relayout(viewport.width, WrapMode::Wrap);
 
         let visible = state.visible_range(viewport);
@@ -324,7 +324,7 @@ proptest! {
             return Ok(());
         }
 
-        let mut state = ConversationViewState::new(None, None, entries.clone());
+        let mut state = ConversationViewState::new(None, None, entries.clone(), 200_000, PricingConfig::default());
         state.relayout(80, WrapMode::Wrap);
 
         let result = state.hit_test(screen_y, screen_x, scroll_offset);
@@ -463,7 +463,10 @@ proptest! {
 
         let entry_view = EntryView::new(
             ConversationEntry::Valid(Box::new(log_entry)),
-            EntryIndex::new(0)
+            EntryIndex::new(0),
+            0,
+            200_000,
+            PricingConfig::default(),
         );
 
         // Note: set_wrap_override is pub(crate), so we can't call it from integration tests
@@ -496,7 +499,7 @@ proptest! {
             return Ok(());
         }
 
-        let mut state = ConversationViewState::new(None, None, entries.clone());
+        let mut state = ConversationViewState::new(None, None, entries.clone(), 200_000, PricingConfig::default());
 
         // Set focus to an arbitrary index
         state.set_focused_message(Some(EntryIndex::new(focus_index)));
@@ -521,7 +524,7 @@ proptest! {
             return Ok(());
         }
 
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
         let params = LayoutParams::new(80, WrapMode::Wrap);
         let viewport = ViewportDimensions::new(80, 24);
 
@@ -563,7 +566,7 @@ proptest! {
             return Ok(());
         }
 
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
         state.relayout(80, WrapMode::Wrap);
 
         // Pick a valid relayout index and toggle to trigger relayout

@@ -11,7 +11,7 @@
 
 use cclv::model::{
     ContentBlock, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
-    MessageContent, Role, SessionId, ToolCall, ToolName, ToolUseId,
+    MessageContent, PricingConfig, Role, SessionId, ToolCall, ToolName, ToolUseId,
 };
 use cclv::state::WrapMode;
 use cclv::view::{ConversationView, MessageStyles};
@@ -97,11 +97,12 @@ fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
 #[test]
 fn test_tooluse_defaults_to_nowrap_despite_global_wrap() {
     // Create entry with ToolUse containing long JSON field that would wrap at 60 chars
-    let long_path = "/some/very/long/path/to/a/file/that/exceeds/sixty/characters/in/total/length/marker.txt";
+    let long_path =
+        "/some/very/long/path/to/a/file/that/exceeds/sixty/characters/in/total/length/marker.txt";
     let entry = create_test_entry_with_tooluse("tooluse-1", long_path);
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation);
+    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport (60 chars)
     view_state.relayout(60, WrapMode::Wrap);
@@ -131,9 +132,9 @@ fn test_tooluse_defaults_to_nowrap_despite_global_wrap() {
     // If it wrapped, we'd see "marker.txt" on a subsequent line
 
     let path_line = output.lines().find(|line| line.contains("/some/very/long"));
-    let marker_on_different_line = output.lines().any(|line|
-        line.contains("marker.txt") && !line.contains("/some/very/long")
-    );
+    let marker_on_different_line = output
+        .lines()
+        .any(|line| line.contains("marker.txt") && !line.contains("/some/very/long"));
 
     assert!(
         path_line.is_some() && !marker_on_different_line,
@@ -149,11 +150,12 @@ fn test_tooluse_defaults_to_nowrap_despite_global_wrap() {
 #[test]
 fn test_tooluse_respects_explicit_wrap_override() {
     // Create entry with ToolUse containing long JSON field
-    let long_path = "/some/very/long/path/to/a/file/that/exceeds/sixty/characters/in/total/length/marker.txt";
+    let long_path =
+        "/some/very/long/path/to/a/file/that/exceeds/sixty/characters/in/total/length/marker.txt";
     let entry = create_test_entry_with_tooluse("tooluse-2", long_path);
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation);
+    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);
@@ -164,11 +166,7 @@ fn test_tooluse_respects_explicit_wrap_override() {
 
     // Expand to see full ToolUse block
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(60, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(60, 24))
         .expect("Should toggle expand");
 
     let styles = MessageStyles::new();
@@ -185,7 +183,9 @@ fn test_tooluse_respects_explicit_wrap_override() {
 
     // When explicitly overridden to Wrap, the long path SHOULD be split across lines
     // We verify that "marker.txt" appears on a DIFFERENT line than the start of the path
-    let path_start_line = output.lines().position(|line| line.contains("/some/very/long"));
+    let path_start_line = output
+        .lines()
+        .position(|line| line.contains("/some/very/long"));
     let marker_line = output.lines().position(|line| line.contains("marker.txt"));
 
     assert!(
@@ -204,7 +204,7 @@ fn test_toolresult_defaults_to_nowrap_despite_global_wrap() {
     let entry = create_test_entry_with_toolresult("toolresult-1", long_line);
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation);
+    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport (60 chars)
     view_state.relayout(60, WrapMode::Wrap);
@@ -233,10 +233,12 @@ fn test_toolresult_defaults_to_nowrap_despite_global_wrap() {
     // 2. The line is TRUNCATED (does NOT contain "overridden" which is beyond 60 chars)
     // If it wrapped, we'd see "overridden" on a subsequent line
 
-    let content_line = output.lines().find(|line| line.contains("This is a very long"));
-    let continuation_line = output.lines().any(|line|
-        line.contains("overridden") && !line.contains("This is a very long")
-    );
+    let content_line = output
+        .lines()
+        .find(|line| line.contains("This is a very long"));
+    let continuation_line = output
+        .lines()
+        .any(|line| line.contains("overridden") && !line.contains("This is a very long"));
 
     assert!(
         content_line.is_some() && !continuation_line,
@@ -256,7 +258,7 @@ fn test_toolresult_respects_explicit_wrap_override() {
     let entry = create_test_entry_with_toolresult("toolresult-2", long_line);
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation);
+    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);
@@ -267,11 +269,7 @@ fn test_toolresult_respects_explicit_wrap_override() {
 
     // Expand to see full ToolResult block
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(60, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(60, 24))
         .expect("Should toggle expand");
 
     let styles = MessageStyles::new();
@@ -287,7 +285,9 @@ fn test_toolresult_respects_explicit_wrap_override() {
     let output = buffer_to_string(terminal.backend().buffer());
 
     // When explicitly overridden to Wrap, the long line SHOULD be split across lines
-    let line_start = output.lines().position(|line| line.contains("This is a very long"));
+    let line_start = output
+        .lines()
+        .position(|line| line.contains("This is a very long"));
     let line_end = output.lines().position(|line| line.contains("overridden"));
 
     assert!(
@@ -317,7 +317,7 @@ fn test_text_block_still_respects_global_wrap() {
     );
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation);
+    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport
     view_state.relayout(60, WrapMode::Wrap);
@@ -335,7 +335,9 @@ fn test_text_block_still_respects_global_wrap() {
     let output = buffer_to_string(terminal.backend().buffer());
 
     // Text blocks should WRAP - the word "enabled" at the end should be on a different line
-    let text_start = output.lines().position(|line| line.contains("This is a very long"));
+    let text_start = output
+        .lines()
+        .position(|line| line.contains("This is a very long"));
     let text_end = output.lines().position(|line| line.contains("enabled"));
 
     assert!(

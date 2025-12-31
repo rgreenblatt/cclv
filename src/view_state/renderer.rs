@@ -55,6 +55,13 @@ use tui_markdown::from_str;
 /// * `collapse_threshold` - Number of lines before collapsing (typically 10)
 /// * `summary_lines` - Number of lines to show when collapsed (typically 3)
 /// * `styles` - MessageStyles for role-based coloring (User=Cyan, Assistant=Green, etc.)
+/// * `entry_index` - Optional entry index for display
+/// * `is_subagent_view` - Whether this is in subagent view
+/// * `search_state` - Current search state for highlighting
+/// * `focused` - Whether the pane is focused
+/// * `accumulated_tokens` - Cumulative input tokens up to this entry (cclv-5ur.32)
+/// * `max_context_tokens` - Maximum context window size in tokens (cclv-5ur.32)
+/// * `pricing` - Pricing configuration for cost estimation (cclv-5ur.32)
 ///
 /// # Returns
 ///
@@ -92,6 +99,9 @@ pub fn compute_entry_lines(
     is_subagent_view: bool,
     search_state: &crate::state::SearchState,
     focused: bool,
+    accumulated_tokens: u64,
+    max_context_tokens: u64,
+    pricing: &PricingConfig,
 ) -> Vec<Line<'static>> {
     // Extract match information if search is active
     let match_info = match search_state {
@@ -226,14 +236,9 @@ pub fn compute_entry_lines(
                 }
             }
 
-            // Add token divider separator at end
-            // TODO(cclv-5ur.32): Get accumulated tokens from conversation state
-            // TODO(cclv-5ur.32): Get max_context_tokens from config
-            // TODO(cclv-5ur.32): Get pricing from config
+            // Add token divider separator at end (cclv-5ur.32)
             if let Some(usage) = message.usage() {
-                let accumulated_tokens = 0; // Placeholder - will be computed properly later
-                let max_context = ContextWindowTokens::default(); // 200k default
-                let pricing = PricingConfig::default();
+                let max_context = ContextWindowTokens::new(max_context_tokens);
                 let model_id = valid_entry
                     .system_metadata()
                     .and_then(|m| m.model.as_deref());
@@ -242,7 +247,7 @@ pub fn compute_entry_lines(
                     usage,
                     accumulated_tokens,
                     max_context,
-                    &pricing,
+                    pricing,
                     model_id,
                 );
                 lines.push(divider);
@@ -267,14 +272,9 @@ pub fn compute_entry_lines(
                 lines.extend(block_lines);
             }
 
-            // Add token divider separator at end
-            // TODO(cclv-5ur.32): Get accumulated tokens from conversation state
-            // TODO(cclv-5ur.32): Get max_context_tokens from config
-            // TODO(cclv-5ur.32): Get pricing from config
+            // Add token divider separator at end (cclv-5ur.32)
             if let Some(usage) = message.usage() {
-                let accumulated_tokens = 0; // Placeholder - will be computed properly later
-                let max_context = ContextWindowTokens::default(); // 200k default
-                let pricing = PricingConfig::default();
+                let max_context = ContextWindowTokens::new(max_context_tokens);
                 let model_id = valid_entry
                     .system_metadata()
                     .and_then(|m| m.model.as_deref());
@@ -283,7 +283,7 @@ pub fn compute_entry_lines(
                     usage,
                     accumulated_tokens,
                     max_context,
-                    &pricing,
+                    pricing,
                     model_id,
                 );
                 lines.push(divider);

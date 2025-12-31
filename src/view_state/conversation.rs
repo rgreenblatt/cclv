@@ -64,6 +64,12 @@ pub struct ConversationViewState {
     /// Only relevant when line wrapping is disabled (FR-040).
     /// 0 means viewing from the leftmost column.
     horizontal_offset: u16,
+    /// Maximum context window size (from config).
+    /// Used for rendering context dividers with percentages.
+    max_context_tokens: usize,
+    /// Pricing configuration (from config).
+    /// Used for cost calculation in dividers.
+    pricing: crate::model::PricingConfig,
 }
 
 impl ConversationViewState {
@@ -73,11 +79,24 @@ impl ConversationViewState {
         agent_id: Option<crate::model::AgentId>,
         model: Option<crate::model::ModelInfo>,
         entries: Vec<ConversationEntry>,
+        max_context_tokens: usize,
+        pricing: crate::model::PricingConfig,
     ) -> Self {
+        // Compute accumulated tokens as running sum
+        let mut accumulated = 0;
         let entry_views: Vec<EntryView> = entries
             .into_iter()
             .enumerate()
-            .map(|(idx, entry)| EntryView::new(entry, EntryIndex::new(idx)))
+            .map(|(idx, entry)| {
+                accumulated += entry.token_count();
+                EntryView::new(
+                    entry,
+                    EntryIndex::new(idx),
+                    accumulated,
+                    max_context_tokens,
+                    pricing.clone(),
+                )
+            })
             .collect();
         let capacity = entry_views.len().max(100);
         Self {
@@ -92,12 +111,20 @@ impl ConversationViewState {
             focused_message: None,
             last_layout_params: None,
             horizontal_offset: 0,
+            max_context_tokens,
+            pricing,
         }
     }
 
     /// Create empty conversation view-state for main agent.
     pub fn empty() -> Self {
-        Self::new(None, None, Vec::new())
+        Self::new(
+            None,
+            None,
+            Vec::new(),
+            200_000, // Default max_context_tokens
+            crate::model::PricingConfig::default(),
+        )
     }
 
     // === Focus Management ===
@@ -252,9 +279,22 @@ impl ConversationViewState {
     /// New entries have default layout; call `recompute_layout` to update.
     pub fn append(&mut self, entries: Vec<ConversationEntry>) {
         let start_idx = self.entries.len();
+        // Get accumulated tokens from last entry (or 0 if empty)
+        let mut accumulated = self
+            .entries
+            .last()
+            .map(|e| e.accumulated_tokens())
+            .unwrap_or(0);
+
         for (offset, entry) in entries.into_iter().enumerate() {
-            self.entries
-                .push(EntryView::new(entry, EntryIndex::new(start_idx + offset)));
+            accumulated += entry.token_count();
+            self.entries.push(EntryView::new(
+                entry,
+                EntryIndex::new(start_idx + offset),
+                accumulated,
+                self.max_context_tokens,
+                self.pricing.clone(),
+            ));
         }
         // Invalidate layout
         self.last_layout_params = None;
@@ -435,11 +475,11 @@ impl ConversationViewState {
         }
 
         // Resolve current scroll position to line offset
-        let scroll_offset = self.scroll.resolve(
-            self.total_height,
-            viewport.height as usize,
-            |idx| self.entry_cumulative_y(idx)
-        );
+        let scroll_offset =
+            self.scroll
+                .resolve(self.total_height, viewport.height as usize, |idx| {
+                    self.entry_cumulative_y(idx)
+                });
 
         // Calculate the maximum scroll offset (bottom position)
         // When scrolled to bottom: scroll_offset = total_height - viewport_height
@@ -626,13 +666,30 @@ impl ConversationViewState {
     pub fn append_entries(&mut self, entries: Vec<ConversationEntry>) {
         let start_idx = self.entries.len();
 
+        // Get accumulated tokens from last entry (or 0 if empty)
+        let mut accumulated = self
+            .entries
+            .last()
+            .map(|e| e.accumulated_tokens())
+            .unwrap_or(0);
+
         for (offset, entry) in entries.into_iter().enumerate() {
             let index = EntryIndex::new(start_idx + offset);
-            let mut entry_view = EntryView::new(entry, index);
+            accumulated += entry.token_count();
+
+            let mut entry_view = EntryView::new(
+                entry,
+                index,
+                accumulated,
+                self.max_context_tokens,
+                self.pricing.clone(),
+            );
 
             // Compute rendered lines
             let effective_wrap = entry_view.effective_wrap(self.global_wrap);
-            let is_focused = self.focused_message.is_some_and(|f| f.get() == (start_idx + offset));
+            let is_focused = self
+                .focused_message
+                .is_some_and(|f| f.get() == (start_idx + offset));
             entry_view.recompute_lines(effective_wrap, self.viewport_width, is_focused);
 
             let height = entry_view.height().get() as usize;
@@ -718,6 +775,21 @@ mod tests {
         ConversationEntry::Valid(Box::new(log_entry))
     }
 
+    /// Test helper: Create ConversationViewState with default config values
+    fn make_test_state(
+        agent_id: Option<crate::model::AgentId>,
+        model: Option<crate::model::ModelInfo>,
+        entries: Vec<ConversationEntry>,
+    ) -> ConversationViewState {
+        ConversationViewState::new(
+            agent_id,
+            model,
+            entries,
+            200_000, // Default test max_context_tokens
+            crate::model::PricingConfig::default(),
+        )
+    }
+
     // === ConversationViewState::new Tests ===
 
     #[test]
@@ -728,7 +800,7 @@ mod tests {
             make_valid_entry("uuid-3"),
         ];
 
-        let state = ConversationViewState::new(None, None, entries);
+        let state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         assert_eq!(state.len(), 3, "Should have 3 entries");
         assert!(!state.is_empty(), "Should not be empty");
@@ -737,7 +809,7 @@ mod tests {
     #[test]
     fn new_starts_with_no_layout() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let state = ConversationViewState::new(None, None, entries);
+        let state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         assert_eq!(
             state.total_height(),
@@ -753,7 +825,7 @@ mod tests {
     #[test]
     fn new_starts_scrolled_to_top() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let state = ConversationViewState::new(None, None, entries);
+        let state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         assert_eq!(state.scroll(), &ScrollPosition::Top, "Should start at top");
     }
@@ -761,7 +833,7 @@ mod tests {
     #[test]
     fn new_starts_with_no_focused_message() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let state = ConversationViewState::new(None, None, entries);
+        let state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         assert_eq!(
             state.focused_message(),
@@ -777,7 +849,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let state = ConversationViewState::new(None, None, entries);
+        let state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         assert_eq!(
             state.get(EntryIndex::new(0)).unwrap().index(),
@@ -812,7 +884,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -842,7 +914,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -871,7 +943,7 @@ mod tests {
     #[test]
     fn recompute_layout_stores_params() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -902,7 +974,7 @@ mod tests {
             make_entry_with_n_lines("uuid-3", 9),
             make_entry_with_n_lines("uuid-4", 9),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -930,7 +1002,7 @@ mod tests {
             make_entry_with_n_lines("uuid-4", 9),
             make_entry_with_n_lines("uuid-5", 9),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params); // Each entry is 10 lines
@@ -957,7 +1029,7 @@ mod tests {
             make_entry_with_n_lines("uuid-3", 9),
             make_entry_with_n_lines("uuid-4", 9),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params); // Total height = 40
@@ -984,7 +1056,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1040,8 +1112,8 @@ mod tests {
             make_valid_entry("uuid-3"),
         ];
 
-        let mut state1 = ConversationViewState::new(None, None, entries.clone());
-        let mut state2 = ConversationViewState::new(None, None, entries);
+        let mut state1 = ConversationViewState::new(None, None, entries.clone(), 200_000, crate::model::PricingConfig::default());
+        let mut state2 = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
 
@@ -1064,7 +1136,7 @@ mod tests {
     #[test]
     fn toggle_expand_returns_new_state() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1090,7 +1162,7 @@ mod tests {
     #[test]
     fn toggle_expand_triggers_relayout() {
         let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1144,7 +1216,7 @@ mod tests {
         let entries: Vec<ConversationEntry> = (0..10)
             .map(|i| make_valid_entry(&format!("uuid-{}", i)))
             .collect();
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1232,7 +1304,7 @@ mod tests {
         // Reproduces bug: hit_test called before recompute_layout
         // HeightIndex is empty (len=0) even though entries exist
         let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
-        let state = ConversationViewState::new(None, None, entries);
+        let state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         // NO layout computation - height_index.len() == 0
 
@@ -1249,7 +1321,7 @@ mod tests {
     #[test]
     fn hit_test_finds_first_entry() {
         let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1274,7 +1346,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1299,7 +1371,7 @@ mod tests {
     #[test]
     fn hit_test_beyond_content_returns_miss() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params); // Total height = 10
@@ -1317,7 +1389,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1344,7 +1416,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1372,7 +1444,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1416,7 +1488,7 @@ mod tests {
     #[test]
     fn hit_test_single_entry_all_positions() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1453,7 +1525,7 @@ mod tests {
             .map(|i| make_valid_entry(&format!("uuid-{}", i)))
             .collect();
 
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1504,7 +1576,7 @@ mod tests {
     #[test]
     fn needs_relayout_true_when_params_change() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params1 = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params1);
@@ -1516,7 +1588,7 @@ mod tests {
     #[test]
     fn needs_relayout_false_when_params_unchanged() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1528,7 +1600,7 @@ mod tests {
 
     #[test]
     fn append_adds_entries_to_end() {
-        let mut state = ConversationViewState::new(None, None, vec![make_valid_entry("uuid-1")]);
+        let mut state = ConversationViewState::new(None, None, vec![make_valid_entry("uuid-1")], 200_000, crate::model::PricingConfig::default());
 
         state.append(vec![make_valid_entry("uuid-2"), make_valid_entry("uuid-3")]);
 
@@ -1541,7 +1613,7 @@ mod tests {
 
     #[test]
     fn append_invalidates_layout() {
-        let mut state = ConversationViewState::new(None, None, vec![make_valid_entry("uuid-1")]);
+        let mut state = ConversationViewState::new(None, None, vec![make_valid_entry("uuid-1")], 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1559,7 +1631,7 @@ mod tests {
     #[test]
     fn set_wrap_override_updates_entry_state() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1586,7 +1658,7 @@ mod tests {
     #[test]
     fn set_wrap_override_returns_previous_value() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1614,7 +1686,7 @@ mod tests {
         assert_eq!(result, None);
 
         // Also test out of bounds on non-empty state
-        let mut state = ConversationViewState::new(None, None, vec![make_valid_entry("uuid-1")]);
+        let mut state = ConversationViewState::new(None, None, vec![make_valid_entry("uuid-1")], 200_000, crate::model::PricingConfig::default());
         state.recompute_layout(params);
 
         let result = state.set_wrap_override(EntryIndex::new(999), Some(WrapMode::NoWrap), params);
@@ -1629,7 +1701,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1684,7 +1756,7 @@ mod tests {
     #[test]
     fn horizontal_offset_starts_at_zero() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let state = ConversationViewState::new(None, None, entries);
+        let state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         assert_eq!(
             state.horizontal_offset(),
@@ -1696,7 +1768,7 @@ mod tests {
     #[test]
     fn set_horizontal_offset_updates_value() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         state.set_horizontal_offset(42);
 
@@ -1710,7 +1782,7 @@ mod tests {
     #[test]
     fn scroll_right_increases_offset() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         assert_eq!(state.horizontal_offset(), 0);
 
@@ -1732,7 +1804,7 @@ mod tests {
     #[test]
     fn scroll_left_decreases_offset() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         state.set_horizontal_offset(10);
         assert_eq!(state.horizontal_offset(), 10);
@@ -1755,7 +1827,7 @@ mod tests {
     #[test]
     fn scroll_left_saturates_at_zero() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         state.set_horizontal_offset(5);
         assert_eq!(state.horizontal_offset(), 5);
@@ -1780,7 +1852,7 @@ mod tests {
     #[test]
     fn scroll_right_handles_u16_max() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         // Set to near max
         state.set_horizontal_offset(u16::MAX - 5);
@@ -1798,7 +1870,7 @@ mod tests {
     #[test]
     fn set_wrap_override_affects_effective_wrap() {
         let entries = vec![make_valid_entry("uuid-1")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
@@ -1842,7 +1914,7 @@ mod tests {
     #[test]
     fn approximate_scroll_line_at_top() {
         let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
 
@@ -1858,7 +1930,7 @@ mod tests {
     #[test]
     fn approximate_scroll_line_at_bottom() {
         let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
 
@@ -1874,7 +1946,7 @@ mod tests {
     #[test]
     fn approximate_scroll_line_at_specific_line() {
         let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
 
@@ -1894,7 +1966,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
 
@@ -1915,7 +1987,7 @@ mod tests {
             make_valid_entry("uuid-2"),
             make_valid_entry("uuid-3"),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
         let params = LayoutParams::new(80, WrapMode::Wrap);
         state.recompute_layout(params);
 
@@ -1946,13 +2018,16 @@ mod tests {
             make_entry_with_n_lines("uuid-1", 5),
             make_entry_with_n_lines("uuid-2", 5),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         // Relayout so we have known total_height
         state.relayout(80, WrapMode::Wrap);
 
         let height_before = state.total_height();
-        assert!(height_before > 0, "Should have non-zero height after relayout");
+        assert!(
+            height_before > 0,
+            "Should have non-zero height after relayout"
+        );
 
         // Append new entry using NEW append_entries() method
         let new_entries = vec![make_entry_with_n_lines("uuid-3", 5)];
@@ -1982,13 +2057,16 @@ mod tests {
             make_entry_with_n_lines("uuid-1", 5),
             make_entry_with_n_lines("uuid-2", 5),
         ];
-        let mut state = ConversationViewState::new(None, None, entries);
+        let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
 
         // Relayout so we have known total_height
         state.relayout(80, WrapMode::Wrap);
 
         let height_before = state.total_height();
-        assert!(height_before > 0, "Should have non-zero height after relayout");
+        assert!(
+            height_before > 0,
+            "Should have non-zero height after relayout"
+        );
 
         // Now use NEW append_entries() method
         let new_entries = vec![make_entry_with_n_lines("uuid-3", 5)];

@@ -20,7 +20,7 @@ Model: claude-opus-4-5-20251101 | Main Agent | /home/claude/cclv | 18 tools, 17 
 ││     Let me start by loading the required skill and then following the protocol.                                     │
 ││                                                                                                                     │
 ││     First, I'll invoke the efficient-subagent-orchestration skill as required.                                      │
-│                                                                                                                      │
+│── 9 in / 1 out / $0.06 | Context: 37.4k (18%) ──                                                                     │
 ││   4 🔧  Tool: Task                                                                                                   │
 ││       {                                                                                                             │
 ││         "description": "Create flake.nix for cclv",                                                                 │
@@ -28,7 +28,7 @@ Model: claude-opus-4-5-20251101 | Main Agent | /home/claude/cclv | 18 tools, 17 
 ││         "prompt": "## Task: Create flake.nix for Claude Code Log Viewer (cclv)\n\n**Bead ID**: cclv-07v.1.1\n\n## Co│
 ││         "subagent_type": "nix-devops-expert"                                                                        │
 ││       }                                                                                                             │
-│                                                                                                                      │
+│── 6 in / 1.2k out / $0.20 | Context: 110.3k (55%) ──                                                                 │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

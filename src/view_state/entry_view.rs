@@ -27,6 +27,9 @@ use ratatui::text::Line;
 /// # Per-Entry Presentation State
 /// - `expanded`: Whether entry shows full content or collapsed summary (FR-031)
 /// - `wrap_override`: Optional per-entry wrap mode override (FR-048)
+/// - `accumulated_tokens`: Running sum of tokens from conversation start to this entry (inclusive)
+/// - `max_context_tokens`: Context window size (for percentage calculation)
+/// - `pricing`: Model pricing info (for cost calculation)
 ///
 /// # Malformed Entries
 /// Malformed entries have minimal rendering (separator line only).
@@ -48,6 +51,15 @@ pub struct EntryView {
     /// `None` = use global wrap mode.
     /// `Some(mode)` = override global with this specific mode.
     wrap_override: Option<WrapMode>,
+    /// Accumulated tokens from conversation start up to and including this entry.
+    /// Used for rendering context divider with percentage.
+    accumulated_tokens: usize,
+    /// Maximum context window size (from config).
+    /// Used for percentage calculation in divider.
+    max_context_tokens: usize,
+    /// Pricing configuration (from config).
+    /// Used for cost calculation in divider.
+    pricing: crate::model::PricingConfig,
 }
 
 impl EntryView {
@@ -68,13 +80,25 @@ impl EntryView {
     /// # Arguments
     /// * `entry` - Domain entry to wrap
     /// * `index` - Position within conversation
-    pub fn new(entry: ConversationEntry, index: EntryIndex) -> Self {
+    /// * `accumulated_tokens` - Running sum of tokens up to and including this entry
+    /// * `max_context_tokens` - Context window size from config
+    /// * `pricing` - Model pricing information from config
+    pub fn new(
+        entry: ConversationEntry,
+        index: EntryIndex,
+        accumulated_tokens: usize,
+        max_context_tokens: usize,
+        pricing: crate::model::PricingConfig,
+    ) -> Self {
         Self {
             entry,
             index,
             rendered_lines: vec![Line::from("")], // Minimal placeholder (1 line minimum)
             expanded: false,
             wrap_override: None,
+            accumulated_tokens,
+            max_context_tokens,
+            pricing,
         }
     }
 
@@ -91,14 +115,20 @@ impl EntryView {
     /// * `index` - Position within conversation
     /// * `wrap_mode` - Effective wrap mode for this entry
     /// * `width` - Viewport width for text wrapping
+    /// * `accumulated_tokens` - Running sum of tokens up to and including this entry
+    /// * `max_context_tokens` - Context window size from config
+    /// * `pricing` - Model pricing information from config
     pub fn with_rendered_lines(
         entry: ConversationEntry,
         index: EntryIndex,
         wrap_mode: WrapMode,
         width: u16,
+        accumulated_tokens: usize,
+        max_context_tokens: usize,
+        pricing: crate::model::PricingConfig,
     ) -> Self {
         let expanded = false; // Start collapsed
-        // New entries have no wrap override, so use global mode
+                              // New entries have no wrap override, so use global mode
         let wrap_ctx = WrapContext::from_global(wrap_mode);
         // TODO: Pass MessageStyles from caller instead of default
         let styles = crate::view::MessageStyles::new();
@@ -114,6 +144,9 @@ impl EntryView {
             false,                                // TODO: Pass is_subagent_view from caller
             &crate::state::SearchState::Inactive, // TODO: Pass search_state from caller
             false,                                // Default to not focused on creation
+            accumulated_tokens as u64,
+            max_context_tokens as u64,
+            &pricing,
         );
         Self {
             entry,
@@ -121,6 +154,9 @@ impl EntryView {
             rendered_lines,
             expanded,
             wrap_override: None,
+            accumulated_tokens,
+            max_context_tokens,
+            pricing,
         }
     }
 
@@ -145,6 +181,11 @@ impl EntryView {
             ConversationEntry::Valid(log_entry) => Some(log_entry.uuid()),
             ConversationEntry::Malformed(_) => None,
         }
+    }
+
+    /// Get accumulated token count (running sum up to and including this entry).
+    pub fn accumulated_tokens(&self) -> usize {
+        self.accumulated_tokens
     }
 
     /// Get the height of this entry (count of rendered lines).
@@ -196,6 +237,9 @@ impl EntryView {
             false,                  // TODO: Pass is_subagent_view from caller
             &crate::state::SearchState::Inactive, // TODO: Pass search_state from caller
             focused,
+            self.accumulated_tokens as u64,
+            self.max_context_tokens as u64,
+            &self.pricing,
         );
     }
 
@@ -302,7 +346,7 @@ mod legacy_tests {
         let index = EntryIndex::new(0);
 
         // NEW API: EntryView::new creates minimal placeholder
-        let view = EntryView::new(entry, index);
+        let view = EntryView::new(entry, index, 0, 200_000, crate::model::PricingConfig::default());
 
         assert_eq!(view.index(), index);
         assert!(

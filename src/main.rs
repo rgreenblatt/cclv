@@ -293,6 +293,7 @@ mod tests {
             log_buffer_capacity: None,
             log_file_path: None,
             keybindings: None,
+            max_context_tokens: None,
             pricing: None,
         };
 

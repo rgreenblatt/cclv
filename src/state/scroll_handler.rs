@@ -85,9 +85,10 @@ pub fn handle_scroll_action(
                 _ => {
                     // Resolve current position to line offset, then scroll up
                     let total_height = conversation.total_height();
-                    let offset = current_scroll.resolve(total_height, viewport.height as usize, |idx| {
-                        conversation.entry_cumulative_y(idx)
-                    });
+                    let offset =
+                        current_scroll.resolve(total_height, viewport.height as usize, |idx| {
+                            conversation.entry_cumulative_y(idx)
+                        });
                     ScrollPosition::AtLine(offset.saturating_sub(1))
                 }
             }
@@ -100,9 +101,10 @@ pub fn handle_scroll_action(
                 _ => {
                     // Resolve current position to line offset, then scroll down
                     let total_height = conversation.total_height();
-                    let offset = current_scroll.resolve(total_height, viewport.height as usize, |idx| {
-                        conversation.entry_cumulative_y(idx)
-                    });
+                    let offset =
+                        current_scroll.resolve(total_height, viewport.height as usize, |idx| {
+                            conversation.entry_cumulative_y(idx)
+                        });
                     ScrollPosition::AtLine(offset.saturating_add(1))
                 }
             }
@@ -117,9 +119,10 @@ pub fn handle_scroll_action(
                 _ => {
                     // Resolve current position to line offset, then page up
                     let total_height = conversation.total_height();
-                    let offset = current_scroll.resolve(total_height, viewport.height as usize, |idx| {
-                        conversation.entry_cumulative_y(idx)
-                    });
+                    let offset =
+                        current_scroll.resolve(total_height, viewport.height as usize, |idx| {
+                            conversation.entry_cumulative_y(idx)
+                        });
                     ScrollPosition::AtLine(offset.saturating_sub(viewport.height as usize))
                 }
             }
@@ -134,9 +137,10 @@ pub fn handle_scroll_action(
                 _ => {
                     // Resolve current position to line offset, then page down
                     let total_height = conversation.total_height();
-                    let offset = current_scroll.resolve(total_height, viewport.height as usize, |idx| {
-                        conversation.entry_cumulative_y(idx)
-                    });
+                    let offset =
+                        current_scroll.resolve(total_height, viewport.height as usize, |idx| {
+                            conversation.entry_cumulative_y(idx)
+                        });
                     ScrollPosition::AtLine(offset.saturating_add(viewport.height as usize))
                 }
             }

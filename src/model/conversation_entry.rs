@@ -79,6 +79,21 @@ impl ConversationEntry {
             ConversationEntry::Malformed(malformed) => Some(malformed),
         }
     }
+
+    /// Get the token count for this entry.
+    ///
+    /// Returns the total token count from the entry's message usage metadata.
+    /// Returns 0 for malformed entries or entries without usage data.
+    pub fn token_count(&self) -> usize {
+        match self {
+            ConversationEntry::Valid(entry) => entry
+                .message()
+                .usage()
+                .map(|usage| usage.total() as usize)
+                .unwrap_or(0),
+            ConversationEntry::Malformed(_) => 0,
+        }
+    }
 }
 
 impl From<ParseResult> for ConversationEntry {

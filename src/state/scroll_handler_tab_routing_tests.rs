@@ -353,12 +353,7 @@ fn scroll_position_preserved_when_switching_tabs() {
     let state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
 
     // Verify main scrolled to 11
-    let main_scroll = state
-        .log_view()
-        .current_session()
-        .unwrap()
-        .main()
-        .scroll();
+    let main_scroll = state.log_view().current_session().unwrap().main().scroll();
     match main_scroll {
         ScrollPosition::AtLine(offset) => {
             assert_eq!(offset.get(), 11);
@@ -379,12 +374,7 @@ fn scroll_position_preserved_when_switching_tabs() {
     state.selected_tab = Some(0);
 
     // Verify: Main agent scroll position is STILL 11 (preserved)
-    let main_scroll = state
-        .log_view()
-        .current_session()
-        .unwrap()
-        .main()
-        .scroll();
+    let main_scroll = state.log_view().current_session().unwrap().main().scroll();
     match main_scroll {
         ScrollPosition::AtLine(offset) => {
             assert_eq!(

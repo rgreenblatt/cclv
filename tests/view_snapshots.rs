@@ -197,7 +197,10 @@ fn snapshot_stats_panel_with_cache_tokens() {
 #[test]
 fn snapshot_tab_bar_single_tab() {
     let agent1 = AgentId::new("agent-abc123").unwrap();
-    let conversation_tabs = vec![tabs::ConversationTab::Main, tabs::ConversationTab::Subagent(&agent1)];
+    let conversation_tabs = vec![
+        tabs::ConversationTab::Main,
+        tabs::ConversationTab::Subagent(&agent1),
+    ];
     let matches = HashSet::new();
 
     let mut terminal = create_terminal(40, 5);
@@ -328,7 +331,7 @@ fn snapshot_message_collapsed_multiline() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     view_state.relayout(60, WrapMode::Wrap);
     let styles = MessageStyles::new();
 
@@ -358,7 +361,7 @@ fn snapshot_message_expanded_multiline() {
 
     let conversation = create_test_conversation(vec![entry.clone()]);
     // Create view state and expand the message
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -400,7 +403,7 @@ That's the code."#;
 
     let conversation = create_test_conversation(vec![entry.clone()]);
     // Expand to see full code block
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -442,7 +445,7 @@ That's the code."#;
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -493,7 +496,7 @@ fn main() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -587,7 +590,7 @@ fn snapshot_message_with_tool_use() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -631,7 +634,7 @@ Total lines: 3"#;
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -673,7 +676,7 @@ fn snapshot_message_with_thinking_block() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
@@ -721,7 +724,7 @@ fn bug_entry_indices_not_visible_in_rendered_output() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
     view_state.relayout(60, WrapMode::Wrap);
     let styles = MessageStyles::new();
 
@@ -1595,7 +1598,7 @@ fn bug_jerky_scroll_line_by_line() {
     ];
 
     // Create view state
-    let mut state = ConversationViewState::new(None, None, entries);
+    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::NoWrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -1712,7 +1715,7 @@ fn bug_collapsed_entry_height_mismatch() {
         .collect();
 
     // Create view state with entries NOT expanded (collapsed by default)
-    let mut state = ConversationViewState::new(None, None, entries);
+    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(211, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -1819,7 +1822,7 @@ fn bug_scroll_stuck_with_thinking_blocks() {
 
     // Create view state with entries COLLAPSED (default state)
     // This is how entries appear initially in the TUI
-    let mut state = ConversationViewState::new(None, None, entries.clone());
+    let mut state = ConversationViewState::new(None, None, entries.clone(), 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -1916,7 +1919,7 @@ fn snapshot_wrap_mode_global_wrap() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
 
     // Use narrow viewport (60 chars) to force wrapping
     view_state.relayout(60, WrapMode::Wrap);
@@ -1962,7 +1965,7 @@ fn snapshot_wrap_mode_global_nowrap() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
 
     // Use narrow viewport (60 chars) but disable wrapping
     view_state.relayout(60, WrapMode::NoWrap);
@@ -2011,7 +2014,7 @@ fn snapshot_wrap_mode_per_entry_override() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone(), 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);

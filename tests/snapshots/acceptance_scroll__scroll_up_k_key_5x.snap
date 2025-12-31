@@ -11,7 +11,7 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ││       {                                                                     │
 ││         "skill": "beads-project-tracking"                                   │
 ││       }                                                                     │
-│                                                                              │
+│── 9 in / 1 out / $0.06 | Context: 149.8k (74%) ──                            │
 ││   7 Launching skill: efficient-subagent-orchestration                       │
 │                                                                              │
 ││   8 Base directory for this skill: /home/claude/.claude/skills/efficient-sub│

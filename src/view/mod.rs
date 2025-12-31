@@ -927,11 +927,14 @@ where
 ///
 /// ```rust,no_run
 /// use cclv::view::CliArgs;
+/// use cclv::model::PricingConfig;
 ///
 /// let args = CliArgs::new(
 ///     "base16-ocean".to_string(),  // Theme name
 ///     true,                         // Show stats panel on startup
 ///     true,                         // Enable live-follow mode
+///     200_000,                      // Max context tokens
+///     PricingConfig::default(),     // Pricing config
 /// );
 /// ```
 pub struct CliArgs {
@@ -2491,13 +2494,25 @@ mod tests {
 
     #[test]
     fn cli_args_new_stores_theme() {
-        let args = CliArgs::new("monokai".to_string(), false, false);
+        let args = CliArgs::new(
+            "monokai".to_string(),
+            false,
+            false,
+            200_000,
+            crate::model::PricingConfig::default(),
+        );
         assert_eq!(args.theme, "monokai", "CliArgs should store theme value");
     }
 
     #[test]
     fn cli_args_new_stores_all_fields() {
-        let args = CliArgs::new("solarized-dark".to_string(), true, true);
+        let args = CliArgs::new(
+            "solarized-dark".to_string(),
+            true,
+            true,
+            200_000,
+            crate::model::PricingConfig::default(),
+        );
         assert_eq!(args.theme, "solarized-dark", "Theme should be stored");
         assert!(args.stats, "Stats flag should be stored");
         assert!(args.follow, "Follow flag should be stored");
@@ -2514,7 +2529,13 @@ mod tests {
         ];
 
         for theme in valid_themes {
-            let args = CliArgs::new(theme.to_string(), false, false);
+            let args = CliArgs::new(
+                theme.to_string(),
+                false,
+                false,
+                200_000,
+                crate::model::PricingConfig::default(),
+            );
             assert_eq!(args.theme, theme, "CliArgs should accept theme: {}", theme);
         }
     }

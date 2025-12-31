@@ -15,6 +15,39 @@ fn default_styles() -> MessageStyles {
     MessageStyles::new()
 }
 
+/// Test helper: Call compute_entry_lines with default token/config parameters.
+#[allow(clippy::too_many_arguments)]
+fn compute_test_lines(
+    entry: &ConversationEntry,
+    expanded: bool,
+    wrap_ctx: WrapContext,
+    width: u16,
+    collapse_threshold: usize,
+    summary_lines: usize,
+    styles: &MessageStyles,
+    entry_index: Option<usize>,
+    is_subagent_view: bool,
+    search_state: &crate::state::SearchState,
+    focused: bool,
+) -> Vec<ratatui::text::Line<'static>> {
+    compute_entry_lines(
+        entry,
+        expanded,
+        wrap_ctx,
+        width,
+        collapse_threshold,
+        summary_lines,
+        styles,
+        entry_index,
+        is_subagent_view,
+        search_state,
+        focused,
+        0,      // accumulated_tokens (default for tests)
+        200_000, // max_context_tokens (default)
+        &crate::model::PricingConfig::default(),
+    )
+}
+
 // ===== Role-Based Styling Tests (FR-021, FR-022) =====
 
 #[test]
@@ -25,7 +58,7 @@ fn test_user_entry_has_cyan_color() {
 
     // Render with MessageStyles
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -61,7 +94,7 @@ fn test_assistant_entry_has_green_color() {
 
     // Render with MessageStyles
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -132,7 +165,7 @@ fn test_collapsed_thinking_block_respects_collapse_threshold() {
     let summary_lines = 3;
 
     // Render collapsed
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // expanded = false
         WrapContext::from_global(WrapMode::Wrap),
@@ -189,7 +222,7 @@ fn test_expanded_thinking_block_shows_all_lines() {
     let summary_lines = 3;
 
     // Render expanded
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded = true
         WrapContext::from_global(WrapMode::Wrap),
@@ -237,7 +270,7 @@ fn test_small_thinking_block_never_collapses() {
     let summary_lines = 3;
 
     // Render collapsed (but should show all since below threshold)
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // expanded = false
         WrapContext::from_global(WrapMode::Wrap),
@@ -307,7 +340,7 @@ fn test_collapsed_text_content_respects_collapse_threshold() {
     let summary_lines = 3;
 
     // Render collapsed
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // expanded = false
         WrapContext::from_global(WrapMode::Wrap),
@@ -371,7 +404,7 @@ fn test_expanded_text_content_shows_all_lines() {
     let summary_lines = 3;
 
     // Render expanded
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded = true
         WrapContext::from_global(WrapMode::Wrap),
@@ -419,7 +452,7 @@ fn test_small_text_content_never_collapses() {
     let summary_lines = 3;
 
     // Render collapsed (but should show all since below threshold)
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // expanded = false
         WrapContext::from_global(WrapMode::Wrap),
@@ -471,7 +504,7 @@ fn test_text_block_wraps_long_lines() {
     let summary_lines = 3;
 
     // Render with wrapping enabled
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -509,7 +542,7 @@ fn test_text_block_nowrap_does_not_wrap() {
     let summary_lines = 3;
 
     // Render with NoWrap mode
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::NoWrap),
@@ -573,7 +606,7 @@ fn test_tool_result_wraps_long_lines() {
     let summary_lines = 3;
 
     // Render with EXPLICIT per-entry Wrap override (not just global)
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true,                                       // expanded
         WrapContext::from_override(WrapMode::Wrap), // EXPLICIT override
@@ -611,7 +644,7 @@ fn test_tool_result_nowrap_does_not_wrap() {
     let summary_lines = 3;
 
     // Render with NoWrap mode
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::NoWrap),
@@ -679,7 +712,7 @@ fn test_tool_use_wraps_long_input_lines() {
     let summary_lines = 3;
 
     // Render with wrapping enabled
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -723,7 +756,7 @@ fn test_tool_use_nowrap_does_not_wrap() {
     let summary_lines = 3;
 
     // Render with EXPLICIT Wrap override (should wrap)
-    let wrapped_lines = compute_entry_lines(
+    let wrapped_lines = compute_test_lines(
         &entry,
         true,                                       // expanded
         WrapContext::from_override(WrapMode::Wrap), // EXPLICIT override
@@ -738,7 +771,7 @@ fn test_tool_use_nowrap_does_not_wrap() {
     );
 
     // Render with global Wrap (defaults to NoWrap for ToolUse)
-    let default_nowrap_lines = compute_entry_lines(
+    let default_nowrap_lines = compute_test_lines(
         &entry,
         true,                                     // expanded
         WrapContext::from_global(WrapMode::Wrap), // Global - ToolUse ignores this
@@ -770,7 +803,7 @@ fn test_tool_use_header_has_emoji_indicator() {
     let entry = create_entry_with_tool_use("TestTool", input);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -815,7 +848,7 @@ fn test_entry_index_0_shows_as_1_prefix() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -865,7 +898,7 @@ fn test_entry_index_41_shows_as_42_prefix() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -900,7 +933,7 @@ fn test_entry_index_999_shows_as_1000_prefix() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -935,7 +968,7 @@ fn test_entry_index_none_shows_no_prefix() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -977,7 +1010,7 @@ fn test_entry_index_prefix_on_multiline_entry() {
     let entry = create_entry_with_text(&text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded (show all lines)
         WrapContext::from_global(WrapMode::Wrap),
@@ -1036,7 +1069,7 @@ fn test_initial_prompt_label_appears_for_first_entry_in_subagent_view() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -1099,7 +1132,7 @@ fn test_initial_prompt_label_does_not_appear_in_main_view() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -1141,7 +1174,7 @@ fn test_initial_prompt_label_only_for_first_entry_in_subagent() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -1182,7 +1215,7 @@ fn test_initial_prompt_label_without_entry_index() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -1224,7 +1257,7 @@ fn test_entry_index_prefix_on_collapsed_entry() {
     let summary_lines = 3;
     let styles = default_styles();
 
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -1282,7 +1315,7 @@ fn test_text_block_renders_bold_markdown() {
     let entry = create_entry_with_text(markdown_text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -1319,7 +1352,7 @@ fn test_text_block_renders_italic_markdown() {
     let entry = create_entry_with_text(markdown_text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -1356,7 +1389,7 @@ fn test_text_block_renders_inline_code_markdown() {
     let entry = create_entry_with_text(markdown_text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -1392,7 +1425,7 @@ fn test_text_block_preserves_role_color_in_markdown() {
     let entry = create_entry_with_text(markdown_text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -1468,7 +1501,7 @@ fn test_search_match_highlighted_with_yellow_background() {
     };
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -1537,7 +1570,7 @@ fn test_current_search_match_has_reversed_modifier() {
     };
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -1601,7 +1634,7 @@ fn test_non_current_search_matches_no_reversed_modifier() {
     };
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),
@@ -1649,7 +1682,7 @@ That's the code."#;
     let entry = create_entry_with_text(markdown);
     let styles = default_styles();
 
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded to see full content
         WrapContext::from_global(WrapMode::Wrap),
@@ -1712,7 +1745,7 @@ fn test_focused_entry_has_cyan_index() {
     let styles = default_styles();
 
     // Render entry as FOCUSED with index prefix
-    let focused_lines = compute_entry_lines(
+    let focused_lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -1727,7 +1760,7 @@ fn test_focused_entry_has_cyan_index() {
     );
 
     // Render entry as UNFOCUSED with index prefix
-    let unfocused_lines = compute_entry_lines(
+    let unfocused_lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -1799,7 +1832,7 @@ fn test_entry_index_appears_only_on_first_line() {
     let entry = create_entry_with_text(&text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded (show all lines)
         WrapContext::from_global(WrapMode::Wrap),
@@ -1861,7 +1894,7 @@ fn test_entry_index_format_no_separator_after_number() {
     let entry = create_entry_with_text(text);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         false, // collapsed
         WrapContext::from_global(WrapMode::Wrap),
@@ -1907,7 +1940,7 @@ fn test_tool_use_multiline_entry_index_on_first_line_only() {
     let entry = create_entry_with_tool_use("TestTool", input);
 
     let styles = default_styles();
-    let lines = compute_entry_lines(
+    let lines = compute_test_lines(
         &entry,
         true, // expanded
         WrapContext::from_global(WrapMode::Wrap),

@@ -7,11 +7,11 @@
 
 use super::*;
 use crate::model::{KeyAction, SessionId};
+use crate::state::app_state::WrapMode;
 use crate::state::{AppState, FocusPane};
+use crate::view_state::layout_params::LayoutParams;
 use crate::view_state::scroll::ScrollPosition;
 use crate::view_state::types::LineOffset;
-use crate::view_state::layout_params::LayoutParams;
-use crate::state::app_state::WrapMode;
 
 /// Helper to create test AppState with populated log_view
 fn create_test_state_with_entries(num_entries: usize) -> AppState {
@@ -27,7 +27,12 @@ fn create_test_state_with_entries(num_entries: usize) -> AppState {
 
     // Compute layout so we have real heights
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.log_view_mut().current_session_mut().unwrap().main_mut().recompute_layout(params);
+    state
+        .log_view_mut()
+        .current_session_mut()
+        .unwrap()
+        .main_mut()
+        .recompute_layout(params);
 
     state
 }
@@ -79,7 +84,10 @@ fn scroll_up_from_bottom_disables_auto_scroll() {
     let new_state = handle_scroll_action(state, KeyAction::ScrollUp, viewport);
 
     // FR-036: Auto-scroll should be disabled when user scrolls away from bottom
-    assert!(!new_state.auto_scroll, "auto_scroll should be false after scrolling up from bottom");
+    assert!(
+        !new_state.auto_scroll,
+        "auto_scroll should be false after scrolling up from bottom"
+    );
 }
 
 #[test]
@@ -101,7 +109,10 @@ fn scroll_up_from_middle_disables_auto_scroll() {
     let new_state = handle_scroll_action(state, KeyAction::ScrollUp, viewport);
 
     // FR-036: Auto-scroll should be disabled when scrolling away from bottom
-    assert!(!new_state.auto_scroll, "auto_scroll should be false after scrolling up from middle");
+    assert!(
+        !new_state.auto_scroll,
+        "auto_scroll should be false after scrolling up from middle"
+    );
 }
 
 #[test]
@@ -123,7 +134,10 @@ fn scroll_down_not_at_bottom_disables_auto_scroll() {
     let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
 
     // FR-036: Auto-scroll should be disabled when user scrolls (even down, if not at bottom)
-    assert!(!new_state.auto_scroll, "auto_scroll should be false after scrolling down (not reaching bottom)");
+    assert!(
+        !new_state.auto_scroll,
+        "auto_scroll should be false after scrolling down (not reaching bottom)"
+    );
 }
 
 #[test]
@@ -145,7 +159,10 @@ fn page_up_disables_auto_scroll() {
     let new_state = handle_scroll_action(state, KeyAction::PageUp, viewport);
 
     // FR-036: Auto-scroll should be disabled
-    assert!(!new_state.auto_scroll, "auto_scroll should be false after PageUp");
+    assert!(
+        !new_state.auto_scroll,
+        "auto_scroll should be false after PageUp"
+    );
 }
 
 #[test]
@@ -167,7 +184,10 @@ fn page_down_not_reaching_bottom_disables_auto_scroll() {
     let new_state = handle_scroll_action(state, KeyAction::PageDown, viewport);
 
     // FR-036: Auto-scroll should be disabled
-    assert!(!new_state.auto_scroll, "auto_scroll should be false after PageDown not reaching bottom");
+    assert!(
+        !new_state.auto_scroll,
+        "auto_scroll should be false after PageDown not reaching bottom"
+    );
 }
 
 #[test]
@@ -189,7 +209,10 @@ fn home_key_disables_auto_scroll() {
     let new_state = handle_scroll_action(state, KeyAction::ScrollToTop, viewport);
 
     // FR-036: Auto-scroll should be disabled
-    assert!(!new_state.auto_scroll, "auto_scroll should be false after Home (jump to top)");
+    assert!(
+        !new_state.auto_scroll,
+        "auto_scroll should be false after Home (jump to top)"
+    );
 }
 
 // ===== FR-036: Auto-scroll remains/becomes true when at bottom =====
@@ -205,7 +228,10 @@ fn end_key_enables_auto_scroll() {
     let new_state = handle_scroll_action(state, KeyAction::ScrollToBottom, viewport);
 
     // FR-036: Auto-scroll should be re-enabled when user goes to bottom
-    assert!(new_state.auto_scroll, "auto_scroll should be true after End (jump to bottom)");
+    assert!(
+        new_state.auto_scroll,
+        "auto_scroll should be true after End (jump to bottom)"
+    );
 }
 
 #[test]
@@ -215,11 +241,18 @@ fn scroll_down_reaching_bottom_enables_auto_scroll() {
     state.auto_scroll = false;
 
     // Get total height to position just above bottom
-    let total_height = state.log_view().current_session().unwrap().main().total_height();
+    let total_height = state
+        .log_view()
+        .current_session()
+        .unwrap()
+        .main()
+        .total_height();
     let viewport_height = 24;
 
     // Set scroll position just above bottom (so one scroll down will reach it)
-    let near_bottom = total_height.saturating_sub(viewport_height).saturating_sub(1);
+    let near_bottom = total_height
+        .saturating_sub(viewport_height)
+        .saturating_sub(1);
     state
         .log_view_mut()
         .current_session_mut()
@@ -232,7 +265,10 @@ fn scroll_down_reaching_bottom_enables_auto_scroll() {
     let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
 
     // FR-036: Auto-scroll should be enabled when reaching bottom
-    assert!(new_state.auto_scroll, "auto_scroll should be true after scrolling down to bottom");
+    assert!(
+        new_state.auto_scroll,
+        "auto_scroll should be true after scrolling down to bottom"
+    );
 }
 
 #[test]
@@ -254,5 +290,8 @@ fn already_at_bottom_keeps_auto_scroll_true() {
     let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
 
     // FR-036: Auto-scroll should remain true when already at bottom
-    assert!(new_state.auto_scroll, "auto_scroll should remain true when already at bottom");
+    assert!(
+        new_state.auto_scroll,
+        "auto_scroll should remain true when already at bottom"
+    );
 }

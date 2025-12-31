@@ -8,7 +8,7 @@
 
 use cclv::model::{
     ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent,
-    Role, SessionId,
+    PricingConfig, Role, SessionId,
 };
 use cclv::state::WrapMode;
 use cclv::view_state::{
@@ -73,7 +73,7 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
         create_long_entry("entry-4"),
     ];
 
-    let mut view_state = ConversationViewState::new(None, None, entries);
+    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
@@ -202,7 +202,7 @@ fn us2_scenario2_collapse_expanded_entry_smooth_shift() {
         create_long_entry("entry-3"),
     ];
 
-    let mut view_state = ConversationViewState::new(None, None, entries);
+    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
@@ -307,7 +307,7 @@ fn us2_scenario3_toggle_response_under_16ms() {
         .map(|i| create_test_entry(&format!("entry-{}", i), &format!("Message {}", i)))
         .collect();
 
-    let mut view_state = ConversationViewState::new(None, None, entries);
+    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
@@ -351,7 +351,7 @@ fn us2_scenario4_entries_above_viewport_toggle_visible_stable() {
         .map(|i| create_test_entry(&format!("entry-{}", i), &format!("Message {}", i)))
         .collect();
 
-    let mut view_state = ConversationViewState::new(None, None, entries);
+    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
@@ -438,7 +438,7 @@ fn us2_scenario4_entries_above_viewport_toggle_visible_stable() {
 fn toggle_nonexistent_entry_returns_none() {
     let entries = vec![create_test_entry("entry-0", "Only message")];
 
-    let mut view_state = ConversationViewState::new(None, None, entries);
+    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
@@ -459,7 +459,7 @@ fn toggle_nonexistent_entry_returns_none() {
 fn multiple_toggles_preserve_idempotence() {
     let entries = vec![create_test_entry("entry-0", "Test")];
 
-    let mut view_state = ConversationViewState::new(None, None, entries);
+    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 

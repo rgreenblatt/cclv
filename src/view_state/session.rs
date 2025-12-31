@@ -26,6 +26,10 @@ pub struct SessionViewState {
     pending_subagent_entries: HashMap<AgentId, Vec<ConversationEntry>>,
     /// Cumulative line offset from start of log (for multi-session).
     start_line: usize,
+    /// Maximum context window size (from config).
+    max_context_tokens: usize,
+    /// Pricing configuration (from config).
+    pricing: crate::model::PricingConfig,
 }
 
 impl SessionViewState {
@@ -37,6 +41,8 @@ impl SessionViewState {
             subagents: HashMap::new(),
             pending_subagent_entries: HashMap::new(),
             start_line: 0,
+            max_context_tokens: 200_000, // Default
+            pricing: crate::model::PricingConfig::default(),
         }
     }
 
@@ -65,7 +71,13 @@ impl SessionViewState {
         if !self.subagents.contains_key(id) {
             // Create from pending entries
             let entries = self.pending_subagent_entries.remove(id).unwrap_or_default();
-            let view_state = ConversationViewState::new(Some(id.clone()), None, entries);
+            let view_state = ConversationViewState::new(
+                Some(id.clone()),
+                None,
+                entries,
+                self.max_context_tokens,
+                self.pricing.clone(),
+            );
             self.subagents.insert(id.clone(), view_state);
         }
         self.subagents.get(id).unwrap()
@@ -75,7 +87,13 @@ impl SessionViewState {
     pub fn subagent_mut(&mut self, id: &AgentId) -> &mut ConversationViewState {
         if !self.subagents.contains_key(id) {
             let entries = self.pending_subagent_entries.remove(id).unwrap_or_default();
-            let view_state = ConversationViewState::new(Some(id.clone()), None, entries);
+            let view_state = ConversationViewState::new(
+                Some(id.clone()),
+                None,
+                entries,
+                self.max_context_tokens,
+                self.pricing.clone(),
+            );
             self.subagents.insert(id.clone(), view_state);
         }
         self.subagents.get_mut(id).unwrap()

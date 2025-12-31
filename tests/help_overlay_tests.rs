@@ -42,10 +42,7 @@ fn test_question_mark_toggles_help_overlay() {
     harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::SHIFT);
 
     // VERIFY: Help visible
-    assert!(
-        harness.state().help_visible,
-        "First '?' should show help"
-    );
+    assert!(harness.state().help_visible, "First '?' should show help");
 
     // WHEN: User presses '?' again
     harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::SHIFT);
