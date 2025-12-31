@@ -97,10 +97,7 @@ fn tab_0_represents_main_agent() {
     // Then: current conversation should be main agent
     // Verify by checking that the conversation at tab 0 has no agent_id
     let main_conv = state.main_conversation_view();
-    assert!(
-        main_conv.is_some(),
-        "Tab 0 should map to main conversation"
-    );
+    assert!(main_conv.is_some(), "Tab 0 should map to main conversation");
 }
 
 #[test]
@@ -150,11 +147,7 @@ fn tab_indices_follow_spawn_order() {
     let session = state.session_view();
     let agent_ids: Vec<_> = session.subagent_ids().collect();
 
-    assert_eq!(
-        agent_ids.len(),
-        3,
-        "Should have 3 subagents in spawn order"
-    );
+    assert_eq!(agent_ids.len(), 3, "Should have 3 subagents in spawn order");
 }
 
 // ===== FR-086: Tab switching works identically for all tabs =====

@@ -4,8 +4,9 @@
 //! - NextTab moves to next tab (with wrapping)
 //! - PrevTab moves to previous tab (with wrapping)
 //! - SelectTab(n) selects tab by 1-indexed number
-//! - All actions respect focus (only work when Subagent pane focused)
-//! - All actions handle edge cases (no subagents, out of bounds)
+//! - Tab 0 = main agent, tabs 1..N = subagents (FR-083-088)
+//! - Tab operations work regardless of focus (except Search modal)
+//! - All actions handle edge cases (no session, out of bounds)
 
 use super::*;
 use crate::model::{
@@ -54,15 +55,15 @@ fn next_tab_moves_to_next_tab() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
-    state.selected_tab = Some(0);
+    // Tab 0 = main, tabs 1-3 = subagents
+    state.selected_tab = Some(0); // main agent
 
     let new_state = handle_tab_action(state, KeyAction::NextTab);
 
     assert_eq!(
         new_state.selected_tab,
         Some(1),
-        "NextTab should move from tab 0 to tab 1"
+        "NextTab should move from tab 0 (main) to tab 1 (agent-1)"
     );
 }
 
@@ -74,26 +75,25 @@ fn next_tab_wraps_from_last_to_first() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
-    state.selected_tab = Some(1); // Last tab
+    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
+    state.selected_tab = Some(2); // Last tab (agent-2)
 
     let new_state = handle_tab_action(state, KeyAction::NextTab);
 
     assert_eq!(
         new_state.selected_tab,
         Some(0),
-        "NextTab should wrap from last tab to first"
+        "NextTab should wrap from tab 2 (last) to tab 0 (main)"
     );
 }
 
 #[test]
-fn next_tab_initializes_to_first_when_none() {
+fn next_tab_initializes_to_main_when_none() {
     let mut entries = Vec::new();
     entries.push(make_subagent_entry("agent-1"));
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
     let new_state = handle_tab_action(state, KeyAction::NextTab);
@@ -101,41 +101,41 @@ fn next_tab_initializes_to_first_when_none() {
     assert_eq!(
         new_state.selected_tab,
         Some(0),
-        "NextTab should initialize to first tab when None"
+        "NextTab should initialize to tab 0 (main) when None"
     );
 }
 
 #[test]
-fn next_tab_does_nothing_when_focus_not_on_subagent() {
+fn next_tab_works_regardless_of_focus() {
     let mut entries = Vec::new();
     entries.push(make_subagent_entry("agent-1"));
     entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Main;
+    state.focus = FocusPane::Main; // Different focus
     state.selected_tab = Some(0);
 
     let new_state = handle_tab_action(state, KeyAction::NextTab);
 
     assert_eq!(
         new_state.selected_tab,
-        Some(0),
-        "NextTab should not change tab when focus is not on Subagent"
+        Some(1),
+        "NextTab should work even when focus is on Main pane (FR-088)"
     );
 }
 
 #[test]
-fn next_tab_does_nothing_when_no_subagents() {
-    let mut state = AppState::new();
-    state.focus = FocusPane::Subagent;
-    state.selected_tab = None;
+fn next_tab_does_nothing_when_no_session() {
+    let state = AppState::new(); // No entries = no session
+                                 // AppState::new() initializes to Some(0) per FR-083
 
     let new_state = handle_tab_action(state, KeyAction::NextTab);
 
     assert_eq!(
-        new_state.selected_tab, None,
-        "NextTab should not change tab when no subagents exist"
+        new_state.selected_tab,
+        Some(0),
+        "NextTab should be no-op when no session (stays at tab 0)"
     );
 }
 
@@ -150,15 +150,15 @@ fn prev_tab_moves_to_previous_tab() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
-    state.selected_tab = Some(2); // Third tab
+    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2, tab 3 = agent-3
+    state.selected_tab = Some(3); // Last tab (agent-3)
 
     let new_state = handle_tab_action(state, KeyAction::PrevTab);
 
     assert_eq!(
         new_state.selected_tab,
-        Some(1),
-        "PrevTab should move from tab 2 to tab 1"
+        Some(2),
+        "PrevTab should move from tab 3 (agent-3) to tab 2 (agent-2)"
     );
 }
 
@@ -171,26 +171,25 @@ fn prev_tab_wraps_from_first_to_last() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
-    state.selected_tab = Some(0); // First tab
+    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2, tab 3 = agent-3
+    state.selected_tab = Some(0); // First tab (main)
 
     let new_state = handle_tab_action(state, KeyAction::PrevTab);
 
     assert_eq!(
         new_state.selected_tab,
-        Some(2),
-        "PrevTab should wrap from first tab to last (index 2)"
+        Some(3),
+        "PrevTab should wrap from tab 0 (main) to tab 3 (agent-3)"
     );
 }
 
 #[test]
-fn prev_tab_initializes_to_first_when_none() {
+fn prev_tab_initializes_to_main_when_none() {
     let mut entries = Vec::new();
     entries.push(make_subagent_entry("agent-1"));
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
     let new_state = handle_tab_action(state, KeyAction::PrevTab);
@@ -198,41 +197,42 @@ fn prev_tab_initializes_to_first_when_none() {
     assert_eq!(
         new_state.selected_tab,
         Some(0),
-        "PrevTab should initialize to first tab when None"
+        "PrevTab should initialize to tab 0 (main) when None"
     );
 }
 
 #[test]
-fn prev_tab_does_nothing_when_focus_not_on_subagent() {
+fn prev_tab_works_regardless_of_focus() {
     let mut entries = Vec::new();
     entries.push(make_subagent_entry("agent-1"));
     entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Stats;
-    state.selected_tab = Some(1);
+    state.focus = FocusPane::Stats; // Different focus
+                                    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
+    state.selected_tab = Some(2);
 
     let new_state = handle_tab_action(state, KeyAction::PrevTab);
 
     assert_eq!(
         new_state.selected_tab,
         Some(1),
-        "PrevTab should not change tab when focus is not on Subagent"
+        "PrevTab should work even when focus is on Stats pane (FR-088)"
     );
 }
 
 #[test]
-fn prev_tab_does_nothing_when_no_subagents() {
-    let mut state = AppState::new();
-    state.focus = FocusPane::Subagent;
-    state.selected_tab = None;
+fn prev_tab_does_nothing_when_no_session() {
+    let state = AppState::new(); // No entries = no session
+                                 // AppState::new() initializes to Some(0) per FR-083
 
     let new_state = handle_tab_action(state, KeyAction::PrevTab);
 
     assert_eq!(
-        new_state.selected_tab, None,
-        "PrevTab should not change tab when no subagents exist"
+        new_state.selected_tab,
+        Some(0),
+        "PrevTab should be no-op when no session (stays at tab 0)"
     );
 }
 
@@ -247,26 +247,25 @@ fn select_tab_sets_tab_by_one_indexed_number() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
+    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2, tab 3 = agent-3
     state.selected_tab = Some(0);
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(2));
+    let new_state = handle_tab_action(state, KeyAction::SelectTab(3));
 
     assert_eq!(
         new_state.selected_tab,
-        Some(1),
-        "SelectTab(2) should select second tab (0-indexed as 1)"
+        Some(2),
+        "SelectTab(3) should select third tab (agent-2, 0-indexed as 2)"
     );
 }
 
 #[test]
-fn select_tab_handles_tab_1() {
+fn select_tab_handles_tab_1_as_main() {
     let mut entries = Vec::new();
     entries.push(make_subagent_entry("agent-1"));
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
     let new_state = handle_tab_action(state, KeyAction::SelectTab(1));
@@ -274,7 +273,7 @@ fn select_tab_handles_tab_1() {
     assert_eq!(
         new_state.selected_tab,
         Some(0),
-        "SelectTab(1) should select first tab (0-indexed as 0)"
+        "SelectTab(1) should select tab 0 (main agent)"
     );
 }
 
@@ -286,15 +285,15 @@ fn select_tab_clamps_to_last_when_too_high() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
+    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
     state.selected_tab = Some(0);
 
     let new_state = handle_tab_action(state, KeyAction::SelectTab(9));
 
     assert_eq!(
         new_state.selected_tab,
-        Some(1),
-        "SelectTab(9) should clamp to last tab when number is too high"
+        Some(2),
+        "SelectTab(9) should clamp to last tab (agent-2, index 2)"
     );
 }
 
@@ -306,7 +305,6 @@ fn select_tab_ignores_zero() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
     state.selected_tab = Some(1);
 
     let new_state = handle_tab_action(state, KeyAction::SelectTab(0));
@@ -319,36 +317,37 @@ fn select_tab_ignores_zero() {
 }
 
 #[test]
-fn select_tab_does_nothing_when_focus_not_on_subagent() {
+fn select_tab_works_regardless_of_focus() {
     let mut entries = Vec::new();
     entries.push(make_subagent_entry("agent-1"));
     entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Main;
+    state.focus = FocusPane::Main; // Different focus
+                                   // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
     state.selected_tab = Some(0);
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(2));
+    let new_state = handle_tab_action(state, KeyAction::SelectTab(3));
 
     assert_eq!(
         new_state.selected_tab,
-        Some(0),
-        "SelectTab should not change tab when focus is not on Subagent"
+        Some(2),
+        "SelectTab should work even when focus is on Main pane (FR-088)"
     );
 }
 
 #[test]
-fn select_tab_does_nothing_when_no_subagents() {
-    let mut state = AppState::new();
-    state.focus = FocusPane::Subagent;
-    state.selected_tab = None;
+fn select_tab_does_nothing_when_no_session() {
+    let state = AppState::new(); // No entries = no session
+                                 // AppState::new() initializes to Some(0) per FR-083
 
     let new_state = handle_tab_action(state, KeyAction::SelectTab(1));
 
     assert_eq!(
-        new_state.selected_tab, None,
-        "SelectTab should not change tab when no subagents exist"
+        new_state.selected_tab,
+        Some(0),
+        "SelectTab should be no-op when no session (stays at tab 0)"
     );
 }
 
@@ -471,25 +470,24 @@ fn next_tab_uses_active_session_subagents_when_scrolled_to_first_session() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
 
     // CRITICAL: Scroll position determines active session
     // Scroll line 0 = session 1 is active
-    // Session 1 has subagents: alpha (0), beta (1)
-    state.selected_tab = Some(0); // alpha selected
+    // Session 1 has tabs: main (0), alpha (1), beta (2)
+    state.selected_tab = Some(1); // alpha selected
 
     let new_state = handle_tab_action(state, KeyAction::NextTab);
 
-    // Should wrap within session 1's 2 subagents: alpha (0) -> beta (1)
+    // Should move within session 1's tabs: alpha (1) -> beta (2)
     assert_eq!(
         new_state.selected_tab,
-        Some(1),
-        "NextTab from alpha should select beta (within session 1's subagents)"
+        Some(2),
+        "NextTab from alpha should select beta (within session 1's tabs)"
     );
 }
 
 #[test]
-fn next_tab_wraps_within_active_session_subagents() {
+fn next_tab_wraps_within_active_session_tabs() {
     // Given: Session with multiple subagents
     let mut entries = Vec::new();
 
@@ -508,23 +506,23 @@ fn next_tab_wraps_within_active_session_subagents() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
 
-    // When at last tab (beta = index 1)
-    state.selected_tab = Some(1);
+    // Tabs: main (0), alpha (1), beta (2)
+    // When at last tab (beta = index 2)
+    state.selected_tab = Some(2);
 
     let new_state = handle_tab_action(state, KeyAction::NextTab);
 
-    // Should wrap back to first tab (alpha = index 0)
+    // Should wrap back to first tab (main = index 0)
     assert_eq!(
         new_state.selected_tab,
         Some(0),
-        "NextTab from last tab should wrap to first tab"
+        "NextTab from last tab should wrap to first tab (main)"
     );
 }
 
 #[test]
-fn prev_tab_uses_active_session_subagents() {
+fn prev_tab_uses_active_session_tabs() {
     // Given: Two sessions
     let mut entries = Vec::new();
 
@@ -556,24 +554,23 @@ fn prev_tab_uses_active_session_subagents() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
 
-    // Scrolled to session 1, at first tab (alpha = index 0)
-    state.selected_tab = Some(0); // alpha
+    // Scrolled to session 1
+    // Session 1 tabs: main (0), alpha (1), beta (2)
+    state.selected_tab = Some(0); // main
 
     let new_state = handle_tab_action(state, KeyAction::PrevTab);
 
-    // Should wrap to last tab in session 1 (beta = index 1)
-    // Session 1 has 2 subagents, so last is index 1
+    // Should wrap to last tab in session 1 (beta = index 2)
     assert_eq!(
         new_state.selected_tab,
-        Some(1),
-        "PrevTab from alpha (first in session 1) should wrap to beta (last in session 1)"
+        Some(2),
+        "PrevTab from main should wrap to beta (last tab in session 1)"
     );
 }
 
 #[test]
-fn select_tab_clamps_to_active_session_subagent_count() {
+fn select_tab_clamps_to_active_session_tab_count() {
     // Given: Session with 2 subagents
     let mut entries = Vec::new();
 
@@ -591,16 +588,16 @@ fn select_tab_clamps_to_active_session_subagent_count() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
+    // Tabs: main (0), alpha (1), beta (2)
     state.selected_tab = Some(0);
 
     let new_state = handle_tab_action(state, KeyAction::SelectTab(5));
 
-    // Should clamp to last tab (beta = index 1)
+    // Should clamp to last tab (beta = index 2)
     assert_eq!(
         new_state.selected_tab,
-        Some(1),
-        "SelectTab(5) with 2 subagents should clamp to index 1"
+        Some(2),
+        "SelectTab(5) with 3 tabs should clamp to index 2 (beta)"
     );
 }
 

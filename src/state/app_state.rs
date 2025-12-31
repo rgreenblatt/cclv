@@ -140,7 +140,7 @@ impl AppState {
         Self {
             log_view: LogViewState::new(),
             focus: FocusPane::Main,
-            selected_tab: None,
+            selected_tab: Some(0), // FR-083: Default to main agent tab (tab 0)
             search: SearchState::Inactive,
             stats_filter: StatsFilter::Global,
             stats_visible: false,
@@ -319,38 +319,34 @@ impl AppState {
         self.focus = FocusPane::Stats;
     }
 
-    /// Move to next subagent tab.
-    /// Only works when focus is on Subagent pane.
-    /// Wraps from last to first tab.
+    /// Move to next tab (unified tab model, FR-086).
+    /// Works for all conversations (main agent + subagents).
+    /// Wraps from last tab to first tab (tab 0 = main agent).
+    /// No-op when Search modal is active.
     pub fn next_tab(&mut self) {
-        // Only operate when focus is on Subagent pane
-        if self.focus != FocusPane::Subagent {
+        // No-op when Search modal is active (FR-086)
+        if self.focus == FocusPane::Search {
             return;
         }
 
-        // Determine active session based on main pane scroll position (FR-080)
-        let scroll_line = self
-            .log_view
-            .current_session()
-            .map(|s| s.main().approximate_scroll_line())
-            .unwrap_or(0);
-
+        // Calculate total tabs: 1 (main) + num_subagents
         let num_subagents = self
             .log_view
-            .active_session(scroll_line)
+            .current_session()
             .map(|s| s.subagent_ids().count())
             .unwrap_or(0);
+        let total_tabs = 1 + num_subagents;
 
-        // No-op if no subagents exist
-        if num_subagents == 0 {
+        // No-op if only one tab (main only, wrapping is meaningless)
+        if total_tabs <= 1 {
             return;
         }
 
         self.selected_tab = match self.selected_tab {
-            None => Some(0), // Initialize to first tab
+            None => Some(0), // Initialize to first tab (main)
             Some(current) => {
-                if current + 1 >= num_subagents {
-                    Some(0) // Wrap to first
+                if current + 1 >= total_tabs {
+                    Some(0) // Wrap to first (main agent)
                 } else {
                     Some(current + 1) // Move to next
                 }
@@ -358,67 +354,54 @@ impl AppState {
         };
     }
 
-    /// Move to previous subagent tab.
-    /// Only works when focus is on Subagent pane.
-    /// Wraps from first to last tab.
+    /// Move to previous tab (unified tab model, FR-086).
+    /// Works for all conversations (main agent + subagents).
+    /// Wraps from first tab (main) to last tab.
+    /// No-op when Search modal is active.
     pub fn prev_tab(&mut self) {
-        // Only operate when focus is on Subagent pane
-        if self.focus != FocusPane::Subagent {
+        // No-op when Search modal is active (FR-086)
+        if self.focus == FocusPane::Search {
             return;
         }
 
-        // Determine active session based on main pane scroll position (FR-080)
-        let scroll_line = self
-            .log_view
-            .current_session()
-            .map(|s| s.main().approximate_scroll_line())
-            .unwrap_or(0);
-
+        // Calculate total tabs: 1 (main) + num_subagents
         let num_subagents = self
             .log_view
-            .active_session(scroll_line)
+            .current_session()
             .map(|s| s.subagent_ids().count())
             .unwrap_or(0);
+        let total_tabs = 1 + num_subagents;
 
-        // No-op if no subagents exist
-        if num_subagents == 0 {
+        // No-op if only one tab (main only, wrapping is meaningless)
+        if total_tabs <= 1 {
             return;
         }
 
         self.selected_tab = match self.selected_tab {
-            None => Some(0),                    // Initialize to first tab
-            Some(0) => Some(num_subagents - 1), // Wrap to last
+            None => Some(0),                    // Initialize to first tab (main)
+            Some(0) => Some(total_tabs - 1),    // Wrap from main to last tab
             Some(current) => Some(current - 1), // Move to previous
         };
     }
 
-    /// Select a specific subagent tab by 1-indexed number.
-    /// Only works when focus is on Subagent pane.
+    /// Select a specific tab by 1-indexed number (unified tab model, FR-086).
+    /// Works for all conversations: tab 1 = main (index 0), tab 2+ = subagents.
     /// Clamps to last tab if number is too high.
     /// Ignores if number is 0.
+    /// No-op when Search modal is active.
     pub fn select_tab(&mut self, tab_number: usize) {
-        // Only operate when focus is on Subagent pane
-        if self.focus != FocusPane::Subagent {
+        // No-op when Search modal is active (FR-086)
+        if self.focus == FocusPane::Search {
             return;
         }
 
-        // Determine active session based on main pane scroll position (FR-080)
-        let scroll_line = self
-            .log_view
-            .current_session()
-            .map(|s| s.main().approximate_scroll_line())
-            .unwrap_or(0);
-
+        // Calculate total tabs: 1 (main) + num_subagents
         let num_subagents = self
             .log_view
-            .active_session(scroll_line)
+            .current_session()
             .map(|s| s.subagent_ids().count())
             .unwrap_or(0);
-
-        // No-op if no subagents exist
-        if num_subagents == 0 {
-            return;
-        }
+        let total_tabs = 1 + num_subagents;
 
         // Ignore 0 (invalid 1-indexed input)
         if tab_number == 0 {
@@ -427,7 +410,7 @@ impl AppState {
 
         // Convert from 1-indexed to 0-indexed, clamping to last tab
         let zero_indexed = tab_number - 1;
-        self.selected_tab = Some(zero_indexed.min(num_subagents - 1));
+        self.selected_tab = Some(zero_indexed.min(total_tabs - 1));
     }
 
     /// Toggle global wrap mode (FR-050: W key)
