@@ -2494,30 +2494,30 @@ fn bug_subagent_scroll_does_not_work() {
     );
 }
 
-/// Bug reproduction: Entries cannot be expanded/collapsed in subagent panes
+/// Bug reproduction: Subagent expand has rendering bug + mouse events broken
 ///
-/// EXPECTED: When a subagent tab is selected and user presses Enter on an entry,
-///           that entry in the subagent's ConversationViewState should toggle expanded.
-/// ACTUAL: The main agent's entry at the same index gets toggled instead.
+/// ## Bug 1: Vertical text rendering (cclv-5ur.48)
+/// EXPECTED: Expanded text renders horizontally ("Review Task")
+/// ACTUAL: Text renders vertically, one character per line ("R\ne\nv\ni\ne\nw...")
+///
+/// ## Bug 2: Mouse events not working (cclv-5ur.48)
+/// EXPECTED: Clicking on entry in subagent pane toggles expand/collapse
+/// ACTUAL: Nothing happens - mouse clicks don't work on subagent panes
 ///
 /// Steps to reproduce manually:
 /// 1. cargo run --release -- tests/fixtures/cc-session-log.jsonl
 /// 2. Press ']' to switch to first subagent tab
-/// 3. Press Enter on a collapsed entry (e.g., entry showing "+N more lines")
-/// 4. Observe: Entry does not expand
+/// 3. Press Enter on a collapsed entry -> text renders VERTICALLY (Bug 1)
+/// 4. Click on an entry -> nothing happens (Bug 2)
 ///
-/// Root cause: expand_handler.rs has a TODO comment at line 69:
-///   "// TODO: Implement subagent expand/collapse using ConversationViewState"
-/// The FocusPane::Subagent case just returns state unchanged.
-///
-/// Additionally, layout.rs calculate_pane_areas() always returns None for
-/// subagent_pane_area due to unified tab model (FR-083-088). The
-/// detect_entry_click function in mouse_handler.rs checks subagent_pane_area
-/// first, but since it's always None, mouse clicks fall through to main pane
-/// detection logic.
+/// Snapshots capture buggy state:
+/// - bug_subagent_expand_before: collapsed state (correct)
+/// - bug_subagent_expand_after: expanded but VERTICAL text (BUG)
 ///
 /// Fixture: tests/fixtures/cc-session-log.jsonl
+/// Bead: cclv-5ur.48
 #[test]
+#[ignore = "cclv-5ur.48: vertical text rendering + mouse events broken on subagent panes"]
 fn bug_subagent_entry_expand_collapse_not_working() {
     use cclv::config::keybindings::KeyBindings;
     use cclv::source::{FileSource, InputSource, StdinSource};
@@ -2609,7 +2609,38 @@ fn bug_subagent_entry_expand_collapse_not_working() {
 
     // Snapshot AFTER expand (expanded state - should show more content)
     let output_after = buffer_to_string(app.terminal().backend().buffer());
-    insta::assert_snapshot!("bug_subagent_expand_after", output_after);
+    insta::assert_snapshot!("bug_subagent_expand_after", output_after.clone());
+
+    // BUG ASSERTION: Check for vertical text rendering bug (cclv-5ur.48)
+    // When text renders correctly, we should see horizontal words like "Review"
+    // When buggy, each character is on its own line forming a vertical pattern
+    // Detect by looking for 3+ consecutive lines with only a single lowercase letter
+    let lines: Vec<&str> = output_after.lines().collect();
+    let mut consecutive_single_letters = 0;
+    let mut max_consecutive = 0;
+    for line in &lines {
+        // Strip box-drawing chars and whitespace, check if just a single lowercase letter
+        let content: String = line
+            .chars()
+            .filter(|c| !['│', '┌', '┐', '└', '┘', '─', ' '].contains(c))
+            .collect();
+        if content.len() == 1 && content.chars().next().map(|c| c.is_ascii_lowercase()).unwrap_or(false) {
+            consecutive_single_letters += 1;
+            max_consecutive = max_consecutive.max(consecutive_single_letters);
+        } else {
+            consecutive_single_letters = 0;
+        }
+    }
+    // 3+ consecutive single-letter lines indicates vertical text bug
+    let has_vertical_text_bug = max_consecutive >= 3;
+    assert!(
+        !has_vertical_text_bug,
+        "BUG: Expanded text renders VERTICALLY (one char per line) instead of horizontally.\n\
+         Found {} consecutive single-letter lines - indicates width=1 rendering bug.\n\
+         See snapshot bug_subagent_expand_after for visual evidence.\n\
+         Bead: cclv-5ur.48",
+        max_consecutive
+    );
 
     // Get expanded state of entry 0 in subagent AFTER toggle attempt
     let subagent_entry_0_expanded_after = app
@@ -2655,5 +2686,120 @@ fn bug_subagent_entry_expand_collapse_not_working() {
     assert_eq!(
         main_entry_0_expanded_before, main_entry_0_expanded_after,
         "Main entry should NOT have toggled when we're on a subagent tab"
+    );
+}
+
+/// Bug reproduction: Mouse clicks don't toggle expand/collapse on subagent panes
+///
+/// EXPECTED: Clicking on an entry in a subagent pane toggles its expand/collapse state
+/// ACTUAL: Nothing happens - mouse clicks are ignored on subagent panes
+///
+/// Steps to reproduce manually:
+/// 1. cargo run --release -- tests/fixtures/cc-session-log.jsonl
+/// 2. Press ']' to switch to first subagent tab
+/// 3. Click on a collapsed entry
+/// 4. Observe: Entry does NOT expand (unlike main pane where clicking works)
+///
+/// Bead: cclv-5ur.48
+#[test]
+#[ignore = "cclv-5ur.48: mouse clicks don't toggle expand on subagent panes"]
+fn bug_subagent_mouse_click_expand_not_working() {
+    use cclv::config::keybindings::KeyBindings;
+    use cclv::source::{FileSource, InputSource, StdinSource};
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+    use std::path::PathBuf;
+
+    // Load fixture with subagent entries
+    let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
+        .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal
+    let backend = TestBackend::new(200, 40);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Initial render
+    app.render_test().expect("Initial render should succeed");
+
+    // Switch to first subagent tab with ']'
+    let key_event = KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE);
+    app.handle_key_test(key_event);
+
+    // Render after tab switch
+    app.render_test()
+        .expect("Render after tab switch should succeed");
+
+    // Get the subagent's conversation view state
+    let mut sorted_agent_ids: Vec<_> = app.app_state().session_view().subagent_ids().collect();
+    sorted_agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+    let selected_tab = app.app_state().selected_tab.unwrap_or(0);
+    let agent_id = sorted_agent_ids[selected_tab - 1].clone();
+
+    // Get expanded state of entry 0 in subagent BEFORE mouse click
+    let expanded_before = app
+        .app_state()
+        .session_view()
+        .subagents()
+        .get(&agent_id)
+        .and_then(|cv| cv.get(cclv::view_state::types::EntryIndex::new(0)))
+        .map(|e| e.is_expanded())
+        .unwrap_or(false);
+
+    // Click on entry 0 in the subagent pane (row 6 is roughly where entry 1 starts)
+    // The conversation pane starts at row 5 (after header + tab bar)
+    let mouse_event = MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: 10,  // Inside the content area
+        row: 6,      // First entry area
+        modifiers: KeyModifiers::NONE,
+    };
+    app.handle_mouse_test(mouse_event);
+
+    // Render after click
+    app.render_test()
+        .expect("Render after mouse click should succeed");
+
+    // Snapshot the state after mouse click
+    let output_after_click = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_subagent_mouse_click_no_effect", output_after_click);
+
+    // Get expanded state of entry 0 in subagent AFTER mouse click
+    let expanded_after = app
+        .app_state()
+        .session_view()
+        .subagents()
+        .get(&agent_id)
+        .and_then(|cv| cv.get(cclv::view_state::types::EntryIndex::new(0)))
+        .map(|e| e.is_expanded())
+        .unwrap_or(false);
+
+    // BUG ASSERTION: Mouse click should toggle expand state
+    assert_ne!(
+        expanded_before, expanded_after,
+        "BUG: Mouse click on subagent entry does NOT toggle expand/collapse.\n\
+         Clicked on entry 0 in subagent tab (agent: {}).\n\
+         Expanded before click: {}\n\
+         Expanded after click: {}\n\n\
+         Expected: Entry should toggle expanded state\n\
+         Actual: Entry state unchanged - mouse clicks ignored on subagent panes\n\
+         Bead: cclv-5ur.48",
+        agent_id.as_str(),
+        expanded_before,
+        expanded_after
     );
 }
