@@ -1018,3 +1018,16 @@ fn focused_message_returns_set_value() {
 
     assert_eq!(scroll.focused_message(), Some(7));
 }
+
+// ===== WrapMode Tests =====
+
+#[test]
+fn wrap_mode_default_is_wrap() {
+    // FR-039: wrap enabled when config unset
+    assert_eq!(WrapMode::default(), WrapMode::Wrap);
+}
+
+#[test]
+fn wrap_mode_variants_are_distinct() {
+    assert_ne!(WrapMode::Wrap, WrapMode::NoWrap);
+}

@@ -183,6 +183,17 @@ pub enum FocusPane {
     Search,
 }
 
+// ===== WrapMode =====
+
+/// Global line-wrapping mode.
+/// Default: Wrap (FR-039: wrap enabled when config unset)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum WrapMode {
+    #[default]
+    Wrap,
+    NoWrap,
+}
+
 // ===== ScrollState =====
 
 /// Scroll state for a pane.
