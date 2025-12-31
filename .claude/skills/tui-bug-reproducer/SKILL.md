@@ -98,6 +98,25 @@ bd create --title="BUG: description" --type=bug --priority=2 --parent=EPIC
 2. Review: `cargo insta review` (or `accept` if confident)
 3. Run again to hit assertion
 
+### CRITICAL: Review Snapshot Changes
+
+**ALWAYS review snapshot diffs before accepting.** Spurious changes may indicate bugs:
+
+- Unexpected blank lines → rendering bug
+- Missing content → truncation bug
+- Wrong content position → layout bug
+- Content appearing/disappearing → state bug
+
+```bash
+# NEVER blindly accept - always review first
+cargo insta review   # Shows diff, lets you accept/reject each
+
+# Only use accept when you've already verified the change is correct
+cargo insta accept   # Accepts ALL pending - use with caution
+```
+
+If a snapshot changes unexpectedly during unrelated work, **that's a regression** - investigate before accepting.
+
 ## Workflow
 
 ### Phase 1: Visual Reproduction
