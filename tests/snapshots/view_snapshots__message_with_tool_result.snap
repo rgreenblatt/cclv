@@ -3,12 +3,12 @@ source: tests/view_snapshots.rs
 expression: output
 ---
 ┌Main Agent (1 entries)────────────────────────────────────────────────────────┐
-││   1 File contents:                                                          │
-││     fn main() {                                                             │
-││         println!("Hello, world!");                                          │
-││     }                                                                       │
+││     1 File contents:                                                        │
+││       fn main() {                                                           │
+││           println!("Hello, world!");                                        │
+││       }                                                                     │
 ││                                                                             │
-││     Total lines: 3                                                          │
+││       Total lines: 3                                                        │
 │                                                                              │
 │                                                                              │
 │                                                                              │

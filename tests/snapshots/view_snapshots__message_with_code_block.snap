@@ -3,13 +3,13 @@ source: tests/view_snapshots.rs
 expression: output
 ---
 ┌Main Agent (1 entries)──────────────────────────────────────────────┐
-││   1 Here's some code:                                             │
+││     1 Here's some code:                                           │
 ││                                                                   │
-││     fn main() {                                                   │
-││         println!("Hello, world!");                                │
-││     }                                                             │
+││       fn main() {                                                 │
+││           println!("Hello, world!");                              │
+││       }                                                           │
 ││                                                                   │
-││     That's the code.                                              │
+││       That's the code.                                            │
 │                                                                    │
 │                                                                    │
 │                                                                    │

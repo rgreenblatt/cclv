@@ -7,38 +7,38 @@ Model: Unknown | Subagent toolu_013heDTEdCz8mvrxEGezZteB | ? | 0 tools, 0 agents
 │ Main Agent │ toolu_013heDTEdCz8mvrxEGezZteB │ toolu_014WRyZPPnVxekx3ACaBtEz8 │ toolu_01UcpbyRyV4mTttzBQZ2tjiX                                                                                        │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ┌Subagent toolu_013heDTEdCz8mvrxEGezZteB [Haiku] (79 entries)──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-││   1 ## Review Task                                                                                                                                                                                  │
+││     1 ## Review Task                                                                                                                                                                                │
 ││                                                                                                                                                                                                     │
-││     Review implementation for task: cclv-07v.8.12 - Export search-aware rendering for snapshot testing                                                                                              │
+││       Review implementation for task: cclv-07v.8.12 - Export search-aware rendering for snapshot testing                                                                                            │
 ││                                                                                                                                                                                                     │
-││     ## Task Requirements                                                                                                                                                                            │
+││       ## Task Requirements                                                                                                                                                                          │
 ││                                                                                                                                                                                                     │
-││     FROM BEAD: "WHERE: src/view/mod.rs. WHAT: render_conversation_view_with_search is private, preventing snapshot tests for search highlighting. CONTEXT: Unit tests exist (test_apply_search_to_se│
-││     ctions_*) but per Constitution VI, snapshots SHOULD protect rendering. OPTIONS: (A) Export render_conversation_view_with_search, (B) Add .with_search() builder to ConversationView, (C) Accept │
-││     unit test coverage as sufficient. DONE WHEN: Decision made and implemented if needed."                                                                                                          │
+││       FROM BEAD: "WHERE: src/view/mod.rs. WHAT: render_conversation_view_with_search is private, preventing snapshot tests for search highlighting. CONTEXT: Unit tests exist (test_apply_search_to_│
+││       sections_*) but per Constitution VI, snapshots SHOULD protect rendering. OPTIONS: (A) Export render_conversation_view_with_search, (B) Add .with_search() builder to ConversationView, (C) Acc│
+││       ept unit test coverage as sufficient. DONE WHEN: Decision made and implemented if needed."                                                                                                    │
 ││                                                                                                                                                                                                     │
-││     ## Review Against                                                                                                                                                                               │
+││       ## Review Against                                                                                                                                                                             │
 ││                                                                                                                                                                                                     │
-││     - Check that render_conversation_view_with_search is now exported from src/view/mod.rs                                                                                                          │
-││     - Check that a snapshot test was added for search highlighting                                                                                                                                  │
-││     - Check that the outdated comment in tests/view_snapshots.rs (lines 521-534) was removed                                                                                                        │
-││     - Verify TDD was followed (test written first)                                                                                                                                                  │
+││       - Check that render_conversation_view_with_search is now exported from src/view/mod.rs                                                                                                        │
+││       - Check that a snapshot test was added for search highlighting                                                                                                                                │
+││       - Check that the outdated comment in tests/view_snapshots.rs (lines 521-534) was removed                                                                                                      │
+││       - Verify TDD was followed (test written first)                                                                                                                                                │
 ││                                                                                                                                                                                                     │
-││     ## Review Checklist                                                                                                                                                                             │
+││       ## Review Checklist                                                                                                                                                                           │
 ││                                                                                                                                                                                                     │
-││     1. Spec Conformance: Is the function now exported? Can snapshot tests import it?                                                                                                                │
-││     2. TDD Compliance: Is there a new snapshot test for search highlighting?                                                                                                                        │
-││     3. Clean Up: Was the outdated limitation comment removed?                                                                                                                                       │
-││     4. No Over-Engineering: Is implementation minimal?                                                                                                                                              │
-││     5. No Under-Engineering: Are all requirements addressed?                                                                                                                                        │
+││       1. Spec Conformance: Is the function now exported? Can snapshot tests import it?                                                                                                              │
+││       2. TDD Compliance: Is there a new snapshot test for search highlighting?                                                                                                                      │
+││       3. Clean Up: Was the outdated limitation comment removed?                                                                                                                                     │
+││       4. No Over-Engineering: Is implementation minimal?                                                                                                                                            │
+││       5. No Under-Engineering: Are all requirements addressed?                                                                                                                                      │
 ││                                                                                                                                                                                                     │
-││     ## Files to Check                                                                                                                                                                               │
+││       ## Files to Check                                                                                                                                                                             │
 ││                                                                                                                                                                                                     │
-││     - src/view/mod.rs - Export statement                                                                                                                                                            │
-││     - tests/view_snapshots.rs - New test and comment removal                                                                                                                                        │
-││     - tests/snapshots/ - New snapshot file                                                                                                                                                          │
+││       - src/view/mod.rs - Export statement                                                                                                                                                          │
+││       - tests/view_snapshots.rs - New test and comment removal                                                                                                                                      │
+││       - tests/snapshots/ - New snapshot file                                                                                                                                                        │
 ││                                                                                                                                                                                                     │
-││     ## Output Format                                                                                                                                                                                │
+││       ## Output Format                                                                                                                                                                              │
 ││                                                                                                                                                                                                     │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

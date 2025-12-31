@@ -8,15 +8,15 @@ Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 └──────────────────────────────────────────────────────────────────────────────┘
 ┌Main Agent (6 entries)────────────────────────────────────────────────────────┐
 │                                                                              │
-││   2 Hello                                                                   │
+││     2 Hello                                                                 │
 │                                                                              │
-││   3 Hi there!                                                               │
+││     3 Hi there!                                                             │
 │                                                                              │
-││   4 Can you help?                                                           │
+││     4 Can you help?                                                         │
 │                                                                              │
-││   5 Of course, I'd be happy to help.                                        │
+││     5 Of course, I'd be happy to help.                                      │
 │                                                                              │
-││   6 Thanks                                                                  │
+││     6 Thanks                                                                │
 │                                                                              │
 │                                                                              │
 │                                                                              │

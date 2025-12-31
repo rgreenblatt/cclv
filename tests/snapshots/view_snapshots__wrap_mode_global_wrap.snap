@@ -3,10 +3,10 @@ source: tests/view_snapshots.rs
 expression: output
 ---
 ┌Main Agent (1 entries)────────────────────────────────────┐
-││   1 This is a very long line that definitely exceeds the│
-││     viewport width and should wrap to multiple lines wh │
-││     en wrap mode is enabled. The content should continue│
-││     on the next line without truncation.                │
+││     1 This is a very long line that definitely exceeds t│
+││       he viewport width and should wrap to multiple line│
+││       s when wrap mode is enabled. The content should co│
+││       ntinue on the next line without truncation.       │
 │                                                          │
 │                                                          │
 │                                                          │

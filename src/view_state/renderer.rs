@@ -394,7 +394,7 @@ fn wrap_lines(
             // Adjust width for borders (always) AND entry index prefix (if present)
             // The width parameter is terminal width, but content area is narrower by:
             // - 2 chars for left/right borders (ConversationView border)
-            // - 6 chars for entry index prefix "│NNNN " if has_entry_prefix=true (cclv-5ur.45)
+            // - 8 chars for entry index prefix "│NNNNNN " if has_entry_prefix=true (cclv-5ur.55)
             // Without accounting for prefix, wrapped lines overflow viewport horizontally
             let prefix_width = if has_entry_prefix {
                 INDEX_PREFIX_WIDTH as u16

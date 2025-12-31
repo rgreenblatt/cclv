@@ -8,15 +8,15 @@ Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 └───────────│Navigation                                            │───────────┘
 ┌Main Agent │  j/↓         Scroll down                             │───────────┐
 │           │  k/↑         Scroll up                               │           │
-││   2 Hello│  h/←         Scroll left (for long lines)            │           │
+││     2 Hel│  h/←         Scroll left (for long lines)            │           │
 │           │  l/→         Scroll right                            │           │
-││   3 Hi th│  Ctrl+d/Page Down Page down                          │           │
+││     3 Hi │  Ctrl+d/Page Down Page down                          │           │
 │           │  Ctrl+u/Page Up   Page up                            │           │
-││   4 Can y│  g/Home      Go to top                               │           │
+││     4 Can│  g/Home      Go to top                               │           │
 │           │  G/End       Go to bottom                            │           │
-││   5 Of co│                                                      │           │
+││     5 Of │                                                      │           │
 │           │Pane Focus                                            │           │
-││   6 Thank│  Tab         Cycle focus between panes               │           │
+││     6 Tha│  Tab         Cycle focus between panes               │           │
 │           │  1           Focus main agent pane                   │           │
 │           │  2           Focus subagent pane                     │           │
 │           │  3           Focus stats panel                       │           │

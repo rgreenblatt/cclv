@@ -7,9 +7,9 @@ Model: Unknown | Main Agent
 │ Main Agent                                               │
 └──────────────────────────────────────────────────────────┘
 ┌◀ Main Agent (1 entries) ▶────────────────────────────────┐
-││   1                                                     │
+││     1                                                   │
 ││                                                         │
-││     mplete/content/MARKER_END_OF_LINE.txt"              │
+││       mplete/content/MARKER_END_OF_LINE.txt"            │
 ││                                                         │
 │                                                          │
 │                                                          │

@@ -8,21 +8,21 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 └──────────────────────────────────────────────────────────────────────────────┘
 ┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
 │                                                                              │
-││   3 Let me understand the task:                                             │
+││     3 Let me understand the task:                                           │
 ││                                                                             │
-││     1. I'm a coordinator agent that CANNOT read/write code directly         │
-││     (+10 more lines)                                                        │
+││       1. I'm a coordinator agent that CANNOT read/write code directly       │
+││       (+10 more lines)                                                      │
 │── 9 in / 1 out / $0.06 | Context: 37.4k (18%) ──                             │
-││   4 I'll start by loading the required skill and then following the coordina│
-││     tor protocol.                                                           │
+││     4 I'll start by loading the required skill and then following the coordi│
+││       nator protocol.                                                       │
 │── 9 in / 1 out / $0.06 | Context: 74.9k (37%) ──                             │
-││   5 🔧  Tool: Skill                                                          │
-││       {                                                                     │
-││         "skill": "efficient-subagent-orchestration"                         │
-││       }                                                                     │
+││     5 🔧  Tool: Skill                                                        │
+││         {                                                                   │
+││           "skill": "efficient-subagent-orchestration"                       │
+││         }                                                                   │
 │── 9 in / 1 out / $0.06 | Context: 112.3k (56%) ──                            │
-││   6 🔧  Tool: Skill                                                          │
-││       {                                                                     │
-││         "skill": "beads-project-tracking"                                   │
+││     6 🔧  Tool: Skill                                                        │
+││         {                                                                   │
+││           "skill": "beads-project-tracking"                                 │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
