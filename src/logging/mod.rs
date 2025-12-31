@@ -80,9 +80,10 @@ where
     }
 }
 
-/// Initialize the tracing subscriber with a LogPaneLayer.
+/// Initialize the tracing subscriber with a LogPaneLayer and EnvFilter.
 ///
 /// This sets up the global default subscriber to send log entries to the UI.
+/// Respects RUST_LOG environment variable, defaults to "info" level.
 ///
 /// # Arguments
 /// * `sender` - Channel sender for log entries
@@ -92,9 +93,15 @@ where
 /// * `Err(msg)` if the subscriber was already initialized
 pub fn init_with_log_pane(sender: mpsc::Sender<LogPaneEntry>) -> Result<(), String> {
     use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::EnvFilter;
 
     let layer = LogPaneLayer::new(sender);
-    let subscriber = tracing_subscriber::registry().with(layer);
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    let subscriber = tracing_subscriber::registry()
+        .with(env_filter)
+        .with(layer);
 
     tracing::subscriber::set_global_default(subscriber)
         .map_err(|e| format!("Failed to set global subscriber: {}", e))

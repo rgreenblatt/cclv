@@ -3,7 +3,6 @@
 use clap::Parser;
 use std::path::PathBuf;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 
 /// Claude Code Log Viewer - TUI for viewing Claude Code JSONL logs
 #[derive(Parser, Debug)]
@@ -44,14 +43,6 @@ pub struct Args {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing subscriber with env filter
-    // Default to info level, override with RUST_LOG env var
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .init();
-
     let args = Args::parse();
 
     // Set NO_COLOR env var if --no-color flag is passed
