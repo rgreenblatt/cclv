@@ -551,8 +551,17 @@ where
 
             // Message expand/collapse - delegate to pure expand handler
             KeyAction::ToggleExpand | KeyAction::ExpandMessage | KeyAction::CollapseMessage => {
-                let new_state =
-                    expand_handler::handle_expand_action(self.app_state.clone(), action);
+                // Get viewport width from terminal
+                let viewport_width = self
+                    .terminal
+                    .size()
+                    .map(|rect| rect.width)
+                    .unwrap_or(80);
+                let new_state = expand_handler::handle_expand_action(
+                    self.app_state.clone(),
+                    action,
+                    viewport_width,
+                );
                 self.app_state = new_state;
             }
 
@@ -599,7 +608,13 @@ where
 
             // Line wrapping - per-item toggle (w key)
             KeyAction::ToggleWrap => {
-                self.app_state = handle_toggle_wrap(self.app_state.clone());
+                // Get viewport width from terminal
+                let viewport_width = self
+                    .terminal
+                    .size()
+                    .map(|rect| rect.width)
+                    .unwrap_or(80);
+                self.app_state = handle_toggle_wrap(self.app_state.clone(), viewport_width);
             }
 
             // Line wrapping - global toggle (W key)
@@ -684,9 +699,16 @@ where
                 self.last_subagent_area,
                 &self.app_state,
             );
+            // Get viewport width from terminal
+            let viewport_width = self
+                .terminal
+                .size()
+                .map(|rect| rect.width)
+                .unwrap_or(80);
             self.app_state = crate::state::mouse_handler::handle_entry_click(
                 self.app_state.clone(),
                 entry_result,
+                viewport_width,
             );
         }
     }

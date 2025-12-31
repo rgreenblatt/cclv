@@ -4,18 +4,23 @@
 //! Focus-aware: dispatches actions to the correct ConversationViewState based on current focus.
 
 use crate::model::KeyAction;
-use crate::state::{AppState, FocusPane, WrapMode};
+use crate::state::{AppState, FocusPane};
 use crate::view_state::layout_params::LayoutParams;
-use crate::view_state::types::{EntryIndex, LineHeight, ViewportDimensions};
+use crate::view_state::types::{EntryIndex, ViewportDimensions};
 
 /// Handle a message expand/collapse keyboard action.
 ///
 /// # Arguments
 /// * `state` - Current application state to transform
 /// * `action` - The expand/collapse action to handle
+/// * `viewport_width` - Viewport width in characters for layout calculations
 ///
 /// Returns a new AppState with the expand/collapse action applied.
-pub fn handle_expand_action(mut state: AppState, action: KeyAction) -> AppState {
+pub fn handle_expand_action(
+    mut state: AppState,
+    action: KeyAction,
+    viewport_width: u16,
+) -> AppState {
     // Early return for non-expandable panes
     match state.focus {
         FocusPane::Stats | FocusPane::Search => return state,
@@ -23,17 +28,11 @@ pub fn handle_expand_action(mut state: AppState, action: KeyAction) -> AppState 
     }
 
     // Get layout params and viewport for relayout (needed by toggle_expand)
-    let params = LayoutParams::new(80, state.global_wrap); // TODO: Use actual viewport width
-    let viewport = ViewportDimensions::new(80, 24); // TODO: Use actual viewport dimensions
+    let params = LayoutParams::new(viewport_width, state.global_wrap);
+    let viewport = ViewportDimensions::new(viewport_width, 24); // Height not used for expand
 
-    // Height calculator stub for now
-    let height_calc = |_entry: &crate::model::ConversationEntry,
-                       _expanded: bool,
-                       _wrap: WrapMode,
-                       _width: u16|
-     -> LineHeight {
-        LineHeight::new(5).unwrap() // Stub height
-    };
+    // Use the real height calculator from view layer
+    let height_calc = crate::view::calculate_entry_height;
 
     // Apply the action based on focus
     match state.focus {

@@ -230,6 +230,7 @@ pub fn detect_entry_click(
 /// # Arguments
 /// * `state` - Current application state
 /// * `entry_click` - Result from detect_entry_click indicating which entry was clicked
+/// * `viewport_width` - Viewport width in characters for layout calculations
 ///
 /// # Returns
 /// Updated AppState with entry expansion toggled if an entry was clicked.
@@ -239,23 +240,20 @@ pub fn detect_entry_click(
 /// - Main pane entries toggle via main ConversationViewState
 /// - Subagent pane entries toggle via selected subagent's ConversationViewState
 /// - If click was outside entries, state is unchanged
-pub fn handle_entry_click(mut state: AppState, entry_click: EntryClickResult) -> AppState {
-    use crate::state::WrapMode;
+pub fn handle_entry_click(
+    mut state: AppState,
+    entry_click: EntryClickResult,
+    viewport_width: u16,
+) -> AppState {
     use crate::view_state::layout_params::LayoutParams;
-    use crate::view_state::types::{EntryIndex, LineHeight, ViewportDimensions};
+    use crate::view_state::types::{EntryIndex, ViewportDimensions};
 
-    // Layout params and viewport for relayout (TODO: Use actual viewport dimensions)
-    let params = LayoutParams::new(80, state.global_wrap);
-    let viewport = ViewportDimensions::new(80, 24);
+    // Layout params and viewport for relayout
+    let params = LayoutParams::new(viewport_width, state.global_wrap);
+    let viewport = ViewportDimensions::new(viewport_width, 24); // Height not used for expand
 
-    // Height calculator stub
-    let height_calc = |_entry: &crate::model::ConversationEntry,
-                       _expanded: bool,
-                       _wrap: WrapMode,
-                       _width: u16|
-     -> LineHeight {
-        LineHeight::new(5).unwrap() // Stub height
-    };
+    // Use the real height calculator from view layer
+    let height_calc = crate::view::calculate_entry_height;
 
     match entry_click {
         EntryClickResult::MainPaneEntry(index) => {

@@ -21,7 +21,7 @@ fn handle_toggle_wrap_returns_unchanged_state_when_no_focused_message() {
         view.set_focused_message(None);
     }
 
-    let result = handle_toggle_wrap(state.clone());
+    let result = handle_toggle_wrap(state.clone(), 80);
 
     // Verify no wrap override was added (should be no-op)
     // Since there's no entry, there's nothing to check - just verify no panic
@@ -64,7 +64,7 @@ fn handle_toggle_wrap_adds_override_on_first_toggle() {
     );
 
     // First toggle
-    let result = handle_toggle_wrap(state);
+    let result = handle_toggle_wrap(state, 80);
 
     // Should have override set to opposite of global (global is Wrap by default, so NoWrap)
     let final_override = result
@@ -104,7 +104,7 @@ fn handle_toggle_wrap_clears_override_on_second_toggle() {
     }
 
     // First toggle - sets override
-    let state = handle_toggle_wrap(state);
+    let state = handle_toggle_wrap(state, 80);
     let after_first = state
         .main_conversation_view()
         .and_then(|view| view.get(EntryIndex::new(0)))
@@ -116,7 +116,7 @@ fn handle_toggle_wrap_clears_override_on_second_toggle() {
     );
 
     // Second toggle - clears override
-    let result = handle_toggle_wrap(state);
+    let result = handle_toggle_wrap(state, 80);
     let after_second = result
         .main_conversation_view()
         .and_then(|view| view.get(EntryIndex::new(0)))

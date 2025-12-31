@@ -12,19 +12,17 @@ use crate::state::{AppState, FocusPane, WrapMode};
 ///
 /// # Arguments
 /// * `state` - Current application state to transform
+/// * `viewport_width` - Viewport width in characters for layout calculations
 ///
 /// Returns a new AppState with the wrap toggle applied (or unchanged if no message focused).
-pub fn handle_toggle_wrap(mut state: AppState) -> AppState {
-    // Stub height calculator - will be properly wired when rendering is migrated
-    let stub_calculator =
-        |_entry: &crate::model::ConversationEntry, _expanded: bool, _wrap: WrapMode, _width: u16| {
-            crate::view_state::types::LineHeight::new(10).unwrap()
-        };
+pub fn handle_toggle_wrap(mut state: AppState, viewport_width: u16) -> AppState {
+    // Use the real height calculator from view layer
+    let height_calc = crate::view::calculate_entry_height;
 
     match state.focus {
         FocusPane::Main => {
             let global = state.global_wrap;
-            let params = crate::view_state::layout_params::LayoutParams::new(80, global);
+            let params = crate::view_state::layout_params::LayoutParams::new(viewport_width, global);
 
             if let Some(view) = state.main_conversation_view_mut() {
                 if let Some(index) = view.focused_message() {
@@ -40,14 +38,14 @@ pub fn handle_toggle_wrap(mut state: AppState) -> AppState {
                         }),
                     };
 
-                    view.set_wrap_override(index, new_override, params, stub_calculator);
+                    view.set_wrap_override(index, new_override, params, height_calc);
                 }
             }
         }
         FocusPane::Subagent => {
             if let Some(tab_index) = state.selected_tab {
                 let global = state.global_wrap;
-                let params = crate::view_state::layout_params::LayoutParams::new(80, global);
+                let params = crate::view_state::layout_params::LayoutParams::new(viewport_width, global);
 
                 if let Some(view) = state.subagent_conversation_view_mut(tab_index) {
                     if let Some(index) = view.focused_message() {
@@ -63,7 +61,7 @@ pub fn handle_toggle_wrap(mut state: AppState) -> AppState {
                             }),
                         };
 
-                        view.set_wrap_override(index, new_override, params, stub_calculator);
+                        view.set_wrap_override(index, new_override, params, height_calc);
                     }
                 }
             }
