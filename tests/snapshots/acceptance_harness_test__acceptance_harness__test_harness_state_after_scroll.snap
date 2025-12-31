@@ -4,7 +4,6 @@ expression: output
 ---
 Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 ┌Main Agent (6 entries)────────────────────────────────────────────────────────┐
-│                                                                              │
 │Hello                                                                         │
 │                                                                              │
 │Hi there!                                                                     │
@@ -13,7 +12,8 @@ Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 │                                                                              │
 │Of course, I'd be happy to help.                                              │
 │                                                                              │
-│Thanks                                                                        │
+│                                                                              │
+│                                                                              │
 │                                                                              │
 │                                                                              │
 │                                                                              │

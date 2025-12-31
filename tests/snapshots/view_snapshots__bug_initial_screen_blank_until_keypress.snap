@@ -36,9 +36,9 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │# Efficient Subagent Orchestration for Main Agent                             │
 │(+177 more lines)                                                             │
 │                                                                              │
-│Launching skill: beads-project-tracking                                       │
 │                                                                              │
-│Base directory for this skill: /home/claude/.claude/skills/beads-project-track│
+│                                                                              │
+│                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
