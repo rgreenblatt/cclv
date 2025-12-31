@@ -340,19 +340,17 @@ mod tests {
         // Session 2: 1 entry
         log.add_entry(make_entry("session-2", "uuid-3", Role::User), None);
 
-        // NOTE: Without layout computation, all sessions have height=0 and start_line=0.
+        // NOTE: After cclv-5ur.21 fix, append_entries() computes layout immediately.
+        // Even with viewport_width=0 (before explicit relayout), entries have non-zero height.
+        // Session 1 has start_line=0, Session 2 has start_line=height_1 (non-zero).
         // The rfind algorithm returns the LAST session with start_line <= scroll_line.
-        // So when all sessions are at start_line=0, scroll_line=0 returns the last session.
-        //
-        // This test verifies the spec behavior (rfind), which may seem counter-intuitive
-        // without layout, but is correct for the normal case with computed layouts.
 
-        // Scroll line 0: with all sessions at start_line=0, rfind returns the LAST one
+        // Scroll line 0: within session 1's range [0, height_1)
         let session = log.active_session(0).expect("should have active session");
-        assert_eq!(session.session_id(), &make_session_id("session-2"));
-        assert_eq!(log.active_session_index(0), Some(1));
+        assert_eq!(session.session_id(), &make_session_id("session-1"));
+        assert_eq!(log.active_session_index(0), Some(0));
 
-        // Scroll line at height_1 (which is 0): same as above
+        // Scroll line at height_1: exactly at session 2's start_line
         let session = log
             .active_session(height_1)
             .expect("should have active session");
@@ -360,11 +358,12 @@ mod tests {
         assert_eq!(log.active_session_index(height_1), Some(1));
 
         // Scroll line beyond all sessions: returns last session
+        let total_height = log.sessions().map(|s| s.total_height()).sum::<usize>();
         let session = log
-            .active_session(height_1 + 1)
+            .active_session(total_height + 100)
             .expect("should have active session");
         assert_eq!(session.session_id(), &make_session_id("session-2"));
-        assert_eq!(log.active_session_index(height_1 + 1), Some(1));
+        assert_eq!(log.active_session_index(total_height + 100), Some(1));
     }
 
     #[test]

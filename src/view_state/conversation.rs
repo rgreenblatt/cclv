@@ -1929,13 +1929,13 @@ mod tests {
     // === Bug Reproduction: append() leaves stale total_height (cclv-5ur.21) ===
 
     #[test]
-    fn append_should_update_total_height_for_auto_scroll() {
+    fn append_entries_updates_layout_immediately_for_auto_scroll() {
         // RED TEST for cclv-5ur.21: Auto-scroll must fill last viewport line with content
         //
         // REQUIREMENT: After appending entries, total_height must reflect the new content
         // so auto-scroll resolution includes the new entries in visible_range.
         //
-        // This test will FAIL until we fix SessionViewState to use append_entries().
+        // This test verifies append_entries() (the FIXED method) updates total_height.
 
         // Create initial state with 2 entries
         let entries = vec![
@@ -1950,20 +1950,19 @@ mod tests {
         let height_before = state.total_height();
         assert!(height_before > 0, "Should have non-zero height after relayout");
 
-        // Append new entry using OLD append() method
-        // (This simulates what SessionViewState::add_main_entry currently does)
+        // Append new entry using NEW append_entries() method
         let new_entries = vec![make_entry_with_n_lines("uuid-3", 5)];
-        state.append(new_entries);
+        state.append_entries(new_entries);
 
         let height_after = state.total_height();
 
         // EXPECTATION: total_height should INCREASE after appending new entry
-        // This test will FAIL because append() doesn't update total_height
         assert!(
             height_after > height_before,
-            "BUG: append() leaves total_height unchanged ({}), expected increase.\n\
-             Added an entry with ~5 lines of text, but total_height didn't increase.\n\
-             This causes auto-scroll to resolve with stale height, showing blank lines.",
+            "append_entries() should update total_height immediately.\n\
+             Before: {}, After: {}\n\
+             New entries must be included in layout for auto-scroll to work.",
+            height_before,
             height_after
         );
     }

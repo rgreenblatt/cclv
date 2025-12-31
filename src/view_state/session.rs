@@ -142,13 +142,13 @@ impl SessionViewState {
 
     /// Add entry to main conversation.
     pub fn add_main_entry(&mut self, entry: ConversationEntry) {
-        self.main.append(vec![entry]);
+        self.main.append_entries(vec![entry]);
     }
 
     /// Add entry to subagent conversation.
     /// Creates the subagent view-state eagerly via subagent_mut().
     pub fn add_subagent_entry(&mut self, agent_id: AgentId, entry: ConversationEntry) {
-        self.subagent_mut(&agent_id).append(vec![entry]);
+        self.subagent_mut(&agent_id).append_entries(vec![entry]);
     }
 
     /// Start line offset (for multi-session positioning).
