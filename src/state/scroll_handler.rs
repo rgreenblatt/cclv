@@ -29,36 +29,34 @@ pub fn handle_scroll_action(
     }
 
     // Get mutable reference to the appropriate conversation view-state
-    // (needed for both horizontal and vertical scrolling)
-    let conversation = match state.focus {
-        FocusPane::Main => {
-            if let Some(session) = state.log_view_mut().current_session_mut() {
-                session.main_mut()
-            } else {
-                return state; // No session, nothing to scroll
-            }
-        }
-        FocusPane::Subagent => {
-            // Get the currently selected subagent's conversation
-            if let Some(tab_index) = state.selected_tab {
-                // Get agent ID and clone to avoid borrow conflicts
-                let agent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
-                let agent_id = agent_ids.get(tab_index).cloned();
+    // Route based on selected_tab to match rendering logic (layout.rs:258-286)
+    // Tab 0 = Main Agent, Tabs 1+ = Subagents (index - 1 in subagent list)
+    let selected_tab_index = state.selected_tab.unwrap_or(0);
 
-                if let Some(agent_id) = agent_id {
-                    if let Some(session) = state.log_view_mut().current_session_mut() {
-                        session.subagent_mut(&agent_id)
-                    } else {
-                        return state;
-                    }
-                } else {
-                    return state;
-                }
-            } else {
-                return state; // No tab selected
-            }
+    let conversation = if selected_tab_index == 0 {
+        // Tab 0: Main agent conversation
+        if let Some(session) = state.log_view_mut().current_session_mut() {
+            session.main_mut()
+        } else {
+            return state; // No session, nothing to scroll
         }
-        _ => return state, // Already handled above
+    } else {
+        // Tabs 1+: Subagent conversation (index - 1 in subagent list)
+        let subagent_index = selected_tab_index - 1;
+
+        // Get agent ID at subagent_index and clone to avoid borrow conflicts
+        let agent_ids: Vec<_> = state.session_view().subagent_ids().cloned().collect();
+        let agent_id = agent_ids.get(subagent_index).cloned();
+
+        if let Some(agent_id) = agent_id {
+            if let Some(session) = state.log_view_mut().current_session_mut() {
+                session.subagent_mut(&agent_id)
+            } else {
+                return state;
+            }
+        } else {
+            return state; // Subagent not found
+        }
     };
 
     // Handle horizontal scrolling
