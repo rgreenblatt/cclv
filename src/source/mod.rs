@@ -252,7 +252,10 @@ mod tests {
         // Cleanup
         let _ = fs::remove_file(&test_file);
 
-        assert!(result.is_ok(), "Should return File variant for existing file");
+        assert!(
+            result.is_ok(),
+            "Should return File variant for existing file"
+        );
         let source = result.unwrap();
         assert!(
             matches!(source, InputSource::File(_)),

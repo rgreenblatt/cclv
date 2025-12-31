@@ -71,8 +71,7 @@ pub fn init(log_path: &Path) -> Result<(), LoggingError> {
     let file_appender = tracing_appender::rolling::never(directory, file_name);
 
     // Respect RUST_LOG, default to "info"
-    let env_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     // Initialize subscriber with file output
     tracing_subscriber::fmt()

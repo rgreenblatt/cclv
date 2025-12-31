@@ -92,7 +92,10 @@ fn test_keyboard_event_triggers_render() {
 
     // Render should complete immediately
     let result = app.render_test();
-    assert!(result.is_ok(), "Render after key event should succeed immediately");
+    assert!(
+        result.is_ok(),
+        "Render after key event should succeed immediately"
+    );
 }
 
 /// Test: No artificial delays in event handling
@@ -123,8 +126,8 @@ fn test_event_handling_has_no_delays() {
 /// Helper function to create a test LogEntry
 fn create_test_entry(content: &str) -> cclv::model::ConversationEntry {
     use cclv::model::{
-        ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
-        MessageContent, Role, SessionId,
+        ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent,
+        Role, SessionId,
     };
     use chrono::Utc;
 

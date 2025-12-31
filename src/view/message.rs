@@ -1129,7 +1129,8 @@ fn render_entry_lines_with_search(
                     if should_collapse {
                         // Show summary lines with role styling (no search highlighting in collapsed view)
                         for (line_idx, line) in text_lines.iter().take(summary_lines).enumerate() {
-                            let mut rendered_line = Line::from(vec![Span::styled(line.to_string(), role_style)]);
+                            let mut rendered_line =
+                                Line::from(vec![Span::styled(line.to_string(), role_style)]);
 
                             // Add index to first content line
                             if line_idx == 0 && !index_added {
@@ -1173,7 +1174,8 @@ fn render_entry_lines_with_search(
 
                                     // Add index to first content line
                                     if line_idx == 0 && !index_added {
-                                        rendered_line = prepend_index_to_line(rendered_line, entry_index);
+                                        rendered_line =
+                                            prepend_index_to_line(rendered_line, entry_index);
                                         index_added = true;
                                     }
 
@@ -1227,7 +1229,8 @@ fn render_entry_lines_with_search(
 
                                     // Add index to first content line
                                     if line_idx == 0 && !index_added {
-                                        highlighted_line = prepend_index_to_line(highlighted_line, entry_index);
+                                        highlighted_line =
+                                            prepend_index_to_line(highlighted_line, entry_index);
                                         index_added = true;
                                     }
 
@@ -1240,14 +1243,13 @@ fn render_entry_lines_with_search(
                         } else {
                             // No search active - render normally
                             for (line_idx, line) in text_lines.iter().enumerate() {
-                                let mut rendered_line = Line::from(vec![Span::styled(
-                                    line.to_string(),
-                                    role_style,
-                                )]);
+                                let mut rendered_line =
+                                    Line::from(vec![Span::styled(line.to_string(), role_style)]);
 
                                 // Add index to first content line
                                 if line_idx == 0 && !index_added {
-                                    rendered_line = prepend_index_to_line(rendered_line, entry_index);
+                                    rendered_line =
+                                        prepend_index_to_line(rendered_line, entry_index);
                                     index_added = true;
                                 }
 
@@ -3778,7 +3780,10 @@ mod tests {
         let height = widget.calculate_entry_height(&conv_entry, 0, 80, WrapMode::NoWrap, false);
 
         // When expanded, should show all 15 lines + 1 spacing
-        assert_eq!(height, 16, "Expanded entry should show all 15 lines + spacing");
+        assert_eq!(
+            height, 16,
+            "Expanded entry should show all 15 lines + spacing"
+        );
     }
 
     #[test]
@@ -5991,7 +5996,10 @@ mod tests {
 
         // With NoWrap, should return line count (3 lines + 1 spacing)
         let height = widget.calculate_entry_height(&entry, 0, 80, WrapMode::NoWrap, false);
-        assert_eq!(height, 4, "NoWrap mode should count newlines: 3 lines + 1 spacing");
+        assert_eq!(
+            height, 4,
+            "NoWrap mode should count newlines: 3 lines + 1 spacing"
+        );
     }
 
     #[test]
@@ -6286,7 +6294,8 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        let layouts = widget.calculate_entry_layouts(&[entry], 0, 0, 80, 24, WrapMode::NoWrap, false);
+        let layouts =
+            widget.calculate_entry_layouts(&[entry], 0, 0, 80, 24, WrapMode::NoWrap, false);
 
         assert_eq!(layouts.len(), 1, "Single entry should return one layout");
         assert_eq!(layouts[0].y_offset, 0, "First entry should have y_offset=0");
@@ -6361,7 +6370,8 @@ mod tests {
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         let entries = vec![entry1, entry2, entry3];
-        let layouts = widget.calculate_entry_layouts(&entries, 0, 0, 80, 24, WrapMode::NoWrap, false);
+        let layouts =
+            widget.calculate_entry_layouts(&entries, 0, 0, 80, 24, WrapMode::NoWrap, false);
 
         assert_eq!(
             layouts.len(),
@@ -6371,21 +6381,30 @@ mod tests {
 
         // Entry 1: y_offset=0, height=3+1 spacing=4
         assert_eq!(layouts[0].y_offset, 0, "First entry should start at y=0");
-        assert_eq!(layouts[0].height, 4, "First entry should have height=3 + 1 spacing");
+        assert_eq!(
+            layouts[0].height, 4,
+            "First entry should have height=3 + 1 spacing"
+        );
 
         // Entry 2: y_offset=4, height=2+1 spacing=3
         assert_eq!(
             layouts[1].y_offset, 4,
             "Second entry should start at y=4 (after first entry)"
         );
-        assert_eq!(layouts[1].height, 3, "Second entry should have height=2 + 1 spacing");
+        assert_eq!(
+            layouts[1].height, 3,
+            "Second entry should have height=2 + 1 spacing"
+        );
 
         // Entry 3: y_offset=7, height=1+1 spacing=2
         assert_eq!(
             layouts[2].y_offset, 7,
             "Third entry should start at y=7 (after first two)"
         );
-        assert_eq!(layouts[2].height, 2, "Third entry should have height=1 + 1 spacing");
+        assert_eq!(
+            layouts[2].height, 2,
+            "Third entry should have height=1 + 1 spacing"
+        );
     }
 
     #[test]
@@ -6421,7 +6440,8 @@ mod tests {
 
         // When scrolled down 2 lines, the entry should still start at y=0 in viewport
         // but content starts 2 lines down
-        let layouts = widget.calculate_entry_layouts(&[entry], 0, 2, 80, 24, WrapMode::NoWrap, false);
+        let layouts =
+            widget.calculate_entry_layouts(&[entry], 0, 2, 80, 24, WrapMode::NoWrap, false);
 
         assert_eq!(layouts.len(), 1, "Should return one layout");
         // The y_offset should be relative to scroll position
@@ -6431,7 +6451,10 @@ mod tests {
             layouts[0].y_offset, 0,
             "Entry should render at top of viewport when partially scrolled"
         );
-        assert_eq!(layouts[0].height, 6, "Entry height should be 5 lines + 1 spacing");
+        assert_eq!(
+            layouts[0].height, 6,
+            "Entry height should be 5 lines + 1 spacing"
+        );
     }
 
     #[test]
@@ -6471,7 +6494,8 @@ mod tests {
 
         // Viewport height is 10 lines
         // With no scroll, should see entries 0-1 fully, entry 2 partially (total 10+ lines)
-        let layouts = widget.calculate_entry_layouts(&entries, 0, 0, 80, 10, WrapMode::NoWrap, false);
+        let layouts =
+            widget.calculate_entry_layouts(&entries, 0, 0, 80, 10, WrapMode::NoWrap, false);
 
         // Should include entries that are visible or partially visible in viewport
         assert!(
@@ -6486,7 +6510,10 @@ mod tests {
                 layouts[0].y_offset, 0,
                 "First visible entry should start at y=0"
             );
-            assert_eq!(layouts[0].height, 6, "First entry should be 5 lines + 1 spacing");
+            assert_eq!(
+                layouts[0].height, 6,
+                "First entry should be 5 lines + 1 spacing"
+            );
         }
 
         // Verify second entry
@@ -6495,7 +6522,10 @@ mod tests {
                 layouts[1].y_offset, 6,
                 "Second visible entry should start at y=6 (after first entry)"
             );
-            assert_eq!(layouts[1].height, 6, "Second entry should be 5 lines + 1 spacing");
+            assert_eq!(
+                layouts[1].height, 6,
+                "Second entry should be 5 lines + 1 spacing"
+            );
         }
     }
 
@@ -9134,7 +9164,9 @@ fn test() { println!("Code blocks always NoWrap"); }
 
     /// Helper to create a simple text entry for index tests
     fn create_test_entry_for_index(uuid: &str, text: &str) -> ConversationEntry {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId,
+        };
         use chrono::Utc;
 
         let entry = LogEntry::new(
@@ -9331,7 +9363,10 @@ fn test() { println!("Code blocks always NoWrap"); }
 
     #[test]
     fn conversation_view_indices_scoped_per_conversation_fr062_fr063() {
-        use crate::model::{AgentConversation, AgentId, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use crate::model::{
+            AgentConversation, AgentId, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
         use crate::state::WrapMode;
         use chrono::Utc;
         use ratatui::backend::TestBackend;
@@ -9425,8 +9460,7 @@ fn test() { println!("Code blocks always NoWrap"); }
             .expect("Failed to draw");
 
         let buffer = terminal.backend().buffer().clone();
-        let subagent_content: String =
-            buffer.content().iter().map(|cell| cell.symbol()).collect();
+        let subagent_content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
 
         // Debug: print what was actually rendered
         eprintln!("Subagent content rendered:\n{}", subagent_content);
