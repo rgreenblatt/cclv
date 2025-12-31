@@ -604,8 +604,10 @@ impl<'a> ConversationView<'a> {
     fn calculate_entry_height(
         &self,
         entry: &ConversationEntry,
+        entry_index: usize,
         viewport_width: usize,
         global_wrap: WrapMode,
+        is_subagent_view: bool,
     ) -> usize {
         match entry {
             ConversationEntry::Valid(log_entry) => {
@@ -618,7 +620,7 @@ impl<'a> ConversationView<'a> {
 
                 match log_entry.message().content() {
                     MessageContent::Text(text) => {
-                        let total_lines = match effective_wrap {
+                        let mut total_lines = match effective_wrap {
                             WrapMode::Wrap => {
                                 // Calculate wrapped line count
                                 Self::calculate_wrapped_lines(text, viewport_width)
@@ -629,11 +631,17 @@ impl<'a> ConversationView<'a> {
                             }
                         };
 
+                        // Add "Initial Prompt" label line for first message in subagent view
+                        if is_subagent_view && entry_index == 0 {
+                            total_lines += 1;
+                        }
+
                         if total_lines > self.collapse_threshold && !is_expanded {
-                            // Collapsed: summary_lines + 1 indicator line
-                            self.summary_lines + 1
+                            // Collapsed: summary_lines + 1 indicator line + spacing
+                            self.summary_lines + 1 + 1
                         } else {
-                            total_lines
+                            // Expanded or not collapsible: content lines + spacing
+                            total_lines + 1
                         }
                     }
                     MessageContent::Blocks(blocks) => {
@@ -705,20 +713,31 @@ impl<'a> ConversationView<'a> {
     /// Vector of EntryLayout structs with y_offset and height for each visible entry.
     /// Indices correspond to positions in the visible_entries slice.
     #[allow(dead_code)]
+    #[allow(clippy::too_many_arguments)]
     fn calculate_entry_layouts(
         &self,
         visible_entries: &[ConversationEntry],
+        start_idx: usize,
         scroll_offset: usize,
         viewport_width: usize,
         viewport_height: usize,
         global_wrap: WrapMode,
+        is_subagent_view: bool,
     ) -> Vec<EntryLayout> {
         let mut layouts = Vec::new();
         let mut cumulative_y = 0_usize;
 
-        for entry in visible_entries {
+        for (idx, entry) in visible_entries.iter().enumerate() {
+            let actual_entry_index = start_idx + idx;
+
             // Calculate height for this entry
-            let height = self.calculate_entry_height(entry, viewport_width, global_wrap);
+            let height = self.calculate_entry_height(
+                entry,
+                actual_entry_index,
+                viewport_width,
+                global_wrap,
+                is_subagent_view,
+            );
 
             // Determine if this entry is visible in the viewport
             // Entry is visible if any part overlaps with [scroll_offset, scroll_offset + viewport_height)
@@ -773,6 +792,7 @@ impl<'a> ConversationView<'a> {
         }
 
         let scroll_offset = self.scroll_state.vertical_offset;
+        let is_subagent_view = self.conversation.agent_id().is_some();
 
         // Calculate which entry the scroll offset corresponds to
         let mut cumulative_height = 0;
@@ -780,7 +800,13 @@ impl<'a> ConversationView<'a> {
 
         // Find the first entry that should be visible (accounting for buffer)
         for (i, entry) in entries.iter().enumerate() {
-            let entry_height = self.calculate_entry_height(entry, viewport_width, global_wrap);
+            let entry_height = self.calculate_entry_height(
+                entry,
+                i,
+                viewport_width,
+                global_wrap,
+                is_subagent_view,
+            );
             if cumulative_height + entry_height > scroll_offset.saturating_sub(self.buffer_size) {
                 start_entry_index = i;
                 break;
@@ -793,7 +819,13 @@ impl<'a> ConversationView<'a> {
         cumulative_height = 0;
 
         for (i, entry) in entries.iter().enumerate().skip(start_entry_index) {
-            let entry_height = self.calculate_entry_height(entry, viewport_width, global_wrap);
+            let entry_height = self.calculate_entry_height(
+                entry,
+                i,
+                viewport_width,
+                global_wrap,
+                is_subagent_view,
+            );
             cumulative_height = cumulative_height.saturating_add(entry_height);
 
             if cumulative_height > viewport_height + self.buffer_size.saturating_mul(2) {
@@ -1851,18 +1883,25 @@ pub fn render_conversation_view(
     // Calculate layouts for visible entries
     let layouts = temp_view.calculate_entry_layouts(
         visible_entries,
+        start_idx,
         scroll.vertical_offset,
         viewport_width,
         viewport_height,
         global_wrap,
+        is_subagent_view,
     );
 
     // Calculate absolute cumulative_y for first visible entry
     // (sum of heights of all entries before start_idx)
     let mut first_entry_absolute_y = 0_usize;
-    for entry in &all_entries[..start_idx] {
-        first_entry_absolute_y +=
-            temp_view.calculate_entry_height(entry, viewport_width, global_wrap);
+    for (idx, entry) in all_entries[..start_idx].iter().enumerate() {
+        first_entry_absolute_y += temp_view.calculate_entry_height(
+            entry,
+            idx,
+            viewport_width,
+            global_wrap,
+            is_subagent_view,
+        );
     }
 
     // Render each visible entry as a separate Paragraph
@@ -2143,17 +2182,24 @@ pub fn render_conversation_view_with_search(
     // Calculate layouts for visible entries
     let layouts = temp_view.calculate_entry_layouts(
         visible_entries,
+        start_idx,
         scroll.vertical_offset,
         viewport_width,
         viewport_height,
         global_wrap,
+        is_subagent_view,
     );
 
     // Calculate absolute cumulative_y for first visible entry
     let mut first_entry_absolute_y = 0_usize;
-    for entry in &all_entries[..start_idx] {
-        first_entry_absolute_y +=
-            temp_view.calculate_entry_height(entry, viewport_width, global_wrap);
+    for (idx, entry) in all_entries[..start_idx].iter().enumerate() {
+        first_entry_absolute_y += temp_view.calculate_entry_height(
+            entry,
+            idx,
+            viewport_width,
+            global_wrap,
+            is_subagent_view,
+        );
     }
 
     // Render each visible entry as a separate Paragraph
@@ -3682,13 +3728,13 @@ mod tests {
         );
 
         let conv_entry = ConversationEntry::Valid(Box::new(entry));
-        let height = widget.calculate_entry_height(&conv_entry, 80, WrapMode::NoWrap);
+        let height = widget.calculate_entry_height(&conv_entry, 0, 80, WrapMode::NoWrap, false);
 
         // With collapse_threshold=10, summary_lines=3:
-        // Should collapse to 3 lines + 1 indicator line = 4 lines
+        // Should collapse to 3 lines + 1 indicator line + 1 spacing = 5 lines
         assert_eq!(
-            height, 4,
-            "Collapsed entry should show 3 summary lines + 1 indicator"
+            height, 5,
+            "Collapsed entry should show 3 summary lines + 1 indicator + 1 spacing"
         );
     }
 
@@ -3729,10 +3775,10 @@ mod tests {
         );
 
         let conv_entry = ConversationEntry::Valid(Box::new(entry));
-        let height = widget.calculate_entry_height(&conv_entry, 80, WrapMode::NoWrap);
+        let height = widget.calculate_entry_height(&conv_entry, 0, 80, WrapMode::NoWrap, false);
 
-        // When expanded, should show all 15 lines
-        assert_eq!(height, 15, "Expanded entry should show all 15 lines");
+        // When expanded, should show all 15 lines + 1 spacing
+        assert_eq!(height, 16, "Expanded entry should show all 15 lines + spacing");
     }
 
     #[test]
@@ -5943,9 +5989,9 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        // With NoWrap, should return line count (3 lines)
-        let height = widget.calculate_entry_height(&entry, 80, WrapMode::NoWrap);
-        assert_eq!(height, 3, "NoWrap mode should count newlines: 3 lines");
+        // With NoWrap, should return line count (3 lines + 1 spacing)
+        let height = widget.calculate_entry_height(&entry, 0, 80, WrapMode::NoWrap, false);
+        assert_eq!(height, 4, "NoWrap mode should count newlines: 3 lines + 1 spacing");
     }
 
     #[test]
@@ -5980,11 +6026,11 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        // With Wrap at width 80, 100 chars should wrap to at least 2 lines
-        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        // With Wrap at width 80, 100 chars should wrap to at least 2 lines + 1 spacing
+        let height = widget.calculate_entry_height(&entry, 0, 80, WrapMode::Wrap, false);
         assert!(
-            height >= 2,
-            "Wrap mode should wrap 100 chars at width 80 to at least 2 lines, got {}",
+            height >= 3,
+            "Wrap mode should wrap 100 chars at width 80 to at least 2 lines + 1 spacing, got {}",
             height
         );
     }
@@ -6025,11 +6071,11 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        // Global is Wrap, but per-item override should make it NoWrap (1 line)
-        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        // Global is Wrap, but per-item override should make it NoWrap (1 line + 1 spacing)
+        let height = widget.calculate_entry_height(&entry, 0, 80, WrapMode::Wrap, false);
         assert_eq!(
-            height, 1,
-            "Per-item override should invert global Wrap to NoWrap (1 line)"
+            height, 2,
+            "Per-item override should invert global Wrap to NoWrap (1 line + 1 spacing)"
         );
     }
 
@@ -6063,7 +6109,7 @@ mod tests {
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         // Empty text should be at least 1 line (empty line still occupies space)
-        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        let height = widget.calculate_entry_height(&entry, 0, 80, WrapMode::Wrap, false);
         assert!(
             height >= 1,
             "Empty text should have height of at least 1, got {}",
@@ -6103,11 +6149,11 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        // Exactly viewport width should fit in 1 line
-        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        // Exactly viewport width should fit in 1 line + 1 spacing
+        let height = widget.calculate_entry_height(&entry, 0, 80, WrapMode::Wrap, false);
         assert_eq!(
-            height, 1,
-            "Text exactly viewport width should fit in 1 line"
+            height, 2,
+            "Text exactly viewport width should fit in 1 line + 1 spacing"
         );
     }
 
@@ -6143,11 +6189,11 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        // 81 chars at width 80 should wrap to 2 lines
-        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        // 81 chars at width 80 should wrap to 2 lines + 1 spacing
+        let height = widget.calculate_entry_height(&entry, 0, 80, WrapMode::Wrap, false);
         assert_eq!(
-            height, 2,
-            "Text one char over viewport width should wrap to 2 lines"
+            height, 3,
+            "Text one char over viewport width should wrap to 2 lines + 1 spacing"
         );
     }
 
@@ -6184,7 +6230,7 @@ mod tests {
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         // 2 lines × 2 wrapped = 4 total lines
-        let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
+        let height = widget.calculate_entry_height(&entry, 0, 80, WrapMode::Wrap, false);
         assert!(
             height >= 4,
             "Two 100-char lines at width 80 should wrap to at least 4 lines, got {}",
@@ -6201,7 +6247,7 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        let layouts = widget.calculate_entry_layouts(&[], 0, 80, 24, WrapMode::NoWrap);
+        let layouts = widget.calculate_entry_layouts(&[], 0, 0, 80, 24, WrapMode::NoWrap, false);
 
         assert_eq!(
             layouts.len(),
@@ -6240,13 +6286,13 @@ mod tests {
         let styles = create_test_styles();
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
-        let layouts = widget.calculate_entry_layouts(&[entry], 0, 80, 24, WrapMode::NoWrap);
+        let layouts = widget.calculate_entry_layouts(&[entry], 0, 0, 80, 24, WrapMode::NoWrap, false);
 
         assert_eq!(layouts.len(), 1, "Single entry should return one layout");
         assert_eq!(layouts[0].y_offset, 0, "First entry should have y_offset=0");
         assert_eq!(
-            layouts[0].height, 3,
-            "Entry with 3 lines should have height=3"
+            layouts[0].height, 4,
+            "Entry with 3 lines should have height=3 + 1 spacing"
         );
     }
 
@@ -6315,7 +6361,7 @@ mod tests {
         let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
 
         let entries = vec![entry1, entry2, entry3];
-        let layouts = widget.calculate_entry_layouts(&entries, 0, 80, 24, WrapMode::NoWrap);
+        let layouts = widget.calculate_entry_layouts(&entries, 0, 0, 80, 24, WrapMode::NoWrap, false);
 
         assert_eq!(
             layouts.len(),
@@ -6323,23 +6369,23 @@ mod tests {
             "Three entries should return three layouts"
         );
 
-        // Entry 1: y_offset=0, height=3
+        // Entry 1: y_offset=0, height=3+1 spacing=4
         assert_eq!(layouts[0].y_offset, 0, "First entry should start at y=0");
-        assert_eq!(layouts[0].height, 3, "First entry should have height=3");
+        assert_eq!(layouts[0].height, 4, "First entry should have height=3 + 1 spacing");
 
-        // Entry 2: y_offset=3, height=2
+        // Entry 2: y_offset=4, height=2+1 spacing=3
         assert_eq!(
-            layouts[1].y_offset, 3,
-            "Second entry should start at y=3 (after first entry)"
+            layouts[1].y_offset, 4,
+            "Second entry should start at y=4 (after first entry)"
         );
-        assert_eq!(layouts[1].height, 2, "Second entry should have height=2");
+        assert_eq!(layouts[1].height, 3, "Second entry should have height=2 + 1 spacing");
 
-        // Entry 3: y_offset=5, height=1
+        // Entry 3: y_offset=7, height=1+1 spacing=2
         assert_eq!(
-            layouts[2].y_offset, 5,
-            "Third entry should start at y=5 (after first two)"
+            layouts[2].y_offset, 7,
+            "Third entry should start at y=7 (after first two)"
         );
-        assert_eq!(layouts[2].height, 1, "Third entry should have height=1");
+        assert_eq!(layouts[2].height, 2, "Third entry should have height=1 + 1 spacing");
     }
 
     #[test]
@@ -6375,7 +6421,7 @@ mod tests {
 
         // When scrolled down 2 lines, the entry should still start at y=0 in viewport
         // but content starts 2 lines down
-        let layouts = widget.calculate_entry_layouts(&[entry], 2, 80, 24, WrapMode::NoWrap);
+        let layouts = widget.calculate_entry_layouts(&[entry], 0, 2, 80, 24, WrapMode::NoWrap, false);
 
         assert_eq!(layouts.len(), 1, "Should return one layout");
         // The y_offset should be relative to scroll position
@@ -6385,7 +6431,7 @@ mod tests {
             layouts[0].y_offset, 0,
             "Entry should render at top of viewport when partially scrolled"
         );
-        assert_eq!(layouts[0].height, 5, "Entry height should remain 5 lines");
+        assert_eq!(layouts[0].height, 6, "Entry height should be 5 lines + 1 spacing");
     }
 
     #[test]
@@ -6425,7 +6471,7 @@ mod tests {
 
         // Viewport height is 10 lines
         // With no scroll, should see entries 0-1 fully, entry 2 partially (total 10+ lines)
-        let layouts = widget.calculate_entry_layouts(&entries, 0, 80, 10, WrapMode::NoWrap);
+        let layouts = widget.calculate_entry_layouts(&entries, 0, 0, 80, 10, WrapMode::NoWrap, false);
 
         // Should include entries that are visible or partially visible in viewport
         assert!(
@@ -6440,16 +6486,16 @@ mod tests {
                 layouts[0].y_offset, 0,
                 "First visible entry should start at y=0"
             );
-            assert_eq!(layouts[0].height, 5, "First entry should be 5 lines");
+            assert_eq!(layouts[0].height, 6, "First entry should be 5 lines + 1 spacing");
         }
 
         // Verify second entry
         if layouts.len() >= 2 {
             assert_eq!(
-                layouts[1].y_offset, 5,
-                "Second visible entry should start at y=5"
+                layouts[1].y_offset, 6,
+                "Second visible entry should start at y=6 (after first entry)"
             );
-            assert_eq!(layouts[1].height, 5, "Second entry should be 5 lines");
+            assert_eq!(layouts[1].height, 6, "Second entry should be 5 lines + 1 spacing");
         }
     }
 
@@ -9280,6 +9326,168 @@ fn test() { println!("Code blocks always NoWrap"); }
         assert!(
             text3.iter().any(|line| line.contains(" 3│")),
             "Expected ' 3│' in third entry"
+        );
+    }
+
+    #[test]
+    fn conversation_view_indices_scoped_per_conversation_fr062_fr063() {
+        use crate::model::{AgentConversation, AgentId, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use crate::state::WrapMode;
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        // FR-062: Entry indices MUST be scoped per conversation
+        // FR-063: Entry indices MUST increase monotonically within their conversation scope
+
+        // Helper to create unwrapped LogEntry for add_entry
+        let create_log_entry = |uuid: &str, text: &str| -> LogEntry {
+            LogEntry::new(
+                EntryUuid::new(uuid).unwrap(),
+                None,
+                SessionId::new("test-session").unwrap(),
+                None,
+                Utc::now(),
+                EntryType::User,
+                Message::new(Role::User, MessageContent::Text(text.to_string())),
+                EntryMetadata::default(),
+            )
+        };
+
+        // GIVEN: Main agent conversation with 3 entries
+        let mut main_conversation = AgentConversation::new(None);
+        main_conversation.add_entry(create_log_entry("main-1", "Main entry 1"));
+        main_conversation.add_entry(create_log_entry("main-2", "Main entry 2"));
+        main_conversation.add_entry(create_log_entry("main-3", "Main entry 3"));
+
+        // GIVEN: Subagent conversation with 2 entries
+        let agent_id = AgentId::new("subagent-alpha").expect("valid agent id");
+        let mut subagent_conversation = AgentConversation::new(Some(agent_id));
+        subagent_conversation.add_entry(create_log_entry("sub-1", "Subagent entry 1"));
+        subagent_conversation.add_entry(create_log_entry("sub-2", "Subagent entry 2"));
+
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+
+        // WHEN: Rendering main agent conversation
+        let backend = TestBackend::new(80, 30);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &main_conversation,
+                    &scroll_state,
+                    &styles,
+                    false,
+                    WrapMode::NoWrap,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let main_content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // THEN: Main agent indices should be 1, 2, 3 (FR-062, FR-063)
+        assert!(
+            main_content.contains(" 1│"),
+            "Main agent first entry should have index 1"
+        );
+        assert!(
+            main_content.contains(" 2│"),
+            "Main agent second entry should have index 2"
+        );
+        assert!(
+            main_content.contains(" 3│"),
+            "Main agent third entry should have index 3"
+        );
+
+        // WHEN: Rendering subagent conversation
+        let backend = TestBackend::new(80, 30);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &subagent_conversation,
+                    &scroll_state,
+                    &styles,
+                    false,
+                    WrapMode::NoWrap,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let subagent_content: String =
+            buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // Debug: print what was actually rendered
+        eprintln!("Subagent content rendered:\n{}", subagent_content);
+
+        // THEN: Subagent indices should start at 1 independently (FR-062, FR-063)
+        assert!(
+            subagent_content.contains(" 1│"),
+            "Subagent first entry should have index 1 (independent from main agent)"
+        );
+        assert!(
+            subagent_content.contains(" 2│"),
+            "Subagent second entry should have index 2"
+        );
+
+        // THEN: Subagent should NOT have index 4 or 5 (proving independence)
+        assert!(
+            !subagent_content.contains(" 4│"),
+            "Subagent should not continue main agent numbering"
+        );
+        assert!(
+            !subagent_content.contains(" 5│"),
+            "Subagent should not continue main agent numbering"
+        );
+    }
+
+    #[test]
+    fn render_entry_lines_subagent_first_entry_shows_content_and_index() {
+        // GIVEN: First entry in a subagent conversation
+        let entry = create_test_entry_for_index("sub-entry-1", "Hello from subagent");
+        let scroll = create_test_scroll_state();
+        let styles = create_test_styles();
+
+        // WHEN: Rendering with is_subagent_view=true, entry_index=0
+        let lines = render_entry_lines(&entry, 0, true, &scroll, &styles, 10, 3);
+
+        let text = extract_text_from_lines_for_index(&lines);
+        let full_text = text.join("\n");
+
+        eprintln!("Rendered lines for subagent first entry:");
+        for (i, line) in text.iter().enumerate() {
+            eprintln!("  Line {}: '{}'", i, line);
+        }
+
+        // THEN: Should contain "Initial Prompt" label
+        assert!(
+            full_text.contains("Initial Prompt"),
+            "Expected 'Initial Prompt' label for first subagent entry"
+        );
+
+        // THEN: Should contain the actual content text
+        assert!(
+            full_text.contains("Hello from subagent"),
+            "Expected content text to be rendered. Got:\n{}",
+            full_text
+        );
+
+        // THEN: Should contain index " 1│"
+        assert!(
+            full_text.contains(" 1│"),
+            "Expected index ' 1│' for first entry. Got:\n{}",
+            full_text
         );
     }
 }
