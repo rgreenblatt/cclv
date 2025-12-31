@@ -1,6 +1,7 @@
 //! Tests for configuration file loading.
 
 use super::*;
+use serial_test::serial;
 use std::env;
 use std::fs;
 
@@ -206,6 +207,7 @@ impl Drop for EnvGuard {
 }
 
 #[test]
+#[serial(cclv_theme)]
 fn apply_env_overrides_respects_cclv_theme() {
     let _guard = EnvGuard::new("CCLV_THEME");
 
@@ -223,6 +225,7 @@ fn apply_env_overrides_respects_cclv_theme() {
 }
 
 #[test]
+#[serial(cclv_theme)]
 fn apply_env_overrides_leaves_other_fields_unchanged() {
     let _guard = EnvGuard::new("CCLV_THEME");
 
@@ -251,6 +254,7 @@ fn apply_env_overrides_leaves_other_fields_unchanged() {
 }
 
 #[test]
+#[serial(cclv_theme)]
 fn apply_env_overrides_no_change_when_env_var_not_set() {
     let _guard = EnvGuard::new("CCLV_THEME");
 
@@ -264,6 +268,7 @@ fn apply_env_overrides_no_change_when_env_var_not_set() {
 }
 
 #[test]
+#[serial(cclv_config)]
 fn load_config_with_precedence_prefers_explicit_path() {
     // Clean up any stale env vars from other tests
     env::remove_var("CCLV_CONFIG");
@@ -301,6 +306,7 @@ theme = "explicit-theme"
 }
 
 #[test]
+#[serial(cclv_config)]
 fn load_config_with_precedence_uses_env_var_when_no_explicit_path() {
     // Clean up any stale env vars from other tests
     env::remove_var("CCLV_CONFIG");
@@ -334,6 +340,7 @@ theme = "env-var-theme"
 }
 
 #[test]
+#[serial(cclv_config)]
 fn load_config_with_precedence_falls_back_to_default_path() {
     // Ensure CCLV_CONFIG not set
     env::remove_var("CCLV_CONFIG");
@@ -684,6 +691,7 @@ fn precedence_chain_defaults_to_config_file() {
 }
 
 #[test]
+#[serial(cclv_theme)]
 fn precedence_chain_config_file_to_env_vars() {
     // Clean up
     env::remove_var("CCLV_THEME");
@@ -718,6 +726,7 @@ fn precedence_chain_config_file_to_env_vars() {
 }
 
 #[test]
+#[serial(cclv_theme)]
 fn precedence_chain_env_vars_to_cli_args() {
     // Clean up
     env::remove_var("CCLV_THEME");
@@ -747,6 +756,7 @@ fn precedence_chain_env_vars_to_cli_args() {
 }
 
 #[test]
+#[serial(cclv_theme)]
 fn precedence_chain_full_defaults_to_cli() {
     // Clean up
     env::remove_var("CCLV_THEME");
