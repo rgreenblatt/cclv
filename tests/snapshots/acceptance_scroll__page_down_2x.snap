@@ -1,6 +1,5 @@
 ---
 source: tests/acceptance_scroll.rs
-assertion_line: 242
 expression: second_page_output
 ---
 Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
@@ -21,9 +20,9 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │  13│🔧a Tool: Bash                                                            │
 │  13│  {                                                                      │
 │  13│    "command": "./.specify/scripts/bash/check-prerequisites.sh --json 2>/│
-│  13│  l || echo '{\"error\": \"script not found\"}'",                        │
 │  13│    "description": "Check prerequisites for spec setup"                  │
 │  13│  }                                                                      │
 │                                                                              │
+│  14│🔧  Tool: Bash                                                            │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

@@ -521,13 +521,19 @@ pub struct WrapContext {
 
 impl WrapContext {
     /// Create context from explicit per-entry override.
-    pub fn from_override(_mode: WrapMode) -> Self {
-        todo!("WrapContext::from_override")
+    pub fn from_override(mode: WrapMode) -> Self {
+        Self {
+            mode,
+            is_explicit_override: true,
+        }
     }
 
     /// Create context from global fallback (no per-entry override).
-    pub fn from_global(_mode: WrapMode) -> Self {
-        todo!("WrapContext::from_global")
+    pub fn from_global(mode: WrapMode) -> Self {
+        Self {
+            mode,
+            is_explicit_override: false,
+        }
     }
 }
 

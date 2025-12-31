@@ -124,19 +124,24 @@ fn test_tooluse_defaults_to_nowrap_despite_global_wrap() {
 
     let output = buffer_to_string(terminal.backend().buffer());
 
-    // CRITICAL ASSERTION: The long path should appear on a SINGLE line (NoWrap default for ToolUse)
-    // If wrapping occurred, "marker.txt" would be on a different line than "/some/very/long"
-    // We verify that the ENTIRE path appears on ONE line
-    let has_complete_path_on_one_line = output
-        .lines()
-        .any(|line| line.contains("/some/very/long") && line.contains("marker.txt"));
+    // CRITICAL ASSERTION: With NoWrap, the long path should be TRUNCATED, not wrapped
+    // We verify that:
+    // 1. The path appears on a SINGLE line (starts with "/some/very/long")
+    // 2. The line is TRUNCATED (does NOT contain "marker.txt" which is beyond 60 chars)
+    // If it wrapped, we'd see "marker.txt" on a subsequent line
+
+    let path_line = output.lines().find(|line| line.contains("/some/very/long"));
+    let marker_on_different_line = output.lines().any(|line|
+        line.contains("marker.txt") && !line.contains("/some/very/long")
+    );
 
     assert!(
-        has_complete_path_on_one_line,
+        path_line.is_some() && !marker_on_different_line,
         "BUG: ToolUse block wrapped despite having NO per-entry override.\n\
-         Expected: ToolUse defaults to NoWrap (structured data on single lines)\n\
+         Expected: ToolUse defaults to NoWrap (line truncated at width, NOT wrapped)\n\
          Actual: ToolUse respects global Wrap mode, breaking JSON across lines\n\n\
-         The long path should appear on ONE line, but it was split.\n\
+         With NoWrap, the path should be truncated on ONE line.\n\
+         With Wrap, 'marker.txt' would appear on a continuation line.\n\
          Output:\n{output}"
     );
 }
@@ -222,18 +227,24 @@ fn test_toolresult_defaults_to_nowrap_despite_global_wrap() {
 
     let output = buffer_to_string(terminal.backend().buffer());
 
-    // CRITICAL ASSERTION: The long line should appear on a SINGLE line (NoWrap default for ToolResult)
-    // The word "overridden" appears near the end - if wrapping occurred, it would be on a different line
-    let has_complete_line = output
-        .lines()
-        .any(|line| line.contains("This is a very long") && line.contains("overridden"));
+    // CRITICAL ASSERTION: With NoWrap, the long line should be TRUNCATED, not wrapped
+    // We verify that:
+    // 1. The line starts on ONE line (contains "This is a very long")
+    // 2. The line is TRUNCATED (does NOT contain "overridden" which is beyond 60 chars)
+    // If it wrapped, we'd see "overridden" on a subsequent line
+
+    let content_line = output.lines().find(|line| line.contains("This is a very long"));
+    let continuation_line = output.lines().any(|line|
+        line.contains("overridden") && !line.contains("This is a very long")
+    );
 
     assert!(
-        has_complete_line,
+        content_line.is_some() && !continuation_line,
         "BUG: ToolResult block wrapped despite having NO per-entry override.\n\
-         Expected: ToolResult defaults to NoWrap (preserve file/output structure)\n\
+         Expected: ToolResult defaults to NoWrap (line truncated at width, NOT wrapped)\n\
          Actual: ToolResult respects global Wrap mode, breaking lines\n\n\
-         The long output line should appear on ONE line, but it was split.\n\
+         With NoWrap, the content should be truncated on ONE line.\n\
+         With Wrap, 'overridden' would appear on a continuation line.\n\
          Output:\n{output}"
     );
 }

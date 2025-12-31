@@ -6,7 +6,7 @@ use crate::model::{
     ContentBlock, ConversationEntry, EntryMetadata, EntryType, LogEntry, Message, MessageContent,
     Role,
 };
-use crate::state::WrapMode;
+use crate::state::{WrapContext, WrapMode};
 use crate::view::MessageStyles;
 use chrono::Utc;
 
@@ -28,7 +28,7 @@ fn test_user_entry_has_cyan_color() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -63,7 +63,7 @@ fn test_assistant_entry_has_green_color() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -133,7 +133,7 @@ fn test_collapsed_thinking_block_respects_collapse_threshold() {
     let lines = compute_entry_lines(
         &entry,
         false, // expanded = false
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         collapse_threshold,
         summary_lines,
@@ -189,7 +189,7 @@ fn test_expanded_thinking_block_shows_all_lines() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded = true
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         collapse_threshold,
         summary_lines,
@@ -236,7 +236,7 @@ fn test_small_thinking_block_never_collapses() {
     let lines = compute_entry_lines(
         &entry,
         false, // expanded = false
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         collapse_threshold,
         summary_lines,
@@ -305,7 +305,7 @@ fn test_collapsed_text_content_respects_collapse_threshold() {
     let lines = compute_entry_lines(
         &entry,
         false, // expanded = false
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         collapse_threshold,
         summary_lines,
@@ -368,7 +368,7 @@ fn test_expanded_text_content_shows_all_lines() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded = true
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         collapse_threshold,
         summary_lines,
@@ -415,7 +415,7 @@ fn test_small_text_content_never_collapses() {
     let lines = compute_entry_lines(
         &entry,
         false, // expanded = false
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         collapse_threshold,
         summary_lines,
@@ -466,7 +466,7 @@ fn test_text_block_wraps_long_lines() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         width,
         collapse_threshold,
         summary_lines,
@@ -503,7 +503,7 @@ fn test_text_block_nowrap_does_not_wrap() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::NoWrap,
+        WrapContext::from_global(WrapMode::NoWrap),
         width,
         collapse_threshold,
         summary_lines,
@@ -553,7 +553,8 @@ fn create_entry_with_tool_result(content: &str, is_error: bool) -> ConversationE
 
 #[test]
 fn test_tool_result_wraps_long_lines() {
-    // Create entry with a single very long line (100 chars) in ToolResult
+    // cclv-5ur.22: ToolResult blocks default to NoWrap UNLESS explicit override
+    // This test verifies that with an EXPLICIT per-entry Wrap override, they DO wrap
     let long_line = "y".repeat(100);
     let entry = create_entry_with_tool_result(&long_line, false);
 
@@ -561,11 +562,11 @@ fn test_tool_result_wraps_long_lines() {
     let collapse_threshold = 10;
     let summary_lines = 3;
 
-    // Render with wrapping enabled
+    // Render with EXPLICIT per-entry Wrap override (not just global)
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_override(WrapMode::Wrap), // EXPLICIT override
         width,
         collapse_threshold,
         summary_lines,
@@ -578,11 +579,11 @@ fn test_tool_result_wraps_long_lines() {
     // ASSERTION: With content_width = 40 - 2 = 38 chars, a 100-char line
     // should wrap to ceil(100/38) = 3 lines, plus 1 separator = 4 total
     //
-    // This test ensures ToolResult blocks apply wrap_lines() like Thinking blocks do.
+    // This test ensures ToolResult blocks RESPECT explicit Wrap override.
     assert_eq!(
         lines.len(),
         4,
-        "100-char ToolResult line should wrap to 3 lines + 1 separator = 4 lines at width {}, got {}",
+        "100-char ToolResult line should wrap to 3 lines + 1 separator = 4 lines at width {} with explicit Wrap override, got {}",
         width,
         lines.len()
     );
@@ -602,7 +603,7 @@ fn test_tool_result_nowrap_does_not_wrap() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::NoWrap,
+        WrapContext::from_global(WrapMode::NoWrap),
         width,
         collapse_threshold,
         summary_lines,
@@ -669,7 +670,7 @@ fn test_tool_use_wraps_long_input_lines() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         width,
         collapse_threshold,
         summary_lines,
@@ -696,7 +697,8 @@ fn test_tool_use_wraps_long_input_lines() {
 
 #[test]
 fn test_tool_use_nowrap_does_not_wrap() {
-    // Create entry with ToolUse that has a long string value
+    // cclv-5ur.22: ToolUse blocks default to NoWrap, so global Wrap has no effect
+    // Only an EXPLICIT per-entry override to Wrap will cause wrapping
     let long_value = "z".repeat(100);
     let input = serde_json::json!({
         "long_param": long_value
@@ -707,11 +709,11 @@ fn test_tool_use_nowrap_does_not_wrap() {
     let collapse_threshold = 10;
     let summary_lines = 3;
 
-    // Render with NoWrap mode
+    // Render with EXPLICIT Wrap override (should wrap)
     let wrapped_lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_override(WrapMode::Wrap), // EXPLICIT override
         width,
         collapse_threshold,
         summary_lines,
@@ -721,10 +723,11 @@ fn test_tool_use_nowrap_does_not_wrap() {
         &crate::state::SearchState::Inactive,
     );
 
-    let nowrap_lines = compute_entry_lines(
+    // Render with global Wrap (defaults to NoWrap for ToolUse)
+    let default_nowrap_lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::NoWrap,
+        WrapContext::from_global(WrapMode::Wrap), // Global - ToolUse ignores this
         width,
         collapse_threshold,
         summary_lines,
@@ -734,13 +737,12 @@ fn test_tool_use_nowrap_does_not_wrap() {
         &crate::state::SearchState::Inactive,
     );
 
-    // ASSERTION: NoWrap mode should produce FEWER lines than Wrap mode
-    // because long lines stay unwrapped
+    // ASSERTION: Explicit Wrap override should produce MORE lines than default NoWrap
     assert!(
-        nowrap_lines.len() < wrapped_lines.len(),
-        "NoWrap mode should produce fewer lines than Wrap mode, got NoWrap={} Wrap={}",
-        nowrap_lines.len(),
-        wrapped_lines.len()
+        wrapped_lines.len() > default_nowrap_lines.len(),
+        "Explicit Wrap override should produce more lines than default NoWrap for ToolUse, got Wrap={} Default={}",
+        wrapped_lines.len(),
+        default_nowrap_lines.len()
     );
 }
 
@@ -756,7 +758,7 @@ fn test_tool_use_header_has_emoji_indicator() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -800,7 +802,7 @@ fn test_entry_index_0_shows_as_1_prefix() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -854,7 +856,7 @@ fn test_entry_index_41_shows_as_42_prefix() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -892,7 +894,7 @@ fn test_entry_index_999_shows_as_1000_prefix() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -930,7 +932,7 @@ fn test_entry_index_none_shows_no_prefix() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -971,7 +973,7 @@ fn test_entry_index_prefix_on_multiline_entry() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded (show all lines)
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1017,7 +1019,7 @@ fn test_initial_prompt_label_appears_for_first_entry_in_subagent_view() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1079,7 +1081,7 @@ fn test_initial_prompt_label_does_not_appear_in_main_view() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1120,7 +1122,7 @@ fn test_initial_prompt_label_only_for_first_entry_in_subagent() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1160,7 +1162,7 @@ fn test_initial_prompt_label_without_entry_index() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1201,7 +1203,7 @@ fn test_entry_index_prefix_on_collapsed_entry() {
     let lines = compute_entry_lines(
         &entry,
         false, // collapsed
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         collapse_threshold,
         summary_lines,
@@ -1247,7 +1249,7 @@ fn test_text_block_renders_bold_markdown() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1283,7 +1285,7 @@ fn test_text_block_renders_italic_markdown() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1319,7 +1321,7 @@ fn test_text_block_renders_inline_code_markdown() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1354,7 +1356,7 @@ fn test_text_block_preserves_role_color_in_markdown() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1429,7 +1431,7 @@ fn test_search_match_highlighted_with_yellow_background() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1497,7 +1499,7 @@ fn test_current_search_match_has_reversed_modifier() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1560,7 +1562,7 @@ fn test_non_current_search_matches_no_reversed_modifier() {
     let lines = compute_entry_lines(
         &entry,
         true, // expanded
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,
@@ -1607,7 +1609,7 @@ That's the code."#;
     let lines = compute_entry_lines(
         &entry,
         true, // expanded to see full content
-        WrapMode::Wrap,
+        WrapContext::from_global(WrapMode::Wrap),
         80,
         10,
         3,

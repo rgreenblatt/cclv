@@ -3,7 +3,7 @@
 use super::renderer::compute_entry_lines;
 use super::types::{EntryIndex, LineHeight};
 use crate::model::ConversationEntry;
-use crate::state::WrapMode;
+use crate::state::{WrapContext, WrapMode};
 use ratatui::text::Line;
 
 /// A conversation entry with precomputed rendered lines and presentation state.
@@ -91,7 +91,6 @@ impl EntryView {
     /// * `index` - Position within conversation
     /// * `wrap_mode` - Effective wrap mode for this entry
     /// * `width` - Viewport width for text wrapping
-    #[allow(unreachable_code, unused_variables)]
     pub fn with_rendered_lines(
         entry: ConversationEntry,
         index: EntryIndex,
@@ -100,7 +99,7 @@ impl EntryView {
     ) -> Self {
         let expanded = false; // Start collapsed
         // New entries have no wrap override, so use global mode
-        let wrap_ctx = todo!("EntryView::with_rendered_lines - create WrapContext from global");
+        let wrap_ctx = WrapContext::from_global(wrap_mode);
         // TODO: Pass MessageStyles from caller instead of default
         let styles = crate::view::MessageStyles::new();
         let rendered_lines = compute_entry_lines(
@@ -175,10 +174,13 @@ impl EntryView {
     ///
     /// This is `pub(crate)` because only ConversationViewState should
     /// trigger recomputation (to maintain HeightIndex consistency).
-    #[allow(dead_code, unreachable_code, unused_variables)] // Will be used by ConversationViewState in future tasks
+    #[allow(dead_code)] // Will be used by ConversationViewState in future tasks
     pub(crate) fn recompute_lines(&mut self, wrap_mode: WrapMode, width: u16) {
         // Bug fix cclv-5ur.22: Create WrapContext that encodes override status
-        let wrap_ctx = todo!("EntryView::recompute_lines - create WrapContext");
+        let wrap_ctx = match self.wrap_override {
+            Some(override_mode) => WrapContext::from_override(override_mode),
+            None => WrapContext::from_global(wrap_mode),
+        };
         // TODO: Pass MessageStyles from caller instead of default
         let styles = crate::view::MessageStyles::new();
         self.rendered_lines = compute_entry_lines(

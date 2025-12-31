@@ -1,6 +1,5 @@
 ---
 source: tests/acceptance_scroll.rs
-assertion_line: 160
 expression: bottom_output
 ---
 Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
@@ -8,22 +7,22 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │ Main Agent                                                                   │
 └──────────────────────────────────────────────────────────────────────────────┘
 ┌Main Agent (20 entries) ▶─────────────────────────────────────────────────────┐
+│  16│    "description": "Show epic details"                                   │
 │  16│  }                                                                      │
 │                                                                              │
 │  17│{"FEATURE_DIR":"/home/claude/cclv/specs/001-claude-code-log-viewer","AVAI│
-│  17│_DOCS":["research.md","data-model.md","contracts/","quickstart.md"]}     │
 │                                                                              │
 │  18│001-claude-code-log-viewer                                               │
 │                                                                              │
 │  19│[                                                                        │
 │  19│  {                                                                      │
 │  19│    "id": "cclv-07v.1",                                                  │
-│  19│(+58 more lines)                                                         │
+│  19│(+47 more lines)                                                         │
 │                                                                              │
 │  20│[                                                                        │
 │  20│  {                                                                      │
 │  20│    "id": "cclv-07v",                                                    │
-│  20│(+113 more lines)                                                        │
+│  20│(+97 more lines)                                                         │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
