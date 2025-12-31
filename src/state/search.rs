@@ -69,7 +69,10 @@ pub struct SearchMatch {
 /// Main agent matches are ignored (agent_id = None).
 /// If no matches exist, returns an empty set.
 pub fn agent_ids_with_matches(matches: &[SearchMatch]) -> std::collections::HashSet<AgentId> {
-    todo!("agent_ids_with_matches: extract set of agent IDs from matches")
+    matches
+        .iter()
+        .filter_map(|m| m.agent_id.clone())
+        .collect()
 }
 
 // ===== Search Execution =====

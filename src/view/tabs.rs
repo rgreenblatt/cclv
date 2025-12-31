@@ -36,10 +36,39 @@ pub fn render_tab_bar(
     selected_tab: Option<usize>,
     tabs_with_matches: &HashSet<AgentId>,
 ) {
-    // STUB: Match indicator implementation not yet complete
-    // TODO: Add match indicator (•) to tabs that have search matches
-    let _ = (frame, area, agent_ids, selected_tab, tabs_with_matches);
-    todo!("render_tab_bar: add match indicators to tabs")
+    // Convert agent IDs to tab titles with match indicators
+    let titles: Vec<Line> = agent_ids
+        .iter()
+        .map(|id| {
+            let label = if tabs_with_matches.contains(*id) {
+                format!("{} •", id.as_str())
+            } else {
+                id.as_str().to_string()
+            };
+            Line::from(label)
+        })
+        .collect();
+
+    // Validate bounds: treat out-of-bounds as None
+    let validated_selection = selected_tab.filter(|&idx| idx < agent_ids.len());
+
+    // Create Tabs widget with block
+    let mut tabs = Tabs::new(titles)
+        .block(Block::default().borders(Borders::ALL).title("Subagents"))
+        .style(Style::default().fg(Color::White));
+
+    // Apply highlight only if we have a valid selection
+    // ratatui's Tabs widget doesn't support "no selection", so we work around it:
+    // - With selection: set highlight_style and select
+    // - Without selection: omit highlight_style (tabs render without highlight)
+    if let Some(idx) = validated_selection {
+        tabs = tabs
+            .highlight_style(Style::default().fg(Color::Yellow))
+            .select(idx);
+    }
+
+    // Render the tabs widget
+    frame.render_widget(tabs, area);
 }
 
 #[cfg(test)]
