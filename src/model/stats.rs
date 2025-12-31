@@ -102,7 +102,13 @@ impl SessionStats {
     /// - `StatsFilter::MainAgent`: main_agent_usage only
     /// - `StatsFilter::Subagent(id)`: usage for specific subagent, or default if not found
     pub fn filtered_usage(&self, filter: &StatsFilter) -> TokenUsage {
-        todo!("SessionStats::filtered_usage")
+        match filter {
+            StatsFilter::Global => self.total_usage,
+            StatsFilter::MainAgent => self.main_agent_usage,
+            StatsFilter::Subagent(agent_id) => {
+                self.subagent_usage.get(agent_id).copied().unwrap_or_default()
+            }
+        }
     }
 }
 
