@@ -1496,4 +1496,228 @@ mod tests {
             "'l' should call scroll_handler with ScrollRight action"
         );
     }
+
+    // ===== Line Wrapping Tests (LW-007) =====
+
+    #[test]
+    fn handle_key_w_toggles_wrap_for_focused_message() {
+        use crate::model::{
+            ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use crate::state::WrapMode;
+        use chrono::Utc;
+
+        let mut app = create_test_app();
+
+        // Add an entry to main pane
+        let message = Message::new(Role::User, MessageContent::Text("test message".to_string()));
+        let uuid = EntryUuid::new("test-uuid-wrap").unwrap();
+        let entry = LogEntry::new(
+            uuid.clone(),
+            None,
+            SessionId::new("test-session").unwrap(),
+            None,
+            Utc::now(),
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        app.app_state
+            .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
+
+        // Focus on Main pane and set focused message
+        app.app_state.focus = FocusPane::Main;
+        app.app_state.main_scroll.set_focused_message(Some(0));
+
+        // Global wrap is Wrap by default
+        assert_eq!(app.app_state.global_wrap, WrapMode::Wrap);
+
+        // Initially no overrides
+        assert!(
+            !app.app_state.main_scroll.wrap_overrides.contains(&uuid),
+            "UUID should not be in wrap_overrides initially"
+        );
+
+        // Press 'w' to toggle wrap for focused message
+        let key = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'w' should not trigger quit");
+        assert!(
+            app.app_state.main_scroll.wrap_overrides.contains(&uuid),
+            "'w' should add focused message UUID to wrap_overrides"
+        );
+
+        // Press 'w' again to toggle back
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'w' should not trigger quit");
+        assert!(
+            !app.app_state.main_scroll.wrap_overrides.contains(&uuid),
+            "'w' should remove UUID from wrap_overrides on second toggle"
+        );
+    }
+
+    #[test]
+    fn handle_key_w_does_nothing_when_no_focused_message() {
+        let mut app = create_test_app();
+
+        // Focus on Main pane but no focused message
+        app.app_state.focus = FocusPane::Main;
+        app.app_state.main_scroll.set_focused_message(None);
+
+        // Initially no overrides
+        let initial_overrides_count = app.app_state.main_scroll.wrap_overrides.len();
+
+        // Press 'w'
+        let key = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'w' should not trigger quit");
+        assert_eq!(
+            app.app_state.main_scroll.wrap_overrides.len(),
+            initial_overrides_count,
+            "'w' should not change wrap_overrides when no message is focused"
+        );
+    }
+
+    #[test]
+    fn handle_key_w_operates_on_correct_pane() {
+        use crate::model::{
+            AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId, TokenUsage,
+        };
+        use chrono::Utc;
+
+        let mut app = create_test_app();
+
+        // Add entry to main pane
+        let main_uuid = EntryUuid::new("main-uuid").unwrap();
+        let main_message = Message::new(Role::User, MessageContent::Text("main".to_string()));
+        let main_entry = LogEntry::new(
+            main_uuid.clone(),
+            None,
+            SessionId::new("test-session").unwrap(),
+            None,
+            Utc::now(),
+            EntryType::User,
+            main_message,
+            EntryMetadata::default(),
+        );
+        app.app_state
+            .add_entries(vec![ConversationEntry::Valid(Box::new(main_entry))]);
+
+        // Add entry to subagent pane
+        let agent_id = AgentId::new("test-agent").unwrap();
+        let sub_uuid = EntryUuid::new("sub-uuid").unwrap();
+        let sub_message =
+            Message::new(Role::Assistant, MessageContent::Text("sub".to_string()))
+                .with_usage(TokenUsage::default());
+        let sub_entry = LogEntry::new(
+            sub_uuid.clone(),
+            None,
+            SessionId::new("test-session").unwrap(),
+            Some(agent_id),
+            Utc::now(),
+            EntryType::Assistant,
+            sub_message,
+            EntryMetadata::default(),
+        );
+        app.app_state
+            .add_entries(vec![ConversationEntry::Valid(Box::new(sub_entry))]);
+
+        // Focus on Subagent pane
+        app.app_state.focus = FocusPane::Subagent;
+        app.app_state.selected_tab = Some(0);
+        app.app_state.subagent_scroll.set_focused_message(Some(0));
+
+        // Press 'w' - should toggle subagent scroll state, not main
+        let key = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::NONE);
+        app.handle_key(key);
+
+        assert!(
+            app.app_state.subagent_scroll.wrap_overrides.contains(&sub_uuid),
+            "'w' should toggle wrap in subagent_scroll when Subagent pane is focused"
+        );
+        assert!(
+            !app.app_state.main_scroll.wrap_overrides.contains(&main_uuid),
+            "'w' should not affect main_scroll when Subagent pane is focused"
+        );
+    }
+
+    #[test]
+    fn handle_key_shift_w_toggles_global_wrap() {
+        use crate::state::WrapMode;
+
+        let mut app = create_test_app();
+
+        // Default global wrap is Wrap
+        assert_eq!(
+            app.app_state.global_wrap,
+            WrapMode::Wrap,
+            "Initial global_wrap should be Wrap"
+        );
+
+        // Press Shift+W to toggle global wrap
+        let key = KeyEvent::new(KeyCode::Char('W'), KeyModifiers::SHIFT);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'W' should not trigger quit");
+        assert_eq!(
+            app.app_state.global_wrap,
+            WrapMode::NoWrap,
+            "'W' should toggle global_wrap to NoWrap"
+        );
+
+        // Press Shift+W again to toggle back
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'W' should not trigger quit");
+        assert_eq!(
+            app.app_state.global_wrap,
+            WrapMode::Wrap,
+            "'W' should toggle global_wrap back to Wrap"
+        );
+    }
+
+    #[test]
+    fn handle_key_shift_w_is_independent_of_focus() {
+        use crate::state::WrapMode;
+
+        let mut app = create_test_app();
+
+        // Test with focus on Main
+        app.app_state.focus = FocusPane::Main;
+        app.app_state.global_wrap = WrapMode::Wrap;
+
+        let key = KeyEvent::new(KeyCode::Char('W'), KeyModifiers::SHIFT);
+        app.handle_key(key);
+
+        assert_eq!(
+            app.app_state.global_wrap,
+            WrapMode::NoWrap,
+            "'W' should work when focused on Main"
+        );
+
+        // Test with focus on Stats
+        app.app_state.focus = FocusPane::Stats;
+        app.handle_key(key);
+
+        assert_eq!(
+            app.app_state.global_wrap,
+            WrapMode::Wrap,
+            "'W' should work when focused on Stats"
+        );
+
+        // Test with focus on Search
+        app.app_state.focus = FocusPane::Search;
+        app.handle_key(key);
+
+        assert_eq!(
+            app.app_state.global_wrap,
+            WrapMode::NoWrap,
+            "'W' should work when focused on Search"
+        );
+    }
 }
