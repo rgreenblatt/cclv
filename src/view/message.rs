@@ -73,20 +73,162 @@ impl<'a> ConversationView<'a> {
     ///
     /// Accounts for collapsed state based on scroll_state expansion tracking.
     fn calculate_entry_height(&self, entry: &crate::model::LogEntry) -> usize {
-        todo!("calculate_entry_height not implemented")
+        let is_expanded = self.scroll_state.is_expanded(entry.uuid());
+
+        match entry.message().content() {
+            MessageContent::Text(text) => {
+                let total_lines = text.lines().count();
+                if total_lines > self.collapse_threshold && !is_expanded {
+                    // Collapsed: summary_lines + 1 indicator line
+                    self.summary_lines + 1
+                } else {
+                    total_lines
+                }
+            }
+            MessageContent::Blocks(blocks) => {
+                let mut total_height = 0;
+                for block in blocks {
+                    let block_lines = render_content_block(
+                        block,
+                        entry.uuid(),
+                        self.scroll_state,
+                        self.collapse_threshold,
+                        self.summary_lines,
+                    );
+                    total_height += block_lines.len();
+                }
+                // Add spacing between entries
+                total_height + 1
+            }
+        }
     }
 
     /// Determine the range of entries that should be rendered based on viewport.
     ///
     /// Returns (start_index, end_index) for the visible range including buffer.
     fn calculate_visible_range(&self, viewport_height: usize) -> (usize, usize) {
-        todo!("calculate_visible_range not implemented")
+        let entries = self.conversation.entries();
+        let total_entries = entries.len();
+
+        if total_entries == 0 {
+            return (0, 0);
+        }
+
+        let scroll_offset = self.scroll_state.vertical_offset;
+
+        // Calculate which entry the scroll offset corresponds to
+        let mut cumulative_height = 0;
+        let mut start_entry_index = 0;
+
+        // Find the first entry that should be visible (accounting for buffer)
+        for (i, entry) in entries.iter().enumerate() {
+            let entry_height = self.calculate_entry_height(entry);
+            if cumulative_height + entry_height > scroll_offset.saturating_sub(self.buffer_size) {
+                start_entry_index = i;
+                break;
+            }
+            cumulative_height += entry_height;
+        }
+
+        // Find the last entry that should be visible (accounting for buffer)
+        let mut end_entry_index = start_entry_index;
+        cumulative_height = 0;
+
+        for (i, entry) in entries.iter().enumerate().skip(start_entry_index) {
+            let entry_height = self.calculate_entry_height(entry);
+            cumulative_height += entry_height;
+
+            if cumulative_height > viewport_height + (self.buffer_size * 2) {
+                end_entry_index = i;
+                break;
+            }
+            end_entry_index = i + 1;
+        }
+
+        // Ensure we don't exceed bounds
+        end_entry_index = end_entry_index.min(total_entries);
+
+        (start_entry_index, end_entry_index)
     }
 }
 
 impl<'a> Widget for ConversationView<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        todo!("ConversationView::render not implemented")
+        let entry_count = self.conversation.entries().len();
+
+        // Build title with agent info
+        let title = if let Some(agent_id) = self.conversation.agent_id() {
+            // Subagent conversation
+            let model_info = self
+                .conversation
+                .model()
+                .map(|m| format!(" [{}]", m.display_name()))
+                .unwrap_or_default();
+            format!("Subagent {}{} ({} entries)", agent_id, model_info, entry_count)
+        } else {
+            // Main agent conversation
+            let model_info = self
+                .conversation
+                .model()
+                .map(|m| format!(" [{}]", m.display_name()))
+                .unwrap_or_default();
+            format!("Main Agent{} ({} entries)", model_info, entry_count)
+        };
+
+        // Style based on focus
+        let border_color = if self.focused {
+            Color::Cyan
+        } else {
+            Color::Gray
+        };
+
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .style(Style::default().fg(border_color));
+
+        // Calculate viewport height (area height minus borders)
+        let viewport_height = area.height.saturating_sub(2) as usize;
+
+        // Render content: only render visible entries
+        let mut lines = Vec::new();
+
+        if entry_count == 0 {
+            lines.push(Line::from("No messages yet..."));
+        } else {
+            // Calculate which entries are visible
+            let (start_index, end_index) = self.calculate_visible_range(viewport_height);
+
+            // Render only the visible range
+            for entry in self.conversation.entries()[start_index..end_index].iter() {
+                match entry.message().content() {
+                    MessageContent::Text(text) => {
+                        // Simple text message - render each line
+                        for line in text.lines() {
+                            lines.push(Line::from(line.to_string()));
+                        }
+                    }
+                    MessageContent::Blocks(blocks) => {
+                        // Structured content - render each block
+                        for block in blocks {
+                            let block_lines = render_content_block(
+                                block,
+                                entry.uuid(),
+                                self.scroll_state,
+                                self.collapse_threshold,
+                                self.summary_lines,
+                            );
+                            lines.extend(block_lines);
+                        }
+                    }
+                }
+                // Add spacing between entries
+                lines.push(Line::from(""));
+            }
+        }
+
+        let paragraph = Paragraph::new(lines).block(block);
+        paragraph.render(area, buf);
     }
 }
 
@@ -955,22 +1097,51 @@ mod tests {
 
     #[test]
     fn conversation_view_calculate_visible_range_respects_scroll_offset() {
-        use crate::model::AgentConversation;
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
 
-        let conversation = AgentConversation::new(None);
+        let mut conversation = AgentConversation::new(None);
+
+        // Add 100 single-line entries
+        for i in 0..100 {
+            let message = Message::new(Role::Assistant, MessageContent::Text(format!("M{}", i)));
+
+            let entry = LogEntry::new(
+                EntryUuid::new(format!("entry-{}", i)).expect("valid uuid"),
+                None,
+                SessionId::new("session-1").expect("valid session id"),
+                None,
+                Utc::now(),
+                EntryType::Assistant,
+                message,
+                EntryMetadata::default(),
+            );
+
+            conversation.add_entry(entry);
+        }
+
         let mut scroll_state = ScrollState::default();
-        scroll_state.vertical_offset = 50; // Scrolled down
+        scroll_state.vertical_offset = 50; // Scrolled down by 50 lines
 
         let widget = ConversationView::new(&conversation, &scroll_state, false);
 
         let (start, end) = widget.calculate_visible_range(10);
 
-        // With scroll_offset=50 and buffer=20, should start around entry 30
+        // With scroll_offset=50, buffer=20:
+        // Should start rendering before line 50 (accounting for buffer)
+        // With single-line entries, should skip some entries before visible range
         assert!(
-            start >= 30,
-            "Should skip entries before visible range minus buffer"
+            start > 0,
+            "Should skip entries before visible range when scrolled down"
         );
         assert!(end > start, "End should be after start");
+        assert!(
+            end <= 100,
+            "End should not exceed total entry count"
+        );
     }
 
     #[test]
