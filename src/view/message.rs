@@ -530,16 +530,193 @@ fn render_entry_lines(
 /// # Returns
 /// Vector of Lines representing this entry with search highlighting, including spacing line at end
 fn render_entry_lines_with_search(
-    _entry: &ConversationEntry,
-    _entry_index: usize,
-    _is_subagent_view: bool,
-    _scroll: &ScrollState,
-    _search: &crate::state::SearchState,
-    _styles: &MessageStyles,
-    _collapse_threshold: usize,
-    _summary_lines: usize,
+    entry: &ConversationEntry,
+    entry_index: usize,
+    is_subagent_view: bool,
+    scroll: &ScrollState,
+    search: &crate::state::SearchState,
+    styles: &MessageStyles,
+    collapse_threshold: usize,
+    summary_lines: usize,
 ) -> Vec<Line<'static>> {
-    todo!("render_entry_lines_with_search: not implemented")
+    use ratatui::text::Span;
+
+    // Extract match information if search is active
+    let match_info = match search {
+        crate::state::SearchState::Active {
+            matches,
+            current_match,
+            ..
+        } => Some((matches, *current_match)),
+        _ => None,
+    };
+
+    let mut lines = Vec::new();
+
+    match entry {
+        ConversationEntry::Valid(log_entry) => {
+            let role = log_entry.message().role();
+            let role_style = styles.style_for_role(role);
+
+            // Add "Initial Prompt" label for first message in subagent view
+            if is_subagent_view && entry_index == 0 {
+                lines.push(Line::from(vec![Span::styled(
+                    "🔷 Initial Prompt",
+                    Style::default()
+                        .fg(Color::Magenta)
+                        .add_modifier(Modifier::BOLD),
+                )]));
+            }
+
+            match log_entry.message().content() {
+                MessageContent::Text(text) => {
+                    // Simple text message - apply collapse/expand logic with role-based styling
+                    let text_lines: Vec<_> = text.lines().collect();
+                    let total_lines = text_lines.len();
+
+                    let is_expanded = scroll.is_expanded(log_entry.uuid());
+                    let should_collapse = total_lines > collapse_threshold && !is_expanded;
+
+                    if should_collapse {
+                        // Show summary lines with role styling (no search highlighting in collapsed view)
+                        for line in text_lines.iter().take(summary_lines) {
+                            lines.push(Line::from(vec![Span::styled(
+                                line.to_string(),
+                                role_style,
+                            )]));
+                        }
+                        // Add collapse indicator
+                        let remaining = total_lines.saturating_sub(summary_lines);
+                        lines.push(Line::from(vec![Span::styled(
+                            format!("(+{} more lines)", remaining),
+                            Style::default()
+                                .fg(Color::DarkGray)
+                                .add_modifier(Modifier::DIM),
+                        )]));
+                    } else {
+                        // Show all lines - apply search highlighting if active
+                        if let Some((matches, current_idx)) = &match_info {
+                            // Get matches for this entry (block_index 0 for Text content)
+                            let entry_matches: Vec<_> = matches
+                                .iter()
+                                .enumerate()
+                                .filter_map(|(idx, m)| {
+                                    if m.entry_uuid == *log_entry.uuid() && m.block_index == 0 {
+                                        Some((m.char_offset, m.length, idx == *current_idx))
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+
+                            if entry_matches.is_empty() {
+                                // No matches in this entry - render normally
+                                for line in text_lines {
+                                    lines.push(Line::from(vec![Span::styled(
+                                        line.to_string(),
+                                        role_style,
+                                    )]));
+                                }
+                            } else {
+                                // Apply highlighting - track cumulative offset for multi-line text
+                                let mut cumulative_offset: usize = 0;
+                                for line_text in text_lines {
+                                    let line_start = cumulative_offset;
+                                    let line_end = line_start.saturating_add(line_text.len());
+
+                                    // Filter matches that overlap this line and convert to line-relative offsets
+                                    let line_matches: Vec<(usize, usize, bool)> = entry_matches
+                                        .iter()
+                                        .filter_map(|(offset, length, is_current)| {
+                                            let match_start = *offset;
+                                            let match_end = match_start.saturating_add(*length);
+
+                                            // Check if match overlaps this line
+                                            if match_start < line_end && match_end > line_start {
+                                                // Convert to line-relative offset
+                                                let line_relative_start =
+                                                    match_start.saturating_sub(line_start);
+                                                let line_relative_end =
+                                                    (match_end - line_start).min(line_text.len());
+                                                let line_relative_length = line_relative_end
+                                                    .saturating_sub(line_relative_start);
+
+                                                if line_relative_length > 0 {
+                                                    Some((
+                                                        line_relative_start,
+                                                        line_relative_length,
+                                                        *is_current,
+                                                    ))
+                                                } else {
+                                                    None
+                                                }
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect();
+
+                                    // Render line with highlights
+                                    let highlighted_line =
+                                        apply_highlights_to_text(line_text, &line_matches, role_style);
+                                    lines.push(highlighted_line);
+
+                                    // Update cumulative offset (add line length + newline char)
+                                    cumulative_offset = line_end.saturating_add(1);
+                                }
+                            }
+                        } else {
+                            // No search active - render normally
+                            for line in text_lines {
+                                lines.push(Line::from(vec![Span::styled(
+                                    line.to_string(),
+                                    role_style,
+                                )]));
+                            }
+                        }
+                    }
+                }
+                MessageContent::Blocks(blocks) => {
+                    // Structured content - render each block
+                    // TODO: Add search highlighting support for blocks (similar to Text handling)
+                    for block in blocks {
+                        let block_lines = render_content_block(
+                            block,
+                            log_entry.uuid(),
+                            scroll,
+                            styles,
+                            role_style,
+                            collapse_threshold,
+                            summary_lines,
+                        );
+                        lines.extend(block_lines);
+                    }
+                }
+            }
+        }
+        ConversationEntry::Malformed(malformed) => {
+            // Render malformed entry with error styling
+            lines.push(Line::from(vec![Span::styled(
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                Style::default().fg(Color::Red),
+            )]));
+            lines.push(Line::from(vec![Span::styled(
+                format!("⚠ Parse Error (line {})", malformed.line_number()),
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            )]));
+            for error_line in malformed.error_message().lines() {
+                lines.push(Line::from(vec![Span::styled(
+                    error_line.to_string(),
+                    Style::default().fg(Color::Red),
+                )]));
+            }
+        }
+    }
+
+    // Add spacing between entries
+    lines.push(Line::from(""));
+
+    lines
 }
 
 /// Render a single conversation entry as a Paragraph widget with individual wrap setting.
