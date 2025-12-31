@@ -21,8 +21,8 @@ struct RawLogEntry {
     #[serde(default)]
     session_id: Option<String>,
     uuid: String,
-    #[serde(default, rename = "parentUuid")]
-    parent_uuid: Option<String>,
+    #[serde(default)]
+    parent_tool_use_id: Option<String>,
     #[serde(default, rename = "agentId")]
     agent_id: Option<String>,
     #[serde(default)]
@@ -182,11 +182,11 @@ pub fn parse_entry(raw: &str, line_number: usize) -> Result<LogEntry, ParseError
     })?;
 
     let parent_uuid = raw_entry
-        .parent_uuid
+        .parent_tool_use_id
         .map(|s| {
             EntryUuid::new(s).map_err(|_| ParseError::MissingField {
                 line: line_number,
-                field: "parentUuid",
+                field: "parent_tool_use_id",
             })
         })
         .transpose()?;
@@ -419,7 +419,8 @@ mod tests {
 
     #[test]
     fn parse_entry_with_parent_uuid() {
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test"},"session_id":"s1","uuid":"u2","parentUuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        // Updated to use parent_tool_use_id (actual Claude Code format)
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test"},"session_id":"s1","uuid":"u2","parent_tool_use_id":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok());

@@ -596,7 +596,7 @@ mod tests {
 
     #[test]
     fn log_entry_parse_accepts_entry_with_all_fields() {
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Response"},"session_id":"s1","uuid":"u2","parentUuid":"u1","agentId":"agent-1","timestamp":"2025-12-25T10:00:00Z","cwd":"/home","gitBranch":"main","version":"1.0.0","isSidechain":true}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Response"},"session_id":"s1","uuid":"u2","parent_tool_use_id":"u1","agentId":"agent-1","timestamp":"2025-12-25T10:00:00Z","cwd":"/home","gitBranch":"main","version":"1.0.0","isSidechain":true}"#;
         let result = LogEntry::parse(raw);
 
         assert!(result.is_ok(), "Should parse entry with all fields");
