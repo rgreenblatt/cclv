@@ -320,7 +320,7 @@ pub fn handle_mouse_scroll(
 
     // Early return for non-scrollable panes
     match state.focus {
-        FocusPane::Stats | FocusPane::Search => return state,
+        FocusPane::Stats | FocusPane::Search | FocusPane::LogPane => return state,
         _ => {}
     }
 
