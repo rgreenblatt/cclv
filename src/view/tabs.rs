@@ -6,6 +6,9 @@
 use crate::model::AgentId;
 use ratatui::{
     layout::Rect,
+    style::{Color, Style},
+    text::Line,
+    widgets::{Block, Borders, Tabs},
     Frame,
 };
 
@@ -23,12 +26,30 @@ use ratatui::{
 /// - Supports deselection via None
 /// - Agent IDs may be truncated if they exceed available space
 pub fn render_tab_bar(
-    _frame: &mut Frame,
-    _area: Rect,
-    _agent_ids: &[&AgentId],
-    _selected_tab: Option<usize>,
+    frame: &mut Frame,
+    area: Rect,
+    agent_ids: &[&AgentId],
+    selected_tab: Option<usize>,
 ) {
-    todo!("render_tab_bar")
+    // Convert agent IDs to tab titles (Line format for Tabs widget)
+    let titles: Vec<Line> = agent_ids
+        .iter()
+        .map(|id| Line::from(id.as_str()))
+        .collect();
+
+    // Create Tabs widget with block
+    let tabs = Tabs::new(titles)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Subagents"),
+        )
+        .style(Style::default().fg(Color::White))
+        .highlight_style(Style::default().fg(Color::Yellow))
+        .select(selected_tab.unwrap_or(0)); // Default to 0 if None, Tabs doesn't have true "no selection"
+
+    // Render the tabs widget
+    frame.render_widget(tabs, area);
 }
 
 #[cfg(test)]
@@ -62,14 +83,13 @@ mod tests {
             .unwrap();
 
         let buffer = terminal.backend().buffer();
-        let content = buffer.content();
+        let buffer_str = buffer.content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
 
         // Should contain the agent ID somewhere in the buffer
-        let has_agent_id = content.iter().any(|cell| {
-            cell.symbol().contains("agent-abc")
-        });
-
-        assert!(has_agent_id, "Tab bar should display agent ID 'agent-abc'");
+        assert!(buffer_str.contains("agent-abc"), "Tab bar should display agent ID 'agent-abc'");
     }
 
     #[test]
