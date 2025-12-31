@@ -1,5 +1,6 @@
 ---
 source: src/test_harness.rs
+assertion_line: 236
 expression: output
 ---
 ┌Conversations─────────────────────────────────────────────────────────────────┐

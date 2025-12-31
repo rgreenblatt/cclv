@@ -177,7 +177,23 @@ impl SessionViewState {
     }
 
     /// Add entry to main conversation.
+    ///
+    /// # Model Extraction
+    /// If the entry is an assistant message with a model field, and the main
+    /// conversation has no model yet, extracts and stores the model in ConversationViewState.
     pub fn add_main_entry(&mut self, entry: ConversationEntry) {
+        // Extract model from assistant message if present
+        if let ConversationEntry::Valid(log_entry) = &entry {
+            if let Some(model) = log_entry.message().model() {
+                // Clone model before getting mutable reference to avoid borrow checker issues
+                let model_clone = model.clone();
+                self.main.set_model_if_none(model_clone);
+                self.main.append_entries(vec![entry]);
+                return;
+            }
+        }
+
+        // No model to extract, just append
         self.main.append_entries(vec![entry]);
     }
 
