@@ -104,11 +104,8 @@ impl<'a> Widget for StatsPanel<'a> {
         // Tool usage section
         if !self.stats.tool_counts.is_empty() {
             lines.push(Line::from("Tool Usage:").style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
-            let mut tool_vec: Vec<_> = self.stats.tool_counts.iter().collect();
-            tool_vec.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count descending
-            for (tool_name, count) in tool_vec {
-                lines.push(Line::from(format!("  {}: {}", tool_name.as_str(), count)));
-            }
+            let tool_lines = format_tool_breakdown(&self.stats.tool_counts, 10);
+            lines.extend(tool_lines);
             lines.push(Line::from(""));
         }
 
@@ -139,10 +136,33 @@ impl<'a> Widget for StatsPanel<'a> {
 /// // With 12 tools, max 10: shows top 10 + "... and 2 more"
 /// ```
 fn format_tool_breakdown(
-    _tool_counts: &std::collections::HashMap<crate::model::ToolName, u32>,
-    _max_display: usize,
+    tool_counts: &std::collections::HashMap<crate::model::ToolName, u32>,
+    max_display: usize,
 ) -> Vec<Line<'static>> {
-    todo!("format_tool_breakdown")
+    // Return empty if no tools
+    if tool_counts.is_empty() {
+        return vec![];
+    }
+
+    // Sort by count descending
+    let mut tools: Vec<_> = tool_counts.iter().collect();
+    tools.sort_by(|a, b| b.1.cmp(a.1));
+
+    let mut lines = Vec::new();
+    let total_tools = tools.len();
+
+    // Take top N tools
+    for (tool_name, count) in tools.iter().take(max_display) {
+        lines.push(Line::from(format!("  {}: {}", tool_name.as_str(), count)));
+    }
+
+    // Add overflow indicator if needed
+    if total_tools > max_display {
+        let remaining = total_tools - max_display;
+        lines.push(Line::from(format!("  ... and {} more", remaining)));
+    }
+
+    lines
 }
 
 /// Format a token count with thousands separators.
