@@ -64,6 +64,12 @@ pub fn handle_scroll_action(
         KeyAction::ScrollDown => {
             scroll_state.scroll_down(1, max_entries);
         }
+        KeyAction::ScrollLeft => {
+            scroll_state.scroll_left(1);
+        }
+        KeyAction::ScrollRight => {
+            scroll_state.scroll_right(1);
+        }
         KeyAction::PageUp => {
             scroll_state.scroll_up(viewport_height);
         }

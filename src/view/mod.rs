@@ -18,7 +18,7 @@ use crate::config::keybindings::KeyBindings;
 use crate::integration;
 use crate::model::{AppError, KeyAction, SessionId};
 use crate::source::InputSource;
-use crate::state::{next_match, prev_match, scroll_handler, search_input_handler, AppState, FocusPane};
+use crate::state::{expand_handler, next_match, prev_match, scroll_handler, search_input_handler, AppState, FocusPane};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -300,6 +300,8 @@ where
             // Scrolling actions - delegate to pure scroll handler
             KeyAction::ScrollUp
             | KeyAction::ScrollDown
+            | KeyAction::ScrollLeft
+            | KeyAction::ScrollRight
             | KeyAction::PageUp
             | KeyAction::PageDown
             | KeyAction::ScrollToTop
@@ -318,6 +320,26 @@ where
                     self.app_state.clone(),
                     action,
                     viewport_height,
+                );
+                self.app_state = new_state;
+            }
+
+            // Tab navigation - delegate to app_state methods
+            KeyAction::NextTab => {
+                self.app_state.next_tab();
+            }
+            KeyAction::PrevTab => {
+                self.app_state.prev_tab();
+            }
+            KeyAction::SelectTab(n) => {
+                self.app_state.select_tab(n);
+            }
+
+            // Message expand/collapse - delegate to pure expand handler
+            KeyAction::ToggleExpand | KeyAction::ExpandMessage | KeyAction::CollapseMessage => {
+                let new_state = expand_handler::handle_expand_action(
+                    self.app_state.clone(),
+                    action,
                 );
                 self.app_state = new_state;
             }
@@ -1303,12 +1325,29 @@ mod tests {
 
     #[test]
     fn handle_key_e_expands_all_messages() {
+        use crate::model::{
+            ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+
         let mut app = create_test_app();
 
-        // Add multiple entries
+        // Add multiple entries with UNIQUE UUIDs
         for i in 0..3 {
+            let message = Message::new(Role::User, MessageContent::Text(format!("msg{}", i)));
+            let entry = LogEntry::new(
+                EntryUuid::new(&format!("uuid-{}", i)).unwrap(),
+                None,
+                SessionId::new("test-session").unwrap(),
+                None,
+                Utc::now(),
+                EntryType::User,
+                message,
+                EntryMetadata::default(),
+            );
             app.app_state
-                .add_entries(vec![create_test_entry(&format!("msg{}", i))]);
+                .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
         }
 
         // Focus on Main pane
@@ -1335,12 +1374,29 @@ mod tests {
 
     #[test]
     fn handle_key_c_collapses_all_messages() {
+        use crate::model::{
+            ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+
         let mut app = create_test_app();
 
-        // Add entries
+        // Add entries with UNIQUE UUIDs
         for i in 0..3 {
+            let message = Message::new(Role::User, MessageContent::Text(format!("msg{}", i)));
+            let entry = LogEntry::new(
+                EntryUuid::new(&format!("uuid-collapse-{}", i)).unwrap(),
+                None,
+                SessionId::new("test-session").unwrap(),
+                None,
+                Utc::now(),
+                EntryType::User,
+                message,
+                EntryMetadata::default(),
+            );
             app.app_state
-                .add_entries(vec![create_test_entry(&format!("msg{}", i))]);
+                .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
         }
 
         // Focus on Main and expand all
