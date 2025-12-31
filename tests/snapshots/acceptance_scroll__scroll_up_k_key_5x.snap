@@ -4,7 +4,7 @@ expression: scrolled_up_output
 ---
 Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ┌Main Agent (20 entries) ▶─────────────────────────────────────────────────────┐
-│   6│Tool: Skill                                                              │
+│   6│🔧a Tool: Skill                                                           │
 │   6│  {                                                                      │
 │   6│    "skill": "beads-project-tracking"                                    │
 │   6│  }                                                                      │
@@ -14,7 +14,7 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │   8│Base directory for this skill: /home/claude/.claude/skills/efficient-suba│
 │   8│orchestration                                                            │
 │   8│                                                                         │
-│   8│(+189 more lines)                                                        │
+│   8│(+197 more lines)                                                        │
 │                                                                              │
 │   9│Launching skill: beads-project-tracking                                  │
 │                                                                              │

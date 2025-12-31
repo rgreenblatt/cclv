@@ -13,12 +13,12 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │   4│I'll start by loading the required skill and then following the coordinat│
 │   4│otocol.                                                                  │
 │                                                                              │
-│   5│Tool: Skill                                                              │
+│   5│🔧  Tool: Skill                                                           │
 │   5│  {                                                                      │
 │   5│    "skill": "efficient-subagent-orchestration"                          │
 │   5│  }                                                                      │
 │                                                                              │
-│   6│Tool: Skill                                                              │
+│   6│🔧  Tool: Skill                                                           │
 │   6│  {                                                                      │
 │   6│    "skill": "beads-project-tracking"                                    │
 │   6│  }                                                                      │

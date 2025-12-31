@@ -14,12 +14,12 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │   4│I'll start by loading the required skill and then following the coordinat│
 │   4│otocol.                                                                  │
 │                                                                              │
-│   5│Tool: Skill                                                              │
+│   5│🔧  Tool: Skill                                                           │
 │   5│  {                                                                      │
 │   5│    "skill": "efficient-subagent-orchestration"                          │
 │   5│  }                                                                      │
 │                                                                              │
-│   6│Tool: Skill                                                              │
+│   6│🔧  Tool: Skill                                                           │
 │   6│  {                                                                      │
 │   6│    "skill": "beads-project-tracking"                                    │
 │   6│  }                                                                      │
@@ -29,7 +29,7 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │   8│Base directory for this skill: /home/claude/.claude/skills/efficient-suba│
 │   8│orchestration                                                            │
 │   8│                                                                         │
-│   8│(+189 more lines)                                                        │
+│   8│(+197 more lines)                                                        │
 │                                                                              │
 │   9│Launching skill: beads-project-tracking                                  │
 │                                                                              │

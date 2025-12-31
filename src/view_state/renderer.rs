@@ -25,6 +25,7 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
 };
+use tui_markdown::from_str;
 
 /// Compute rendered lines for a conversation entry with consistent collapse logic.
 ///
@@ -120,18 +121,26 @@ pub fn compute_entry_lines(
     // Handle message content
     match message.content() {
         MessageContent::Text(text) => {
-            // Render plain text with collapse support and role-based styling
+            // Split into lines and wrap BEFORE markdown rendering
+            // This ensures rendered line count matches height calculation
             let text_lines: Vec<_> = text.lines().collect();
-
-            // Wrap lines to match height calculation (layout.rs count_text_lines)
             let wrapped_lines = wrap_lines(&text_lines, wrap_mode, width);
-            let total_lines = wrapped_lines.len();
+
+            // Rejoin wrapped lines for markdown parsing
+            // Each wrapped line becomes a separate paragraph in markdown
+            let wrapped_text = wrapped_lines.join("\n");
+
+            // Parse markdown and render with role-based styling
+            let markdown_lines = render_markdown_with_style(&wrapped_text, role_style);
+
+            // Apply collapse logic to markdown-rendered lines
+            let total_lines = markdown_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
 
             if should_collapse {
-                // Show summary lines with role styling
-                for line in wrapped_lines.iter().take(summary_lines) {
-                    lines.push(Line::from(Span::styled(line.clone(), role_style)));
+                // Show summary lines (already markdown-rendered)
+                for line in markdown_lines.iter().take(summary_lines) {
+                    lines.push(line.clone());
                 }
                 // Add collapse indicator
                 let remaining = total_lines - summary_lines;
@@ -140,10 +149,8 @@ pub fn compute_entry_lines(
                     Style::default().add_modifier(Modifier::DIM),
                 )));
             } else {
-                // Show all lines with role styling
-                for line in wrapped_lines {
-                    lines.push(Line::from(Span::styled(line, role_style)));
-                }
+                // Show all lines (already markdown-rendered)
+                lines.extend(markdown_lines);
             }
 
             // Add separator line at end
@@ -175,6 +182,41 @@ pub fn compute_entry_lines(
     }
 
     lines
+}
+
+/// Render markdown text with role-based styling applied to unstyled spans.
+///
+/// This function is identical to message.rs render_markdown_with_style().
+/// Markdown styling (bold, italic, code highlighting) takes precedence,
+/// but plain text inherits the role's color.
+///
+/// # Arguments
+/// * `markdown_text` - The markdown content to render
+/// * `base_style` - Base style to apply to unstyled text (typically role-based color)
+///
+/// # Returns
+/// Vector of ratatui `Line` objects representing the rendered markdown
+fn render_markdown_with_style(markdown_text: &str, base_style: Style) -> Vec<Line<'static>> {
+    let text = from_str(markdown_text);
+
+    text.lines
+        .into_iter()
+        .map(|line| {
+            let owned_spans: Vec<_> = line
+                .spans
+                .into_iter()
+                .map(|span| {
+                    // Apply base_style as default, then overlay markdown styling
+                    let combined_style = base_style.patch(span.style);
+                    ratatui::text::Span {
+                        content: span.content.into_owned().into(),
+                        style: combined_style,
+                    }
+                })
+                .collect();
+            Line::from(owned_spans)
+        })
+        .collect()
 }
 
 /// Wrap lines to match height calculation behavior.
@@ -245,19 +287,28 @@ fn render_block(
 
     match block {
         ContentBlock::Text { text } => {
+            // Split into lines and wrap BEFORE markdown rendering
+            // This ensures rendered line count matches height calculation
             let text_lines: Vec<_> = text.lines().collect();
-
-            // Wrap lines to match height calculation (layout.rs count_text_lines)
             let wrapped_lines = wrap_lines(&text_lines, wrap_mode, width);
-            let total_lines = wrapped_lines.len();
+
+            // Rejoin wrapped lines for markdown parsing
+            // Each wrapped line becomes a separate paragraph in markdown
+            let wrapped_text = wrapped_lines.join("\n");
+
+            // Parse markdown and render with role-based styling
+            let markdown_lines = render_markdown_with_style(&wrapped_text, base_style);
+
+            // Apply collapse logic to markdown-rendered lines
+            let total_lines = markdown_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
 
             let mut lines = Vec::new();
 
             if should_collapse {
-                // Show summary lines with role styling
-                for line in wrapped_lines.iter().take(summary_lines) {
-                    lines.push(Line::from(Span::styled(line.clone(), base_style)));
+                // Show summary lines (already markdown-rendered)
+                for line in markdown_lines.iter().take(summary_lines) {
+                    lines.push(line.clone());
                 }
                 // Add collapse indicator
                 let remaining = total_lines - summary_lines;
@@ -266,10 +317,8 @@ fn render_block(
                     Style::default().add_modifier(Modifier::DIM),
                 )));
             } else {
-                // Show all lines with role styling
-                for line in wrapped_lines {
-                    lines.push(Line::from(Span::styled(line, base_style)));
-                }
+                // Show all lines (already markdown-rendered)
+                lines.extend(markdown_lines);
             }
 
             lines

@@ -14,14 +14,14 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │  12│Now let me follow the coordinator protocol. Starting with setup, branch/e│
 │  12│erification, and checking for ready work:                                │
 │                                                                              │
-│  13│Tool: Bash                                                               │
+│  13│🔧a Tool: Bash                                                            │
 │  13│  {                                                                      │
 │  13│    "command": "./.specify/scripts/bash/check-prerequisites.sh --json 2>/│
 │  13│  l || echo '{\"error\": \"script not found\"}'",                        │
 │  13│    "description": "Check prerequisites for spec setup"                  │
 │  13│  }                                                                      │
 │                                                                              │
-│  14│Tool: Bash                                                               │
+│  14│🔧. Tool: Bash                                                            │
 │  14│  {                                                                      │
 │  14│    "command": "git branch --show-current",                              │
 └──────────────────────────────────────────────────────────────────────────────┘
