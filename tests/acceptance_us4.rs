@@ -397,7 +397,6 @@ fn us4_scenario5_navigate_search_results() {
 // ===== US4 Scenario 6: Expand Collapsed Message =====
 
 #[test]
-#[ignore = "Expand not wired up - Enter key doesn't add to expanded_messages set"]
 fn us4_scenario6_expand_collapsed_message() {
     // GIVEN: Focus is on a collapsed message
     // WHEN: User presses Enter or Space
@@ -479,7 +478,6 @@ fn us4_scenario6_expand_collapsed_message() {
 // ===== US4 Scenario 7: Collapse Expanded Message =====
 
 #[test]
-#[ignore = "Collapse not wired up - depends on expand toggle functionality"]
 fn us4_scenario7_collapse_expanded_message() {
     // GIVEN: Focus is on an expanded message
     // WHEN: User presses Enter or Space
