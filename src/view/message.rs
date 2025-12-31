@@ -863,7 +863,16 @@ pub fn render_conversation_view(
         global_wrap,
     );
 
+    // Calculate absolute cumulative_y for first visible entry
+    // (sum of heights of all entries before start_idx)
+    let mut first_entry_absolute_y = 0_usize;
+    for entry in &all_entries[..start_idx] {
+        first_entry_absolute_y += temp_view.calculate_entry_height(entry, viewport_width, global_wrap);
+    }
+
     // Render each visible entry as a separate Paragraph
+    // Track cumulative_y to detect entries partially scrolled off top
+    let mut cumulative_y = first_entry_absolute_y;
     for (layout_idx, layout) in layouts.iter().enumerate() {
         let entry = &visible_entries[layout_idx];
         let actual_entry_index = start_idx + layout_idx;
@@ -902,6 +911,24 @@ pub fn render_conversation_view(
             entry_lines = add_wrap_continuation_indicators(entry_lines, inner_area.width as usize);
         }
 
+        // Clip lines that are scrolled off the top of the viewport
+        // When y_offset is 0, the entry might be partially above the viewport
+        let lines_to_skip = if layout.y_offset == 0 {
+            calculate_lines_to_skip(
+                cumulative_y,
+                scroll.vertical_offset,
+                layout.height as usize,
+            )
+        } else {
+            0
+        };
+
+        // Skip the clipped lines and adjust height
+        if lines_to_skip > 0 {
+            entry_lines = entry_lines.into_iter().skip(lines_to_skip).collect();
+        }
+        let visible_height = (layout.height as usize).saturating_sub(lines_to_skip) as u16;
+
         // Create Paragraph with appropriate wrap setting
         let entry_paragraph = match effective_wrap {
             WrapMode::Wrap => Paragraph::new(entry_lines).wrap(Wrap { trim: false }),
@@ -913,10 +940,13 @@ pub fn render_conversation_view(
             x: inner_area.x,
             y: inner_area.y + layout.y_offset,
             width: inner_area.width,
-            height: layout.height,
+            height: visible_height,
         };
 
         frame.render_widget(entry_paragraph, entry_area);
+
+        // Update cumulative_y for next iteration
+        cumulative_y += layout.height as usize;
     }
 }
 
