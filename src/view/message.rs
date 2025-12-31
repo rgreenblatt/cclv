@@ -560,6 +560,9 @@ impl<'a> Widget for ConversationView<'a> {
             let visible_range = self.view_state.visible_range(viewport);
             let scroll_offset = visible_range.scroll_offset.get();
 
+            // Track previous session ID to detect boundaries (FR-074)
+            let mut prev_session_id: Option<&crate::model::SessionId> = None;
+
             // Render only the visible range
             for entry_index in visible_range.indices() {
                 let entry_view = match self.view_state.get(entry_index) {
@@ -570,6 +573,20 @@ impl<'a> Widget for ConversationView<'a> {
                 let entry = entry_view.entry();
                 let actual_index = entry_index.get();
                 let cumulative_y = entry_view.layout().cumulative_y().get();
+
+                // FR-074: Detect session boundary and render separator
+                // Only render separator if session changed from previous entry
+                if let Some(current_session_id) = entry.session_id() {
+                    let session_changed = prev_session_id.is_some_and(|prev| prev != current_session_id);
+
+                    if session_changed {
+                        // Render session separator line
+                        lines.push(render_session_separator(current_session_id));
+                    }
+
+                    // Update tracking for next iteration
+                    prev_session_id = Some(current_session_id);
+                }
 
                 // Calculate how many lines to skip from this entry if it's partially scrolled off
                 let lines_to_skip = if cumulative_y < scroll_offset {
@@ -1283,6 +1300,31 @@ fn add_scroll_indicators_to_title(base_title: String, has_left: bool, has_right:
     }
 
     title
+}
+
+// ===== Session Separator Rendering (FR-074) =====
+
+/// Render a session separator line.
+///
+/// Format: "─────────── Session: <session_id> ───────────"
+/// Styling: Dim gray to distinguish from content
+///
+/// # Arguments
+/// * `session_id` - The ID of the new session starting after this separator
+///
+/// # Returns
+/// A single Line with the separator text and dim gray styling
+fn render_session_separator(session_id: &crate::model::SessionId) -> Line<'static> {
+    use ratatui::text::Span;
+
+    let separator_text = format!("─────────── Session: {} ───────────", session_id);
+
+    Line::from(vec![Span::styled(
+        separator_text,
+        Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::DIM),
+    )])
 }
 
 // ===== Markdown Rendering =====
