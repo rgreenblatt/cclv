@@ -204,40 +204,12 @@ impl FileSource {
     pub fn initial_load(&mut self) -> Result<Session, InputError> {
         use std::io::BufRead;
 
-        // Open file for reading
+        // Open file for reading (single pass)
         let file = File::open(&self.path)?;
         let reader = BufReader::new(file);
 
-        // Extract session ID from first valid entry (or create default)
-        // We'll need to read the file twice: once to get session_id, once to parse all entries
-        // For simplicity, we'll use a default session_id and update if we find one
-        let mut session_id: Option<SessionId> = None;
-
-        // First pass: find session ID from first parseable entry
-        for line in reader.lines() {
-            let line = line?;
-
-            if line.trim().is_empty() {
-                continue;
-            }
-
-            // Try to parse just to extract session ID
-            if let Ok(entry) = LogEntry::parse(&line) {
-                session_id = Some(entry.session_id().clone());
-                break;
-            }
-        }
-
-        // If no valid entry found, create default session
-        let session_id = session_id.unwrap_or_else(|| {
-            SessionId::new("unknown-session").expect("hardcoded session id is valid")
-        });
-
-        let mut session = Session::new(session_id);
-
-        // Second pass: parse all entries and add to session
-        let file = File::open(&self.path)?;
-        let reader = BufReader::new(file);
+        // Parse entries in single pass
+        let mut session: Option<Session> = None;
         let mut total_lines = 0;
 
         for line in reader.lines() {
@@ -252,7 +224,11 @@ impl FileSource {
             // Malformed lines are silently skipped (FR-010)
             match LogEntry::parse(&line) {
                 Ok(entry) => {
-                    session.add_entry(entry);
+                    // Initialize session from first valid entry
+                    let sess = session.get_or_insert_with(|| {
+                        Session::new(entry.session_id().clone())
+                    });
+                    sess.add_entry(entry);
                 }
                 Err(_parse_error) => {
                     // FR-010: Malformed lines do not stop parsing
@@ -264,6 +240,12 @@ impl FileSource {
 
         // Update line count
         self.line_count = total_lines;
+
+        // If no valid entries were found, create default session
+        let session = session.unwrap_or_else(|| {
+            // SAFETY: "unknown-session" is a valid non-empty string constant
+            Session::new(SessionId::new("unknown-session").unwrap())
+        });
 
         Ok(session)
     }
