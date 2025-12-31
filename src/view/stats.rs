@@ -1117,4 +1117,137 @@ mod tests {
             content
         );
     }
+
+    // ===== Cost filtering tests =====
+
+    #[test]
+    fn stats_panel_displays_filtered_cost_for_main_agent() {
+        use crate::model::{AgentId, TokenUsage};
+        use ratatui::buffer::Buffer;
+        use ratatui::layout::Rect;
+        use std::collections::HashMap;
+
+        // Setup: Main agent has 1M input/output, subagent has 1M input/output
+        // When filtering to MainAgent, should only show cost for main agent
+        let mut subagent_usage = HashMap::new();
+        subagent_usage.insert(
+            AgentId::new("agent-1").unwrap(),
+            TokenUsage {
+                input_tokens: 1_000_000,
+                output_tokens: 1_000_000,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+            },
+        );
+
+        let stats = SessionStats {
+            total_usage: TokenUsage {
+                input_tokens: 2_000_000, // Main + subagent
+                output_tokens: 2_000_000,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+            },
+            main_agent_usage: TokenUsage {
+                input_tokens: 1_000_000,
+                output_tokens: 1_000_000,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+            },
+            subagent_usage,
+            tool_counts: HashMap::new(),
+            subagent_count: 1,
+            entry_count: 10,
+        };
+
+        let filter = StatsFilter::MainAgent;
+        let pricing = PricingConfig::default();
+        let panel = StatsPanel::new(&stats, &filter, &pricing, Some("opus"));
+
+        let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 25));
+        panel.render(Rect::new(0, 0, 50, 25), &mut buffer);
+
+        let content = buffer_to_string(&buffer);
+
+        // Should show cost for main agent only: $15 + $75 = $90.00
+        // NOT total cost of $180.00
+        assert!(
+            content.contains("$90.00"),
+            "Expected filtered cost '$90.00' for MainAgent (1M input + 1M output), got:\n{}",
+            content
+        );
+        assert!(
+            !content.contains("$180.00"),
+            "Should NOT show total cost '$180.00' when filtering to MainAgent, got:\n{}",
+            content
+        );
+    }
+
+    #[test]
+    fn stats_panel_displays_filtered_cost_for_subagent() {
+        use crate::model::{AgentId, TokenUsage};
+        use ratatui::buffer::Buffer;
+        use ratatui::layout::Rect;
+        use std::collections::HashMap;
+
+        let agent1 = AgentId::new("agent-1").unwrap();
+
+        // Setup: Main agent has 1M input/output, subagent has 500k input/output
+        // When filtering to Subagent, should only show cost for that subagent
+        let mut subagent_usage = HashMap::new();
+        subagent_usage.insert(
+            agent1.clone(),
+            TokenUsage {
+                input_tokens: 500_000,
+                output_tokens: 500_000,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+            },
+        );
+
+        let stats = SessionStats {
+            total_usage: TokenUsage {
+                input_tokens: 1_500_000, // Main + subagent
+                output_tokens: 1_500_000,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+            },
+            main_agent_usage: TokenUsage {
+                input_tokens: 1_000_000,
+                output_tokens: 1_000_000,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+            },
+            subagent_usage,
+            tool_counts: HashMap::new(),
+            subagent_count: 1,
+            entry_count: 10,
+        };
+
+        let filter = StatsFilter::Subagent(agent1);
+        let pricing = PricingConfig::default();
+        let panel = StatsPanel::new(&stats, &filter, &pricing, Some("opus"));
+
+        let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 25));
+        panel.render(Rect::new(0, 0, 50, 25), &mut buffer);
+
+        let content = buffer_to_string(&buffer);
+
+        // Should show cost for subagent only: $7.50 + $37.50 = $45.00
+        // NOT total cost of $135.00 or main agent cost of $90.00
+        assert!(
+            content.contains("$45.00"),
+            "Expected filtered cost '$45.00' for Subagent (500k input + 500k output), got:\n{}",
+            content
+        );
+        assert!(
+            !content.contains("$135.00"),
+            "Should NOT show total cost '$135.00' when filtering to Subagent, got:\n{}",
+            content
+        );
+        assert!(
+            !content.contains("$90.00"),
+            "Should NOT show main agent cost '$90.00' when filtering to Subagent, got:\n{}",
+            content
+        );
+    }
 }
