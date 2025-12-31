@@ -68,7 +68,6 @@ where
     /// Pending entries accumulated between renders
     pending_entries: Vec<crate::model::ConversationEntry>,
     /// Receiver for log entries from tracing subscriber
-    #[allow(dead_code)] // TODO: Remove when poll_log_entries is implemented
     log_receiver: std::sync::mpsc::Receiver<crate::state::log_pane::LogPaneEntry>,
 }
 
@@ -133,6 +132,9 @@ impl TuiApp<CrosstermBackend<Stdout>> {
         loop {
             // Poll for new log entries (accumulates to pending buffer)
             self.poll_input()?;
+
+            // Poll for log pane entries from tracing subscriber
+            self.poll_log_entries();
 
             // Poll for keyboard events (non-blocking with timeout)
             let keyboard_event = if event::poll(FRAME_DURATION)? {
@@ -201,9 +203,10 @@ where
     /// Poll log receiver and push entries to log pane state
     ///
     /// Non-blocking poll using try_recv(). All available entries are consumed.
-    #[allow(dead_code)] // TODO: Remove when called from run() loop
     fn poll_log_entries(&mut self) {
-        todo!("poll_log_entries")
+        while let Ok(entry) = self.log_receiver.try_recv() {
+            self.app_state.log_pane.push(entry);
+        }
     }
 
     /// Handle a single keyboard event
@@ -537,8 +540,7 @@ impl CliArgs {
 pub fn run_with_source(input_source: InputSource, args: CliArgs) -> Result<(), TuiError> {
     // Initialize logging with log pane integration
     let (log_tx, log_rx) = std::sync::mpsc::channel();
-    crate::logging::init_with_log_pane(log_tx)
-        .map_err(|e| TuiError::Io(io::Error::new(io::ErrorKind::Other, e)))?;
+    crate::logging::init_with_log_pane(log_tx).map_err(|e| TuiError::Io(io::Error::other(e)))?;
 
     // Extract or create session ID
     // For now, use a default session ID. In the future, this could be
