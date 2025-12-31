@@ -631,6 +631,126 @@ mod tests {
         );
     }
 
+    // ===== Focus cycling keyboard handler tests =====
+
+    #[test]
+    fn handle_key_tab_cycles_focus_main_to_subagent() {
+        let mut app = create_test_app();
+
+        // Verify initial focus is Main
+        assert_eq!(
+            app.app_state.focus,
+            crate::state::FocusPane::Main,
+            "Initial focus should be Main"
+        );
+
+        // Press Tab
+        let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "Tab should not trigger quit");
+        assert_eq!(
+            app.app_state.focus,
+            crate::state::FocusPane::Subagent,
+            "Tab should cycle focus from Main to Subagent"
+        );
+    }
+
+    #[test]
+    fn handle_key_tab_cycles_focus_subagent_to_stats() {
+        let mut app = create_test_app();
+
+        // Set focus to Subagent
+        app.app_state.focus = crate::state::FocusPane::Subagent;
+
+        // Press Tab
+        let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "Tab should not trigger quit");
+        assert_eq!(
+            app.app_state.focus,
+            crate::state::FocusPane::Stats,
+            "Tab should cycle focus from Subagent to Stats"
+        );
+    }
+
+    #[test]
+    fn handle_key_tab_cycles_focus_stats_to_main() {
+        let mut app = create_test_app();
+
+        // Set focus to Stats
+        app.app_state.focus = crate::state::FocusPane::Stats;
+
+        // Press Tab
+        let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "Tab should not trigger quit");
+        assert_eq!(
+            app.app_state.focus,
+            crate::state::FocusPane::Main,
+            "Tab should cycle focus from Stats back to Main"
+        );
+    }
+
+    #[test]
+    fn handle_key_1_sets_focus_main() {
+        let mut app = create_test_app();
+
+        // Start with focus on Stats
+        app.app_state.focus = crate::state::FocusPane::Stats;
+
+        // Press '1'
+        let key = KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'1' should not trigger quit");
+        assert_eq!(
+            app.app_state.focus,
+            crate::state::FocusPane::Main,
+            "'1' should set focus to Main"
+        );
+    }
+
+    #[test]
+    fn handle_key_2_sets_focus_subagent() {
+        let mut app = create_test_app();
+
+        // Start with focus on Main
+        app.app_state.focus = crate::state::FocusPane::Main;
+
+        // Press '2'
+        let key = KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'2' should not trigger quit");
+        assert_eq!(
+            app.app_state.focus,
+            crate::state::FocusPane::Subagent,
+            "'2' should set focus to Subagent"
+        );
+    }
+
+    #[test]
+    fn handle_key_3_sets_focus_stats() {
+        let mut app = create_test_app();
+
+        // Start with focus on Subagent
+        app.app_state.focus = crate::state::FocusPane::Subagent;
+
+        // Press '3'
+        let key = KeyEvent::new(KeyCode::Char('3'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'3' should not trigger quit");
+        assert_eq!(
+            app.app_state.focus,
+            crate::state::FocusPane::Stats,
+            "'3' should set focus to Stats"
+        );
+    }
+
     // Helper function to create a test LogEntry
     fn create_test_entry(content: &str) -> crate::model::ConversationEntry {
         use crate::model::{
