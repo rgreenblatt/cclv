@@ -4,7 +4,7 @@
 //! placeholder widgets for main agent, subagent tabs, and status bar.
 
 use crate::model::PricingConfig;
-use crate::state::{AppState, FocusPane};
+use crate::state::{AppState, FocusPane, SearchState};
 use crate::view::{message, stats::StatsPanel, tabs, MessageStyles};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -213,21 +213,63 @@ fn build_session_stats(session: &crate::model::Session) -> crate::model::Session
 /// * `search_active` - Whether search mode is currently active
 /// * `terminal_width` - Available width for rendering hints
 fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u16) -> String {
-    todo!("build_keyboard_hints")
+    // Common shortcuts always displayed
+    let common = "q: Quit | ?: Help";
+
+    // Context-specific shortcuts based on focus pane
+    let context_hints = match focus {
+        FocusPane::Main => "/: Search | s: Stats | Tab: Cycle panes",
+        FocusPane::Subagent => "[/]: Tabs | 1-9: Select tab | Tab: Cycle panes",
+        FocusPane::Stats => "!: Global | @: Main | #: Current | Tab: Cycle panes",
+        FocusPane::Search if search_active => "Enter: Submit | Esc: Cancel | n: Next | N: Prev",
+        FocusPane::Search => "/: Search | Esc: Cancel",
+    };
+
+    // Combine common and context hints
+    let full_hints = format!("{} | {}", common, context_hints);
+
+    // Truncate if terminal is too narrow
+    if terminal_width < 60 {
+        // Very narrow - show only critical shortcuts
+        format!("q: Quit | ?: Help | {}", match focus {
+            FocusPane::Main => "/: Search",
+            FocusPane::Subagent => "[/]: Tabs",
+            FocusPane::Stats => "!/@/#: Filter",
+            FocusPane::Search if search_active => "n: Next",
+            FocusPane::Search => "Esc: Cancel",
+        })
+    } else if (full_hints.len() as u16) > terminal_width {
+        // Moderate width - abbreviate but keep most info
+        let abbreviated = match focus {
+            FocusPane::Main => "q: Quit | /: Search | s: Stats | ?: Help",
+            FocusPane::Subagent => "q: Quit | [/]: Tabs | 1-9: Select | ?: Help",
+            FocusPane::Stats => "q: Quit | !/@/#: Filters | ?: Help",
+            FocusPane::Search if search_active => "Enter: Submit | Esc: Cancel | n/N: Navigate",
+            FocusPane::Search => "q: Quit | Esc: Cancel | ?: Help",
+        };
+        abbreviated.to_string()
+    } else {
+        // Wide enough - show full hints
+        full_hints
+    }
 }
 
 /// Render the status bar with hints and live mode indicator.
 fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
     let live_indicator = if state.live_mode && state.auto_scroll {
-        " [LIVE] "
+        "[LIVE] "
     } else {
         ""
     };
 
-    let status_text = format!(
-        "{}q: quit | Tab: cycle panes | 1/2/3: focus Main/Subagent/Stats",
-        live_indicator
-    );
+    // Determine if search is active
+    let search_active = matches!(state.search, SearchState::Active { .. });
+
+    // Build context-sensitive keyboard hints
+    let hints = build_keyboard_hints(state.focus, search_active, area.width);
+
+    // Combine live indicator and hints
+    let status_text = format!("{}{}", live_indicator, hints);
 
     let style = if state.live_mode && state.auto_scroll {
         Style::default().fg(Color::Green)

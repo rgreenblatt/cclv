@@ -222,7 +222,7 @@ fn render_layout_includes_status_bar() {
 
     // Status bar should show hints or live indicator
     assert!(
-        content.contains("q: quit") || content.contains("LIVE"),
+        content.contains("q:") || content.contains("LIVE"),
         "Status bar should contain hints or live mode indicator"
     );
 }
