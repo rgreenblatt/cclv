@@ -5,7 +5,9 @@
 
 use crate::model::{AgentId, PricingConfig};
 use crate::state::{agent_ids_with_matches, AppState, FocusPane, SearchState, WrapMode};
-use crate::view::{message, stats::StatsPanel, tabs, MessageStyles, SearchInput};
+use crate::view::{
+    log_pane::LogPaneView, message, stats::StatsPanel, tabs, MessageStyles, SearchInput,
+};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -77,12 +79,26 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
         (content_area, None)
     };
 
-    // Split conversation area horizontally based on subagent presence
+    // Split conversation area vertically: main conversation + log pane (if visible)
+    let (main_conversation_area, log_pane_area) = if state.log_pane.is_visible() {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),    // Main conversation area (flexible)
+                Constraint::Length(8), // Log pane (fixed ~8 lines)
+            ])
+            .split(conversation_area);
+        (chunks[0], Some(chunks[1]))
+    } else {
+        (conversation_area, None)
+    };
+
+    // Split main conversation area horizontally based on subagent presence
     let (main_constraint, subagent_constraint) = calculate_horizontal_constraints(has_subagents);
     let horizontal_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([main_constraint, subagent_constraint])
-        .split(conversation_area);
+        .split(main_conversation_area);
 
     // Render panes
     render_main_pane(frame, horizontal_chunks[0], state, &styles);
@@ -94,6 +110,11 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
     // Render stats panel if visible
     if let Some(stats_area_rect) = stats_area {
         render_stats_panel(frame, stats_area_rect, state);
+    }
+
+    // Render log pane if visible
+    if let Some(log_area_rect) = log_pane_area {
+        render_log_pane(frame, log_area_rect, state);
     }
 
     // Render search input if visible
@@ -392,6 +413,21 @@ fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
 
     let paragraph = Paragraph::new(Line::from(header_text)).style(style);
     frame.render_widget(paragraph, area);
+}
+
+/// Render the log pane showing internal application logs.
+///
+/// The log pane displays captured tracing events with timestamps and severity levels.
+/// Border is highlighted when FocusPane::LogPane is active.
+fn render_log_pane(frame: &mut Frame, area: Rect, state: &AppState) {
+    let log_widget = LogPaneView::new(
+        state.log_pane.entries(),
+        state.log_pane.unread_count(),
+        0, // TODO: Add scroll support for log pane
+        state.focus == FocusPane::LogPane,
+    );
+
+    frame.render_widget(log_widget, area);
 }
 
 // ===== Tests =====

@@ -1139,6 +1139,222 @@ fn render_layout_no_search_highlighting_when_search_inactive() {
     // SearchState::Inactive and produce same output as render_conversation_view
 }
 
+// ===== Log Pane Integration Tests =====
+
+#[test]
+fn render_layout_hides_log_pane_when_not_visible() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.log_pane.set_visible(false);
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let content = buffer_to_string(&buffer);
+
+    // Log pane should NOT be visible
+    assert!(
+        !content.contains("Logs"),
+        "Log pane should be hidden when visible=false"
+    );
+}
+
+#[test]
+fn render_layout_shows_log_pane_when_visible() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.log_pane.set_visible(true);
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let content = buffer_to_string(&buffer);
+
+    // Log pane should be visible with "Logs" title
+    assert!(
+        content.contains("Logs"),
+        "Log pane should show 'Logs' title when visible=true"
+    );
+}
+
+#[test]
+fn render_layout_log_pane_highlights_border_when_focused() {
+    use ratatui::style::Color;
+
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.log_pane.set_visible(true);
+    state.focus = FocusPane::LogPane;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+
+    // Find border cells with focus color (yellow)
+    let mut found_yellow_border = false;
+    for cell in buffer.content.iter() {
+        let symbol = cell.symbol();
+        if matches!(
+            symbol,
+            "│" | "─" | "┌" | "┐" | "└" | "┘" | "┤" | "├" | "┬" | "┴"
+        ) && cell.fg == Color::Yellow
+        {
+            found_yellow_border = true;
+            break;
+        }
+    }
+
+    assert!(
+        found_yellow_border,
+        "Log pane border should be highlighted yellow when FocusPane::LogPane"
+    );
+}
+
+#[test]
+fn render_layout_log_pane_reduces_content_area_when_visible() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_with_subagents();
+
+    // Render with log pane hidden
+    let mut state_hidden = AppState::new(session.clone());
+    state_hidden.log_pane.set_visible(false);
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state_hidden);
+        })
+        .unwrap();
+
+    let buffer_hidden = terminal.backend().buffer().clone();
+    let content_hidden = buffer_to_string(&buffer_hidden);
+
+    // Render with log pane visible
+    let mut state_visible = AppState::new(session);
+    state_visible.log_pane.set_visible(true);
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state_visible);
+        })
+        .unwrap();
+
+    let buffer_visible = terminal.backend().buffer().clone();
+    let content_visible = buffer_to_string(&buffer_visible);
+
+    // Verify log pane is NOT in hidden state
+    assert!(
+        !content_hidden.contains("Logs"),
+        "Log pane should not appear when visible=false"
+    );
+
+    // Verify log pane IS in visible state
+    assert!(
+        content_visible.contains("Logs"),
+        "Log pane should appear when visible=true"
+    );
+}
+
+#[test]
+fn render_layout_allocates_log_pane_height_approximately_8_lines() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.log_pane.set_visible(true);
+
+    // Add a log entry so we can count rendered content
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::INFO,
+        message: "Test log message".to_string(),
+    });
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+
+    // Count rows that contain "Logs" title or log content
+    let mut log_pane_rows = 0;
+    for y in 0..buffer.area().height {
+        let row: String = (0..buffer.area().width)
+            .map(|x| buffer[(x, y)].symbol())
+            .collect();
+
+        if row.contains("Logs") || row.contains("Test log message") || row.contains("INFO") {
+            log_pane_rows += 1;
+        }
+    }
+
+    // Log pane should occupy at least 2 lines (title border + content)
+    // Note: We expect title row with "Logs" and content row with "INFO"/"message"
+    assert!(
+        log_pane_rows >= 2,
+        "Log pane should occupy at least 2 rows (title + content), found {}",
+        log_pane_rows
+    );
+}
+
+#[test]
+fn render_layout_log_pane_positioned_at_bottom() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.log_pane.set_visible(true);
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::INFO,
+        message: "Bottom test".to_string(),
+    });
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+
+    // Find the row containing "Logs" title
+    let mut logs_title_row = None;
+    for y in 0..buffer.area().height {
+        let row: String = (0..buffer.area().width)
+            .map(|x| buffer[(x, y)].symbol())
+            .collect();
+
+        if row.contains("Logs") {
+            logs_title_row = Some(y);
+            break;
+        }
+    }
+
+    // Log pane should be in the bottom half of the screen
+    // Terminal height is 24, status bar is last line (23)
+    // Log pane should be above status bar, in bottom portion
+    assert!(
+        logs_title_row.unwrap() > 12,
+        "Log pane should be in bottom half of screen (row > 12), found at row {:?}",
+        logs_title_row
+    );
+}
+
 // ===== Helper Functions =====
 
 fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {

@@ -83,17 +83,27 @@ impl LogPaneState {
         }
     }
 
-    /// Toggle the visibility of the log pane.
+    /// Set the visibility of the log pane.
     ///
-    /// When toggled to visible, resets unread count and unread max level.
-    pub fn toggle_visible(&mut self) {
-        self.visible = !self.visible;
+    /// When set to visible, resets unread count and unread max level.
+    ///
+    /// # Arguments
+    /// * `visible` - Whether the pane should be visible
+    pub fn set_visible(&mut self, visible: bool) {
+        self.visible = visible;
 
         // Clear unread tracking when opening (becoming visible)
         if self.visible {
             self.unread_count = 0;
             self.unread_max_level = None;
         }
+    }
+
+    /// Toggle the visibility of the log pane.
+    ///
+    /// When toggled to visible, resets unread count and unread max level.
+    pub fn toggle_visible(&mut self) {
+        self.set_visible(!self.visible);
     }
 
     /// Check if the log pane is currently visible.
