@@ -68,24 +68,27 @@ impl<'a> Widget for StatsPanel<'a> {
         // Build content lines
         let mut lines = Vec::new();
 
+        // Get filtered usage based on current filter
+        let usage = self.stats.filtered_usage(self.filter);
+
         // Token section
         lines.push(Line::from("Tokens:").style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
         lines.push(Line::from(format!(
             "  Input:  {}",
-            format_tokens(self.stats.total_usage.total_input())
+            format_tokens(usage.total_input())
         )));
         lines.push(Line::from(format!(
             "  Output: {}",
-            format_tokens(self.stats.total_usage.output_tokens)
+            format_tokens(usage.output_tokens)
         )));
         lines.push(Line::from(format!(
             "  Total:  {}",
-            format_tokens(self.stats.total_usage.total())
+            format_tokens(usage.total())
         )));
 
         // Cache tokens (only if non-zero)
-        let total_cache = self.stats.total_usage.cache_creation_input_tokens
-            + self.stats.total_usage.cache_read_input_tokens;
+        let total_cache = usage.cache_creation_input_tokens
+            + usage.cache_read_input_tokens;
         if total_cache > 0 {
             lines.push(Line::from(format!(
                 "  Cache:  {}",
