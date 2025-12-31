@@ -100,7 +100,7 @@ fn create_dummy_input_source() -> InputSource {
 fn scroll_to_position(app: &mut TuiApp<TestBackend>, position: ScrollPosition, total_lines: usize) {
     let actions = position.actions_from_start(total_lines);
     for _ in 0..actions {
-        app.handle_key_test(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
+        app.handle_key_bench(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
     }
 }
 
@@ -146,7 +146,7 @@ fn benchmark_line_scroll_down(c: &mut Criterion) {
                             let terminal = Terminal::new(backend).unwrap();
                             let input_source = create_dummy_input_source();
                             let key_bindings = KeyBindings::default();
-                            let mut app = TuiApp::new_for_test(
+                            let mut app = TuiApp::new_for_bench(
                                 terminal,
                                 state,
                                 input_source,
@@ -158,14 +158,14 @@ fn benchmark_line_scroll_down(c: &mut Criterion) {
                             scroll_to_position(&mut app, pos, total_lines);
 
                             // PRE-RENDER (critical: establishes baseline)
-                            app.render_test().unwrap();
+                            app.render_bench().unwrap();
                             app
                         },
                         |mut app| {
                             // MEASUREMENT: single line scroll + re-render
-                            app.handle_key_test(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-                            app.render_test().unwrap();
-                            black_box(app.terminal().backend().buffer().clone())
+                            app.handle_key_bench(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+                            app.render_bench().unwrap();
+                            black_box(app.terminal_bench().backend().buffer().clone())
                         },
                         BatchSize::SmallInput,
                     );
@@ -213,7 +213,7 @@ fn benchmark_line_scroll_up(c: &mut Criterion) {
                             let terminal = Terminal::new(backend).unwrap();
                             let input_source = create_dummy_input_source();
                             let key_bindings = KeyBindings::default();
-                            let mut app = TuiApp::new_for_test(
+                            let mut app = TuiApp::new_for_bench(
                                 terminal,
                                 state,
                                 input_source,
@@ -222,13 +222,13 @@ fn benchmark_line_scroll_up(c: &mut Criterion) {
                             );
 
                             scroll_to_position(&mut app, pos, total_lines);
-                            app.render_test().unwrap();
+                            app.render_bench().unwrap();
                             app
                         },
                         |mut app| {
-                            app.handle_key_test(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
-                            app.render_test().unwrap();
-                            black_box(app.terminal().backend().buffer().clone())
+                            app.handle_key_bench(KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE));
+                            app.render_bench().unwrap();
+                            black_box(app.terminal_bench().backend().buffer().clone())
                         },
                         BatchSize::SmallInput,
                     );
@@ -276,7 +276,7 @@ fn benchmark_page_scroll_down(c: &mut Criterion) {
                             let terminal = Terminal::new(backend).unwrap();
                             let input_source = create_dummy_input_source();
                             let key_bindings = KeyBindings::default();
-                            let mut app = TuiApp::new_for_test(
+                            let mut app = TuiApp::new_for_bench(
                                 terminal,
                                 state,
                                 input_source,
@@ -285,13 +285,13 @@ fn benchmark_page_scroll_down(c: &mut Criterion) {
                             );
 
                             scroll_to_position(&mut app, pos, total_lines);
-                            app.render_test().unwrap();
+                            app.render_bench().unwrap();
                             app
                         },
                         |mut app| {
-                            app.handle_key_test(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
-                            app.render_test().unwrap();
-                            black_box(app.terminal().backend().buffer().clone())
+                            app.handle_key_bench(KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE));
+                            app.render_bench().unwrap();
+                            black_box(app.terminal_bench().backend().buffer().clone())
                         },
                         BatchSize::SmallInput,
                     );
@@ -339,7 +339,7 @@ fn benchmark_page_scroll_up(c: &mut Criterion) {
                             let terminal = Terminal::new(backend).unwrap();
                             let input_source = create_dummy_input_source();
                             let key_bindings = KeyBindings::default();
-                            let mut app = TuiApp::new_for_test(
+                            let mut app = TuiApp::new_for_bench(
                                 terminal,
                                 state,
                                 input_source,
@@ -348,13 +348,13 @@ fn benchmark_page_scroll_up(c: &mut Criterion) {
                             );
 
                             scroll_to_position(&mut app, pos, total_lines);
-                            app.render_test().unwrap();
+                            app.render_bench().unwrap();
                             app
                         },
                         |mut app| {
-                            app.handle_key_test(KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE));
-                            app.render_test().unwrap();
-                            black_box(app.terminal().backend().buffer().clone())
+                            app.handle_key_bench(KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE));
+                            app.render_bench().unwrap();
+                            black_box(app.terminal_bench().backend().buffer().clone())
                         },
                         BatchSize::SmallInput,
                     );
@@ -396,7 +396,7 @@ fn benchmark_horizontal_scroll_right(c: &mut Criterion) {
                         let terminal = Terminal::new(backend).unwrap();
                         let input_source = create_dummy_input_source();
                         let key_bindings = KeyBindings::default();
-                        let mut app = TuiApp::new_for_test(
+                        let mut app = TuiApp::new_for_bench(
                             terminal,
                             state,
                             input_source,
@@ -405,13 +405,13 @@ fn benchmark_horizontal_scroll_right(c: &mut Criterion) {
                         );
 
                         scroll_to_position(&mut app, pos, total_lines);
-                        app.render_test().unwrap();
+                        app.render_bench().unwrap();
                         app
                     },
                     |mut app| {
-                        app.handle_key_test(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
-                        app.render_test().unwrap();
-                        black_box(app.terminal().backend().buffer().clone())
+                        app.handle_key_bench(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
+                        app.render_bench().unwrap();
+                        black_box(app.terminal_bench().backend().buffer().clone())
                     },
                     BatchSize::SmallInput,
                 );
@@ -452,7 +452,7 @@ fn benchmark_horizontal_scroll_left(c: &mut Criterion) {
                         let terminal = Terminal::new(backend).unwrap();
                         let input_source = create_dummy_input_source();
                         let key_bindings = KeyBindings::default();
-                        let mut app = TuiApp::new_for_test(
+                        let mut app = TuiApp::new_for_bench(
                             terminal,
                             state,
                             input_source,
@@ -464,16 +464,16 @@ fn benchmark_horizontal_scroll_left(c: &mut Criterion) {
 
                         // Scroll right a few times first (so left has something to do)
                         for _ in 0..10 {
-                            app.handle_key_test(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
+                            app.handle_key_bench(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE));
                         }
 
-                        app.render_test().unwrap();
+                        app.render_bench().unwrap();
                         app
                     },
                     |mut app| {
-                        app.handle_key_test(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
-                        app.render_test().unwrap();
-                        black_box(app.terminal().backend().buffer().clone())
+                        app.handle_key_bench(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE));
+                        app.render_bench().unwrap();
+                        black_box(app.terminal_bench().backend().buffer().clone())
                     },
                     BatchSize::SmallInput,
                 );

@@ -803,11 +803,13 @@ where
 
 // ===== Test Helpers =====
 //
-// The following methods are ONLY for testing. They are kept public to support
-// integration tests in tests/, but are marked #[doc(hidden)] to hide from public API docs.
+// The following methods are ONLY for testing and benchmarking within the crate.
+// They are gated with cfg to ensure they're not accessible from outside the crate.
 //
 // DO NOT use these in production code.
 
+#[cfg(any(test, feature = "bench-internals"))]
+#[allow(dead_code)] // Not all helpers used in every context (tests vs benchmarks)
 impl<B> TuiApp<B>
 where
     B: ratatui::backend::Backend,
@@ -818,8 +820,7 @@ where
     /// terminal initialization. Used by acceptance test harness.
     ///
     /// **WARNING**: This is for testing only. Do not use in production code.
-    #[doc(hidden)]
-    pub fn new_for_test(
+    pub(crate) fn new_for_test(
         terminal: Terminal<B>,
         mut app_state: AppState,
         input_source: InputSource,
@@ -852,8 +853,7 @@ where
     /// Get reference to app state (test-only accessor)
     ///
     /// **WARNING**: This is for testing only. Do not use in production code.
-    #[doc(hidden)]
-    pub fn app_state(&self) -> &AppState {
+    pub(crate) fn app_state(&self) -> &AppState {
         &self.app_state
     }
 
@@ -862,8 +862,7 @@ where
     /// Returns true if app should quit.
     ///
     /// **WARNING**: This is for testing only. Do not use in production code.
-    #[doc(hidden)]
-    pub fn handle_key_test(&mut self, key: KeyEvent) -> bool {
+    pub(crate) fn handle_key_test(&mut self, key: KeyEvent) -> bool {
         self.handle_key(key)
     }
 
@@ -872,8 +871,7 @@ where
     /// Processes mouse event and updates state accordingly.
     ///
     /// **WARNING**: This is for testing only. Do not use in production code.
-    #[doc(hidden)]
-    pub fn handle_mouse_test(&mut self, mouse: MouseEvent) {
+    pub(crate) fn handle_mouse_test(&mut self, mouse: MouseEvent) {
         self.handle_mouse(mouse)
     }
 
@@ -883,8 +881,7 @@ where
     /// to the TestBackend. Useful for snapshot testing.
     ///
     /// **WARNING**: This is for testing only. Do not use in production code.
-    #[doc(hidden)]
-    pub fn render_test(&mut self) -> Result<(), TuiError> {
+    pub(crate) fn render_test(&mut self) -> Result<(), TuiError> {
         self.draw()
     }
 
@@ -894,9 +891,53 @@ where
     /// Useful for snapshot testing with TestBackend.
     ///
     /// **WARNING**: This is for testing only. Do not use in production code.
-    #[doc(hidden)]
-    pub fn terminal(&self) -> &Terminal<B> {
+    pub(crate) fn terminal(&self) -> &Terminal<B> {
         &self.terminal
+    }
+}
+
+// ===== Benchmark Helpers =====
+//
+// Public wrappers for benchmarks when bench-internals feature is enabled.
+// These delegate to the pub(crate) test helpers above.
+
+#[cfg(feature = "bench-internals")]
+impl<B> TuiApp<B>
+where
+    B: ratatui::backend::Backend,
+{
+    /// Create TuiApp for benchmarking (benchmark-only constructor)
+    ///
+    /// Delegates to new_for_test. Only available with bench-internals feature.
+    pub fn new_for_bench(
+        terminal: Terminal<B>,
+        app_state: AppState,
+        input_source: InputSource,
+        line_counter: usize,
+        key_bindings: KeyBindings,
+    ) -> Self {
+        Self::new_for_test(terminal, app_state, input_source, line_counter, key_bindings)
+    }
+
+    /// Handle a single keyboard event (benchmark-only accessor)
+    ///
+    /// Delegates to handle_key_test. Only available with bench-internals feature.
+    pub fn handle_key_bench(&mut self, key: KeyEvent) -> bool {
+        self.handle_key_test(key)
+    }
+
+    /// Render a single frame (benchmark-only accessor)
+    ///
+    /// Delegates to render_test. Only available with bench-internals feature.
+    pub fn render_bench(&mut self) -> Result<(), TuiError> {
+        self.render_test()
+    }
+
+    /// Get mutable reference to terminal (benchmark-only accessor)
+    ///
+    /// Delegates to terminal. Only available with bench-internals feature.
+    pub fn terminal_bench(&mut self) -> &mut Terminal<B> {
+        &mut self.terminal
     }
 }
 

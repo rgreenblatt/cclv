@@ -50,6 +50,7 @@ harness = false
 [[bench]]
 name = "scroll_benchmark"
 harness = false
+required-features = ["bench-internals"]
 
 [profile.release]
 opt-level = 3
