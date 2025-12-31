@@ -60,15 +60,19 @@ impl TuiApp<CrosstermBackend<Stdout>> {
 
         // Load initial content from input source
         let initial_lines = input_source.poll()?;
-        let mut session = crate::model::Session::new(session_id);
-        let errors = integration::process_lines(&mut session, initial_lines, 1);
+        let (entries, errors) = integration::process_lines(initial_lines, 1);
 
         // Log any parse errors
         for error in errors {
             warn!("Parse error during initial load: {}", error);
         }
 
-        let line_counter = session.main_agent().len() + session.subagents().len();
+        let mut session = crate::model::Session::new(session_id);
+        for entry in &entries {
+            session.add_entry(entry.clone());
+        }
+
+        let line_counter = entries.len();
         let app_state = AppState::new(session);
 
         Ok(Self {
@@ -113,18 +117,18 @@ impl TuiApp<CrosstermBackend<Stdout>> {
         if !new_lines.is_empty() {
             debug!("Processing {} new lines", new_lines.len());
             let starting_line = self.line_counter + 1;
-            let errors =
-                integration::process_lines(&mut self.app_state.session, new_lines, starting_line);
-
-            // Update line counter
-            self.line_counter = starting_line
-                + self.app_state.session.main_agent().len()
-                + self.app_state.session.subagents().len();
+            let (entries, errors) = integration::process_lines(new_lines, starting_line);
 
             // Log parse errors
             for error in errors {
                 warn!("Parse error at line: {}", error);
             }
+
+            // Update line counter BEFORE adding entries
+            self.line_counter += entries.len();
+
+            // Add entries to session via AppState
+            self.app_state.add_entries(entries);
         }
 
         Ok(())
@@ -221,7 +225,7 @@ mod tests {
 
     #[test]
     fn tui_error_from_io_error() {
-        let io_err = io::Error::new(io::ErrorKind::Other, "test error");
+        let io_err = io::Error::other("test error");
         let tui_err: TuiError = io_err.into();
         assert!(matches!(tui_err, TuiError::Io(_)));
     }

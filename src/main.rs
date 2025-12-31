@@ -95,11 +95,11 @@ mod tests {
     fn test_no_args_defaults() {
         let args = Args::parse_from(["cclv"]);
         assert_eq!(args.file, None);
-        assert_eq!(args.follow, false);
+        assert!(!args.follow);
         assert_eq!(args.line, 1);
         assert_eq!(args.search, None);
-        assert_eq!(args.stats, false);
-        assert_eq!(args.no_color, false);
+        assert!(!args.stats);
+        assert!(!args.no_color);
         assert_eq!(args.theme, "base16-ocean");
         assert_eq!(args.config, None);
     }
@@ -113,13 +113,13 @@ mod tests {
     #[test]
     fn test_follow_flag_short() {
         let args = Args::parse_from(["cclv", "-f"]);
-        assert_eq!(args.follow, true);
+        assert!(args.follow);
     }
 
     #[test]
     fn test_follow_flag_long() {
         let args = Args::parse_from(["cclv", "--follow"]);
-        assert_eq!(args.follow, true);
+        assert!(args.follow);
     }
 
     #[test]
@@ -157,13 +157,13 @@ mod tests {
     #[test]
     fn test_stats_flag() {
         let args = Args::parse_from(["cclv", "--stats"]);
-        assert_eq!(args.stats, true);
+        assert!(args.stats);
     }
 
     #[test]
     fn test_no_color_flag() {
         let args = Args::parse_from(["cclv", "--no-color"]);
-        assert_eq!(args.no_color, true);
+        assert!(args.no_color);
     }
 
     #[test]
@@ -231,10 +231,10 @@ mod tests {
             "monokai",
         ]);
         assert_eq!(args.file, Some(PathBuf::from("session.jsonl")));
-        assert_eq!(args.follow, true);
+        assert!(args.follow);
         assert_eq!(args.line, 42);
         assert_eq!(args.search, Some("error".to_string()));
-        assert_eq!(args.stats, true);
+        assert!(args.stats);
         assert_eq!(args.theme, "monokai");
     }
 }

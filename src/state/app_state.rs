@@ -13,7 +13,7 @@ use std::collections::HashSet;
 /// This is the root state type containing all UI state.
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub session: Session,
+    session: Session,
     pub focus: FocusPane,
     pub main_scroll: ScrollState,
     pub subagent_scroll: ScrollState,
@@ -40,6 +40,21 @@ impl AppState {
             live_mode: false,
             auto_scroll: true,
         }
+    }
+
+    /// Add multiple log entries to the session.
+    ///
+    /// This is the proper way for the shell layer to add entries
+    /// without directly mutating the core session state.
+    pub fn add_entries(&mut self, entries: Vec<crate::model::LogEntry>) {
+        for entry in entries {
+            self.session.add_entry(entry);
+        }
+    }
+
+    /// Get immutable reference to the session.
+    pub fn session(&self) -> &Session {
+        &self.session
     }
 }
 

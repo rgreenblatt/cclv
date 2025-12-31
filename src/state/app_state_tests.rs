@@ -27,7 +27,7 @@ fn app_state_new_sets_session() {
     let session_id = session.session_id().clone();
     let state = AppState::new(session);
 
-    assert_eq!(state.session.session_id(), &session_id);
+    assert_eq!(state.session().session_id(), &session_id);
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn app_state_new_defaults_stats_visible_to_false() {
     let session = make_test_session();
     let state = AppState::new(session);
 
-    assert_eq!(state.stats_visible, false);
+    assert!(!state.stats_visible);
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn app_state_new_defaults_live_mode_to_false() {
     let session = make_test_session();
     let state = AppState::new(session);
 
-    assert_eq!(state.live_mode, false);
+    assert!(!state.live_mode);
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn app_state_new_defaults_auto_scroll_to_true() {
     let session = make_test_session();
     let state = AppState::new(session);
 
-    assert_eq!(state.auto_scroll, true);
+    assert!(state.auto_scroll);
 }
 
 // ===== ScrollState::scroll_up Tests =====

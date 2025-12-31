@@ -4,47 +4,45 @@
 //! management for the main event loop. These functions are testable without
 //! needing actual I/O.
 
-use crate::model::{ParseError, Session};
+use crate::model::ParseError;
 use crate::parser;
 
-/// Process new JSONL lines into the session.
+/// Process new JSONL lines into log entries.
 ///
 /// This is a pure function that:
 /// - Parses each line into a LogEntry
-/// - Adds successful parses to the session
-/// - Returns parse errors for failed lines
+/// - Collects successful parses and errors separately
 ///
 /// # Arguments
 ///
-/// * `session` - The session to add entries to
 /// * `lines` - Raw JSONL lines to process
 /// * `starting_line_number` - Line number of the first line (for error reporting)
 ///
 /// # Returns
 ///
-/// Vector of parse errors (empty if all lines parsed successfully)
+/// Tuple of (successfully parsed entries, parse errors)
 pub fn process_lines(
-    session: &mut Session,
     lines: Vec<String>,
     starting_line_number: usize,
-) -> Vec<ParseError> {
+) -> (Vec<crate::model::LogEntry>, Vec<ParseError>) {
+    let mut entries = Vec::new();
     let mut errors = Vec::new();
 
     for (index, line) in lines.into_iter().enumerate() {
         let line_number = starting_line_number + index;
         match parser::parse_entry(&line, line_number) {
-            Ok(entry) => session.add_entry(entry),
+            Ok(entry) => entries.push(entry),
             Err(err) => errors.push(err),
         }
     }
 
-    errors
+    (entries, errors)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::SessionId;
+    use crate::model::{Session, SessionId};
 
     // ===== Test Helpers =====
 
@@ -61,9 +59,14 @@ mod tests {
             r#"{"type":"user","message":{"role":"user","content":"Hello"},"sessionId":"session-1","uuid":"uuid-1","timestamp":"2025-12-25T10:00:00Z"}"#.to_string(),
         ];
 
-        let errors = process_lines(&mut session, lines, 1);
+        let (entries, errors) = process_lines(lines, 1);
 
         assert_eq!(errors.len(), 0, "Should have no parse errors");
+        assert_eq!(entries.len(), 1, "Should have parsed one entry");
+
+        for entry in entries {
+            session.add_entry(entry);
+        }
         assert_eq!(
             session.main_agent().len(),
             1,
@@ -79,21 +82,26 @@ mod tests {
             r#"{"type":"assistant","message":{"role":"assistant","content":"Second"},"sessionId":"session-1","uuid":"uuid-2","timestamp":"2025-12-25T10:00:01Z"}"#.to_string(),
         ];
 
-        let errors = process_lines(&mut session, lines, 1);
+        let (entries, errors) = process_lines(lines, 1);
 
         assert_eq!(errors.len(), 0);
+        assert_eq!(entries.len(), 2);
+
+        for entry in entries {
+            session.add_entry(entry);
+        }
         assert_eq!(session.main_agent().len(), 2);
     }
 
     #[test]
     fn process_lines_returns_error_for_malformed_json() {
-        let mut session = Session::new(make_session_id("session-1"));
         let lines = vec![
             r#"{"type":"user","malformed"#.to_string(),
         ];
 
-        let errors = process_lines(&mut session, lines, 42);
+        let (entries, errors) = process_lines(lines, 42);
 
+        assert_eq!(entries.len(), 0, "Should have no valid entries");
         assert_eq!(errors.len(), 1, "Should have one parse error");
         match &errors[0] {
             ParseError::InvalidJson { line, .. } => {
@@ -112,9 +120,14 @@ mod tests {
             r#"{"type":"user","message":{"role":"user","content":"Also good"},"sessionId":"session-1","uuid":"uuid-2","timestamp":"2025-12-25T10:00:01Z"}"#.to_string(),
         ];
 
-        let errors = process_lines(&mut session, lines, 1);
+        let (entries, errors) = process_lines(lines, 1);
 
         assert_eq!(errors.len(), 1, "Should have one parse error");
+        assert_eq!(entries.len(), 2, "Should have 2 valid entries");
+
+        for entry in entries {
+            session.add_entry(entry);
+        }
         assert_eq!(
             session.main_agent().len(),
             2,
@@ -129,34 +142,38 @@ mod tests {
             r#"{"type":"user","message":{"role":"user","content":"Test"},"sessionId":"session-1","uuid":"uuid-1","agentId":"agent-123","timestamp":"2025-12-25T10:00:00Z"}"#.to_string(),
         ];
 
-        let errors = process_lines(&mut session, lines, 1);
+        let (entries, errors) = process_lines(lines, 1);
 
         assert_eq!(errors.len(), 0);
+        assert_eq!(entries.len(), 1);
+
+        for entry in entries {
+            session.add_entry(entry);
+        }
         assert_eq!(session.main_agent().len(), 0, "Should not add to main agent");
         assert_eq!(session.subagents().len(), 1, "Should create subagent");
     }
 
     #[test]
     fn process_lines_returns_empty_errors_for_empty_input() {
-        let mut session = Session::new(make_session_id("session-1"));
         let lines = vec![];
 
-        let errors = process_lines(&mut session, lines, 1);
+        let (entries, errors) = process_lines(lines, 1);
 
+        assert_eq!(entries.len(), 0);
         assert_eq!(errors.len(), 0);
-        assert_eq!(session.main_agent().len(), 0);
     }
 
     #[test]
     fn process_lines_uses_line_numbers_correctly() {
-        let mut session = Session::new(make_session_id("session-1"));
         let lines = vec![
             r#"{"malformed1"#.to_string(),
             r#"{"malformed2"#.to_string(),
         ];
 
-        let errors = process_lines(&mut session, lines, 100);
+        let (entries, errors) = process_lines(lines, 100);
 
+        assert_eq!(entries.len(), 0);
         assert_eq!(errors.len(), 2);
         match &errors[0] {
             ParseError::InvalidJson { line, .. } => {
