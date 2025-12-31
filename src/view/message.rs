@@ -833,6 +833,127 @@ mod tests {
         );
     }
 
+    // ===== ContentBlock::Text collapse/expand tests =====
+
+    #[test]
+    fn render_content_block_text_with_short_content_shows_all_lines() {
+        let short_text = "Line 1\nLine 2\nLine 3";
+        let block = ContentBlock::Text {
+            text: short_text.to_string(),
+        };
+        let uuid = crate::model::EntryUuid::new("entry-13").expect("valid uuid");
+        let scroll_state = create_test_scroll_state();
+
+        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+
+        // Should show all lines for short content
+        assert_eq!(
+            lines.len(),
+            3,
+            "Short text (3 lines) should show all lines, got {} lines",
+            lines.len()
+        );
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("Line 1"), "Should contain Line 1");
+        assert!(text.contains("Line 2"), "Should contain Line 2");
+        assert!(text.contains("Line 3"), "Should contain Line 3");
+    }
+
+    #[test]
+    fn render_content_block_text_with_long_content_collapsed_shows_summary() {
+        // Create text with 15 lines (exceeds threshold of 10)
+        let long_text = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n\
+                        Line 6\nLine 7\nLine 8\nLine 9\nLine 10\n\
+                        Line 11\nLine 12\nLine 13\nLine 14\nLine 15";
+        let block = ContentBlock::Text {
+            text: long_text.to_string(),
+        };
+        let uuid = crate::model::EntryUuid::new("entry-14").expect("valid uuid");
+        let scroll_state = create_test_scroll_state(); // NOT expanded
+
+        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+
+        // Should show first 3 lines + collapse indicator
+        assert_eq!(
+            lines.len(),
+            4,
+            "Collapsed text should show 3 summary lines + 1 indicator, got {} lines",
+            lines.len()
+        );
+
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("Line 1"), "Should show Line 1");
+        assert!(text.contains("Line 2"), "Should show Line 2");
+        assert!(text.contains("Line 3"), "Should show Line 3");
+        assert!(
+            text.contains("more lines") || text.contains("+12"),
+            "Should show collapse indicator with remaining line count"
+        );
+        assert!(
+            !text.contains("Line 15"),
+            "Should NOT show last line when collapsed"
+        );
+    }
+
+    #[test]
+    fn render_content_block_text_with_long_content_expanded_shows_all() {
+        // Create text with 15 lines (exceeds threshold of 10)
+        let long_text = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n\
+                        Line 6\nLine 7\nLine 8\nLine 9\nLine 10\n\
+                        Line 11\nLine 12\nLine 13\nLine 14\nLine 15";
+        let block = ContentBlock::Text {
+            text: long_text.to_string(),
+        };
+        let uuid = crate::model::EntryUuid::new("entry-15").expect("valid uuid");
+        let scroll_state = create_expanded_scroll_state(&uuid); // IS expanded
+
+        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+
+        // Should show all 15 lines when expanded
+        assert_eq!(
+            lines.len(),
+            15,
+            "Expanded text should show all 15 lines, got {} lines",
+            lines.len()
+        );
+
+        let text: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(text.contains("Line 1"), "Should show Line 1");
+        assert!(text.contains("Line 15"), "Should show Line 15 when expanded");
+        assert!(
+            !text.contains("more lines"),
+            "Should NOT show collapse indicator when expanded"
+        );
+    }
+
+    #[test]
+    fn render_content_block_text_exactly_at_threshold_does_not_collapse() {
+        // Create text with exactly 10 lines (threshold)
+        let text = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n\
+                   Line 6\nLine 7\nLine 8\nLine 9\nLine 10";
+        let block = ContentBlock::Text {
+            text: text.to_string(),
+        };
+        let uuid = crate::model::EntryUuid::new("entry-16").expect("valid uuid");
+        let scroll_state = create_test_scroll_state();
+
+        let lines = render_content_block(&block, &uuid, &scroll_state, 10, 3);
+
+        // Exactly at threshold should NOT collapse (must exceed threshold)
+        assert_eq!(
+            lines.len(),
+            10,
+            "Text at threshold (10 lines) should show all lines without collapsing, got {} lines",
+            lines.len()
+        );
+
+        let text_output: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            !text_output.contains("more lines"),
+            "Text at threshold should NOT show collapse indicator"
+        );
+    }
+
     // ===== render_conversation_view Integration Tests =====
 
     #[test]
