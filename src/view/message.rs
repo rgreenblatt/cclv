@@ -7,6 +7,7 @@ use crate::model::{AgentConversation, ContentBlock, ConversationEntry, MessageCo
 use crate::state::{ScrollState, WrapMode};
 use crate::view::MessageStyles;
 use crate::view_state::conversation::ConversationViewState;
+use crate::view_state::types::ViewportDimensions;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -908,8 +909,8 @@ impl<'a> Widget for ConversationView<'a> {
             .style(Style::default().fg(border_color));
 
         // Calculate viewport dimensions (area minus borders)
-        let viewport_height = area.height.saturating_sub(2) as usize;
-        let viewport_width = area.width.saturating_sub(2) as usize;
+        let viewport_height = area.height.saturating_sub(2);
+        let viewport_width = area.width.saturating_sub(2);
 
         // Render content: only render visible entries
         let mut lines = Vec::new();
@@ -917,40 +918,21 @@ impl<'a> Widget for ConversationView<'a> {
         if entry_count == 0 {
             lines.push(Line::from("No messages yet..."));
         } else {
-            // Calculate which entries are visible
-            let (start_index, end_index) =
-                self.calculate_visible_range(viewport_height, viewport_width, self.global_wrap);
-
-            // Calculate absolute Y position of first visible entry
-            let mut first_entry_absolute_y = 0_usize;
-            for (idx, entry) in self.conversation.entries()[..start_index]
-                .iter()
-                .enumerate()
-            {
-                let is_expanded = entry
-                    .uuid()
-                    .map(|uuid| self.view_state.is_expanded_by_uuid(uuid))
-                    .unwrap_or(false);
-                first_entry_absolute_y += self.calculate_entry_height(
-                    entry,
-                    idx,
-                    is_expanded,
-                    viewport_width,
-                    self.global_wrap,
-                    self.is_subagent_view,
-                );
-            }
-
-            let mut cumulative_y = first_entry_absolute_y;
-            let scroll_offset = self.scroll_state.vertical_offset;
+            // Calculate which entries are visible using view-state layer
+            let viewport = ViewportDimensions::new(viewport_width, viewport_height);
+            let visible_range = self.view_state.visible_range(viewport);
+            let scroll_offset = visible_range.scroll_offset.get();
 
             // Render only the visible range
-            for (visible_index, entry) in self.conversation.entries()[start_index..end_index]
-                .iter()
-                .enumerate()
-            {
-                // Calculate actual index in full entry list
-                let actual_index = start_index + visible_index;
+            for entry_index in visible_range.indices() {
+                let entry_view = match self.view_state.get(entry_index) {
+                    Some(ev) => ev,
+                    None => continue, // Skip if entry not found (shouldn't happen)
+                };
+
+                let entry = entry_view.entry();
+                let actual_index = entry_index.get();
+                let cumulative_y = entry_view.layout().cumulative_y().get();
 
                 // Calculate how many lines to skip from this entry if it's partially scrolled off
                 let lines_to_skip = if cumulative_y < scroll_offset {
@@ -959,18 +941,7 @@ impl<'a> Widget for ConversationView<'a> {
                     0
                 };
 
-                let is_expanded = entry
-                    .uuid()
-                    .map(|uuid| self.view_state.is_expanded_by_uuid(uuid))
-                    .unwrap_or(false);
-                let entry_height = self.calculate_entry_height(
-                    entry,
-                    actual_index,
-                    is_expanded,
-                    viewport_width,
-                    self.global_wrap,
-                    self.is_subagent_view,
-                );
+                let is_expanded = entry_view.is_expanded();
 
                 // Collect entry lines into temporary vector
                 let mut entry_lines = Vec::new();
@@ -1002,8 +973,6 @@ impl<'a> Widget for ConversationView<'a> {
                             MessageContent::Blocks(blocks) => {
                                 // Structured content - render each block
                                 for block in blocks {
-                                    let is_expanded =
-                                        self.view_state.is_expanded_by_uuid(log_entry.uuid());
                                     let block_lines = render_content_block(
                                         block,
                                         log_entry.uuid(),
@@ -1045,9 +1014,6 @@ impl<'a> Widget for ConversationView<'a> {
 
                 // Skip lines that are scrolled off the top, then add to final lines
                 lines.extend(entry_lines.into_iter().skip(lines_to_skip));
-
-                // Update cumulative_y for next entry
-                cumulative_y += entry_height;
             }
         }
 
