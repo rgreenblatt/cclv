@@ -388,6 +388,11 @@ where
                 self.app_state.toggle_global_wrap();
             }
 
+            // Log pane toggle (L key)
+            KeyAction::ToggleLogPane => {
+                self.app_state.log_pane.toggle_visible();
+            }
+
             // Not yet implemented
             _ => {}
         }
