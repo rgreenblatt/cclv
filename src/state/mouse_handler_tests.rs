@@ -473,26 +473,24 @@ fn detect_entry_click_detects_main_pane_first_entry() {
 
 #[test]
 fn detect_entry_click_detects_subagent_pane_entry() {
+    // FR-083: After unified tabs, there's a single conversation area (no split panes).
+    // When subagent tab is selected, clicks should detect entries from the subagent conversation.
     let mut state = create_app_state_with_tabs(vec!["agent-1"]);
 
-    // Set focus and select the first subagent tab
-    state.focus = crate::state::FocusPane::Subagent;
-    state.select_tab(2); // 1-indexed: tab 1 = main, tab 2 = first subagent
+    // Select the first subagent tab (index 1: main is 0, first subagent is 1)
+    state.selected_tab = Some(1);
     init_layout_for_state(&mut state);
 
-    // Main pane area
-    let main_area = Rect::new(0, 0, 40, 20);
+    // Unified conversation area (FR-083: no split)
+    let conversation_area = Rect::new(0, 0, 80, 20);
 
-    // Subagent pane area
-    let subagent_area = Rect::new(41, 0, 40, 20);
-
-    // Click in subagent pane (inside border: y=1)
-    let result = detect_entry_click(45, 1, main_area, Some(subagent_area), &state);
+    // Click inside the unified area (inside border: y=1)
+    let result = detect_entry_click(5, 1, conversation_area, None, &state);
 
     assert_eq!(
         result,
         EntryClickResult::SubagentPaneEntry(0),
-        "Click in subagent pane should return SubagentPaneEntry"
+        "Click should detect entry from SUBAGENT conversation when subagent tab is selected"
     );
 }
 
