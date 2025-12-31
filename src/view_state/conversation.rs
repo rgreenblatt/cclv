@@ -739,6 +739,92 @@ mod tests {
         assert_eq!(state.total_height(), 30);
     }
 
+    #[test]
+    fn toggle_expand_above_viewport_keeps_visible_entries_stable() {
+        // Setup: Create 10 entries, each height 2 when collapsed, 5 when expanded
+        let entries: Vec<ConversationEntry> = (0..10)
+            .map(|i| make_valid_entry(&format!("uuid-{}", i)))
+            .collect();
+        let mut state = ConversationViewState::new(entries);
+
+        let params = LayoutParams::new(80, WrapMode::Wrap);
+        let variable_height = |_entry: &ConversationEntry, expanded: bool, _wrap: WrapMode| {
+            if expanded {
+                LineHeight::new(5).unwrap()
+            } else {
+                LineHeight::new(2).unwrap()
+            }
+        };
+
+        state.recompute_layout(params, variable_height);
+        // All collapsed: heights [2, 2, 2, ...], cumulative_y [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]
+        // Total height: 20
+
+        // Scroll to show entries 5-7 (viewport height 10 lines)
+        // Entry 5: y=10..12
+        // Entry 6: y=12..14
+        // Entry 7: y=14..16
+        // Entry 8: y=16..18 (partially visible)
+        state.set_scroll(ScrollPosition::AtLine(LineOffset::new(10)));
+
+        let viewport = ViewportDimensions::new(80, 10);
+        let range_before = state.visible_range(viewport);
+
+        // Verify initial visible range: entries 5-9 (0-indexed, end exclusive)
+        assert_eq!(range_before.start_index, EntryIndex::new(5), "Initially, entry 5 should be first visible");
+
+        // Record the first visible entry's absolute position in viewport
+        let first_visible_entry = range_before.start_index;
+        let first_visible_y_before = state.get(first_visible_entry).unwrap().layout().cumulative_y().get();
+        let scroll_offset_before = range_before.scroll_offset.get();
+        let offset_in_viewport_before = first_visible_y_before.saturating_sub(scroll_offset_before);
+
+        // Toggle expand on entry 2 (above viewport: cumulative_y=4, which is before scroll_offset=10)
+        state.toggle_expand(EntryIndex::new(2), params, variable_height);
+
+        // After expanding entry 2 (height 2 -> 5), cumulative_y shifts:
+        // Entry 0: y=0..2
+        // Entry 1: y=2..4
+        // Entry 2: y=4..9 (expanded, +3 height)
+        // Entry 3: y=9..11 (+3 shift)
+        // Entry 4: y=11..13 (+3 shift)
+        // Entry 5: y=13..15 (+3 shift) <-- first visible should still be here
+        // Entry 6: y=15..17
+        // Entry 7: y=17..19
+        // Total height: 23
+
+        // Verify layout update
+        assert_eq!(
+            state.get(EntryIndex::new(2)).unwrap().is_expanded(),
+            true,
+            "Entry 2 should be expanded"
+        );
+        assert_eq!(
+            state.total_height(),
+            23,
+            "Total height should increase from 20 to 23"
+        );
+
+        // The KEY assertion: first visible entry should still be entry 5
+        // and it should still be at the same relative position in the viewport
+        let range_after = state.visible_range(viewport);
+        let first_visible_y_after = state.get(first_visible_entry).unwrap().layout().cumulative_y().get();
+        let scroll_offset_after = range_after.scroll_offset.get();
+        let offset_in_viewport_after = first_visible_y_after.saturating_sub(scroll_offset_after);
+
+        assert_eq!(
+            range_after.start_index,
+            first_visible_entry,
+            "First visible entry should remain entry 5 after toggling entry 2 above viewport"
+        );
+
+        assert_eq!(
+            offset_in_viewport_after,
+            offset_in_viewport_before,
+            "Entry 5 should maintain same relative position in viewport (stable view)"
+        );
+    }
+
     // === hit_test Tests (Binary Search) ===
 
     #[test]
