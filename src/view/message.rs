@@ -2234,8 +2234,16 @@ pub fn render_conversation_view_with_search(
     let domain_entries: Vec<_> = all_entries.iter().map(|ev| ev.entry().clone()).collect();
 
     // Calculate visible entry range
-    let (start_idx, end_idx) =
-        temp_view.calculate_visible_range(viewport_height, viewport_width, global_wrap);
+    // Note: temp_view uses an empty conversation for backward-compat, so calculate_visible_range
+    // returns (0,0). Instead, render from view_state which has the actual data.
+    // Limit to a reasonable number of entries to avoid rendering too much content.
+    let (start_idx, end_idx) = if domain_entries.is_empty() {
+        (0, 0)
+    } else {
+        // Estimate ~3 lines per entry, render enough to fill viewport + buffer
+        let estimated_entries = (viewport_height / 3).max(10);
+        (0, domain_entries.len().min(estimated_entries))
+    };
 
     let visible_entries = &domain_entries[start_idx..end_idx];
 

@@ -136,6 +136,12 @@ pub struct AppState {
     pub blink_on: bool,
 }
 
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppState {
     /// Create new AppState with default UI state.
     pub fn new() -> Self {
@@ -263,6 +269,19 @@ impl AppState {
     /// This is a test-only helper. Do not use in production code.
     #[doc(hidden)]
     pub fn populate_log_view_from_model_session(&mut self, session: &crate::model::Session) {
+        // Ensure at least one session exists in log_view, even if model session is empty.
+        // This prevents panics in code that assumes session_view() returns Some.
+        let main_has_entries = !session.main_agent().entries().is_empty();
+        let subagents_have_entries = session
+            .subagents()
+            .values()
+            .any(|conv| !conv.entries().is_empty());
+
+        if !main_has_entries && !subagents_have_entries {
+            // Create an empty session view-state to match the model session
+            self.log_view.create_empty_session(session.session_id().clone());
+        }
+
         // Main agent entries
         for entry in session.main_agent().entries() {
             self.log_view.add_entry(entry.clone(), None);

@@ -144,20 +144,18 @@ pub fn detect_entry_click(
                     let session_view = state.session_view();
                     let agent_ids: Vec<_> = session_view.subagent_ids().cloned().collect();
                     if let Some(agent_id) = agent_ids.get(tab_index) {
-                        if let Some(conversation) = session_view.get_subagent(agent_id) {
-                            let entries = conversation.entries();
-                            if !entries.is_empty() {
-                                // Calculate which entry was clicked based on Y position
-                                let relative_y = click_y.saturating_sub(inner_y);
+                        let entry_count = session_view.get_subagent_entry_count(agent_id);
+                        if entry_count > 0 {
+                            // Calculate which entry was clicked based on Y position
+                            let relative_y = click_y.saturating_sub(inner_y);
 
-                                // Simple fixed-height approach: each entry gets ~4 lines
-                                const ENTRY_HEIGHT: u16 = 4;
-                                let entry_index = (relative_y / ENTRY_HEIGHT) as usize;
+                            // Simple fixed-height approach: each entry gets ~4 lines
+                            const ENTRY_HEIGHT: u16 = 4;
+                            let entry_index = (relative_y / ENTRY_HEIGHT) as usize;
 
-                                // Clamp to valid range
-                                let clamped_index = entry_index.min(entries.len() - 1);
-                                return EntryClickResult::SubagentPaneEntry(clamped_index);
-                            }
+                            // Clamp to valid range
+                            let clamped_index = entry_index.min(entry_count - 1);
+                            return EntryClickResult::SubagentPaneEntry(clamped_index);
                         }
                     }
                 }

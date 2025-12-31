@@ -110,6 +110,16 @@ impl LogViewState {
     pub fn current_session_mut(&mut self) -> Option<&mut SessionViewState> {
         self.sessions.last_mut()
     }
+
+    /// Create an empty session (used when model session has no entries).
+    /// This ensures session_view() doesn't panic in tests/edge cases.
+    pub fn create_empty_session(&mut self, session_id: SessionId) {
+        let start_line = self.sessions.iter().map(|s| s.total_height()).sum();
+        let mut new_session = SessionViewState::new(session_id.clone());
+        new_session.set_start_line(start_line);
+        self.sessions.push(new_session);
+        self.current_session_id = Some(session_id);
+    }
 }
 
 impl Default for LogViewState {

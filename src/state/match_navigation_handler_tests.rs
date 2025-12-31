@@ -266,14 +266,14 @@ fn next_match_selects_correct_subagent_tab() {
 
     // Agent order in Session::subagents() is deterministic (BTreeMap/sorted)
     // We need to find which tab index agent2 is at
+    // Use subagent_ids() which includes both initialized and pending subagents
     let expected_tab = result
         .session_view()
-        .subagents()
-        .keys()
+        .subagent_ids()
         .enumerate()
         .find(|(_, aid)| *aid == &agent2)
         .map(|(idx, _)| idx)
-        .expect("agent2 should exist in subagents");
+        .expect("agent2 should exist in subagent_ids");
 
     assert_eq!(
         result.selected_tab,

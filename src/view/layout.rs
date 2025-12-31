@@ -492,11 +492,10 @@ fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
             let selected_idx = state.selected_tab.unwrap_or(0);
 
             if let Some(&agent_id) = agent_ids.get(selected_idx) {
-                if let Some(conv) = state.session_view().get_subagent(agent_id) {
-                    (format!("Subagent {}", agent_id.as_str()), conv)
-                } else {
-                    ("Main Agent".to_string(), state.session_view().main())
-                }
+                // Try to get initialized subagent, but show subagent label even if pending
+                let conv = state.session_view().get_subagent(agent_id)
+                    .unwrap_or_else(|| state.session_view().main());
+                (format!("Subagent {}", agent_id.as_str()), conv)
             } else {
                 ("Main Agent".to_string(), state.session_view().main())
             }

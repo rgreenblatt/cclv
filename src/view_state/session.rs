@@ -123,6 +123,19 @@ impl SessionViewState {
         self.pending_subagent_entries.iter()
     }
 
+    /// Get subagent entry count (from either initialized or pending state).
+    ///
+    /// Returns the number of entries for the given agent ID without requiring mutation.
+    /// Checks initialized subagents first, then pending entries.
+    pub fn get_subagent_entry_count(&self, id: &AgentId) -> usize {
+        // Check initialized subagents first
+        if let Some(view_state) = self.subagents.get(id) {
+            return view_state.len();
+        }
+        // Check pending entries
+        self.pending_subagent_entries.get(id).map_or(0, |v| v.len())
+    }
+
     /// Add entry to main conversation.
     pub fn add_main_entry(&mut self, entry: ConversationEntry) {
         self.main.append(vec![entry]);

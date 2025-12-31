@@ -2,8 +2,8 @@
 source: tests/acceptance_harness.rs
 expression: output
 ---
-Model: Opus | Main Agent | /workspace/project | 3 tools, 0 agents, 0 skills
-┌Main Agent [Opus] (6 entries)─────────────────────────────────────────────────┐
+Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
+┌Conversation [claude-opus-4-5-20251101] (6 entries)───────────────────────────┐
 │                                                                              │
 │                                                                              │
 │Hello                                                                         │
