@@ -127,7 +127,7 @@ impl<'a> Widget for StatsPanel<'a> {
         lines.push(Line::from(""));
 
         // Tool usage section
-        if !self.stats.tool_counts.is_empty() {
+        if !self.stats.filtered_tool_counts(self.filter).is_empty() {
             lines.push(
                 Line::from("Tool Usage:").style(
                     Style::default()
@@ -135,7 +135,7 @@ impl<'a> Widget for StatsPanel<'a> {
                         .add_modifier(Modifier::BOLD),
                 ),
             );
-            let tool_lines = format_tool_breakdown(&self.stats.tool_counts, 10);
+            let tool_lines = format_tool_breakdown(self.stats.filtered_tool_counts(self.filter), 10);
             lines.extend(tool_lines);
             lines.push(Line::from(""));
         }
