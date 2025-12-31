@@ -126,3 +126,78 @@ fn handle_toggle_wrap_clears_override_on_second_toggle() {
         "Second toggle should clear override (return to global)"
     );
 }
+
+/// Test that set_entry_wrap_override is called and maintains HeightIndex invariant.
+///
+/// This verifies that the handler properly delegates to the new HeightIndex-integrated
+/// method rather than the old set_wrap_override API.
+#[test]
+fn test_toggle_wrap_maintains_height_index_invariant() {
+    let mut state = AppState::new();
+
+    // Add entries to main pane
+    let entries = vec![
+        {
+            let message = Message::new(Role::User, MessageContent::Text("test 1".to_string()));
+            let uuid = EntryUuid::new("uuid-1").unwrap();
+            ConversationEntry::Valid(Box::new(LogEntry::new(
+                uuid,
+                None,
+                SessionId::new("session-1").unwrap(),
+                None,
+                Utc::now(),
+                EntryType::User,
+                message,
+                EntryMetadata::default(),
+            )))
+        },
+        {
+            let message = Message::new(Role::User, MessageContent::Text("test 2".to_string()));
+            let uuid = EntryUuid::new("uuid-2").unwrap();
+            ConversationEntry::Valid(Box::new(LogEntry::new(
+                uuid,
+                None,
+                SessionId::new("session-1").unwrap(),
+                None,
+                Utc::now(),
+                EntryType::User,
+                message,
+                EntryMetadata::default(),
+            )))
+        },
+    ];
+    state.add_entries(entries);
+
+    // Focus and set focused message
+    state.focus = FocusPane::Main;
+    if let Some(view) = state.main_conversation_view_mut() {
+        view.set_focused_message(Some(EntryIndex::new(0)));
+    }
+
+    // Toggle wrap
+    let result = handle_toggle_wrap(state, 80);
+
+    // Verify HeightIndex invariant: height_index[i] == entries[i].rendered_lines.len()
+    if let Some(view) = result.main_conversation_view() {
+        for i in 0..view.len() {
+            let entry = view.get(EntryIndex::new(i)).expect("entry exists");
+            let entry_height = entry.height().get() as usize;
+
+            // Extract height from HeightIndex
+            let index_height = if i == 0 {
+                view.height_index.prefix_sum(0)
+            } else {
+                view.height_index.prefix_sum(i) - view.height_index.prefix_sum(i - 1)
+            };
+
+            assert_eq!(
+                index_height,
+                entry_height,
+                "HeightIndex invariant violated at entry {}: index={}, entry={}",
+                i,
+                index_height,
+                entry_height
+            );
+        }
+    }
+}

@@ -86,4 +86,7 @@ pub fn handle_expand_action(
 }
 
 // ===== Tests =====
-// Tests removed during expand state migration to view-state layer
+
+#[cfg(test)]
+#[path = "expand_handler_tests.rs"]
+mod tests;
