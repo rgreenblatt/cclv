@@ -2055,3 +2055,74 @@ fn snapshot_wrap_mode_per_entry_override() {
         "Per-entry NoWrap override should truncate despite global Wrap. Output:\n{output}"
     );
 }
+
+// ===== Bug Reproduction Tests =====
+
+/// Bug reproduction: Subagent entries not routed to separate tabs
+///
+/// EXPECTED: Entries with parent_tool_use_id should appear in separate subagent tabs.
+///           Per FR-003: "System MUST display subagent conversations in a tabbed pane"
+///           Per FR-004: "System MUST create a new tab when a subagent spawn event is detected"
+///
+/// ACTUAL: All entries appear in the main agent conversation. No subagent tabs are created.
+///
+/// ROOT CAUSE: Parser looks for 'agentId' field (which doesn't exist in Claude Code JSONL).
+///             Subagent entries are identified by 'parent_tool_use_id' field, not 'agentId'.
+///
+/// Steps to reproduce manually:
+/// 1. cargo run --release -- tests/fixtures/subagent_tab_repro.jsonl
+/// 2. Observe: All entries are in "Main Agent" - no subagent tabs exist
+/// 3. Entries with parent_tool_use_id should be in a separate tab
+#[test]
+#[ignore = "cclv-5ur.34: Subagent entries not routed to separate tabs"]
+fn bug_subagent_entries_not_in_separate_tabs() {
+    use cclv::config::keybindings::KeyBindings;
+    use cclv::source::{FileSource, InputSource, StdinSource};
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use std::path::PathBuf;
+
+    // Load minimal fixture with subagent entries
+    let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/subagent_tab_repro.jsonl"))
+        .expect("Should load fixture");
+    let log_entries = file_source
+        .drain_entries()
+        .expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal with standard dimensions
+    let backend = TestBackend::new(120, 30);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app = TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    app.render_test().expect("Render should succeed");
+
+    let buffer = app.terminal().backend().buffer();
+    let output = buffer_to_string(buffer);
+
+    // Snapshot captures buggy state (no subagent tabs)
+    insta::assert_snapshot!("bug_subagent_entries_not_in_tabs", output);
+
+    // This assertion FAILS due to the bug:
+    // The fixture contains entries with parent_tool_use_id which should create subagent tabs,
+    // but has_subagents() returns false because parser doesn't recognize them.
+    let has_subagents = app.app_state().session_view().has_subagents();
+    assert!(
+        has_subagents,
+        "BUG: Entries with parent_tool_use_id should create subagent tabs.\n\
+         Expected: has_subagents() == true (fixture contains 3 entries with parent_tool_use_id)\n\
+         Actual: has_subagents() == false (all entries routed to main conversation)\n\
+         Root cause: Parser looks for 'agentId' field, not 'parent_tool_use_id'\n\
+         Output:\n{output}"
+    );
+}
