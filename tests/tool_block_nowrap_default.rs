@@ -182,14 +182,16 @@ fn test_tooluse_respects_explicit_wrap_override() {
     let output = buffer_to_string(terminal.backend().buffer());
 
     // When explicitly overridden to Wrap, the long path SHOULD be split across lines
-    // We verify that "marker.txt" appears on a DIFFERENT line than the start of the path
+    // After the wrap_lines fix (cclv-5ur.45), content width accounts for entry index prefix,
+    // causing tighter wrapping. We verify that the path is split by checking that
+    // the start appears on a different line than a middle part of the path.
     let path_start_line = output
         .lines()
         .position(|line| line.contains("/some/very/long"));
-    let marker_line = output.lines().position(|line| line.contains("marker.txt"));
+    let path_continuation_line = output.lines().position(|line| line.contains("exceeds"));
 
     assert!(
-        path_start_line.is_some() && marker_line.is_some() && path_start_line != marker_line,
+        path_start_line.is_some() && path_continuation_line.is_some() && path_start_line != path_continuation_line,
         "Per-entry Wrap override should cause ToolUse JSON to wrap.\n\
          Expected: Long path split across multiple lines\n\
          Actual: Path on single line despite explicit Wrap override\n\n\

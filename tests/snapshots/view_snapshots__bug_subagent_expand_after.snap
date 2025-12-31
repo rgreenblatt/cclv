@@ -6,7 +6,7 @@ Model: Unknown | Subagent toolu_013heDTEdCz8mvrxEGezZteB | ? | 0 tools, 0 agents
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Main Agent │ toolu_013heDTEdCz8mvrxEGezZteB │ toolu_014WRyZPPnVxekx3ACaBtEz8 │ toolu_01UcpbyRyV4mTttzBQZ2tjiX                                                                                        │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-┌Subagent toolu_013heDTEdCz8mvrxEGezZteB [Haiku] (79 entries) ▶────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+┌Subagent toolu_013heDTEdCz8mvrxEGezZteB [Haiku] (79 entries)──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 ││   1 ## Review Task                                                                                                                                                                                  │
 ││                                                                                                                                                                                                     │
 ││     Review implementation for task: cclv-07v.8.12 - Export search-aware rendering for snapshot testing                                                                                              │
@@ -14,8 +14,8 @@ Model: Unknown | Subagent toolu_013heDTEdCz8mvrxEGezZteB | ? | 0 tools, 0 agents
 ││     ## Task Requirements                                                                                                                                                                            │
 ││                                                                                                                                                                                                     │
 ││     FROM BEAD: "WHERE: src/view/mod.rs. WHAT: render_conversation_view_with_search is private, preventing snapshot tests for search highlighting. CONTEXT: Unit tests exist (test_apply_search_to_se│
-││     _*) but per Constitution VI, snapshots SHOULD protect rendering. OPTIONS: (A) Export render_conversation_view_with_search, (B) Add .with_search() builder to ConversationView, (C) Accept unit t│
-││     verage as sufficient. DONE WHEN: Decision made and implemented if needed."                                                                                                                      │
+││     ctions_*) but per Constitution VI, snapshots SHOULD protect rendering. OPTIONS: (A) Export render_conversation_view_with_search, (B) Add .with_search() builder to ConversationView, (C) Accept │
+││     unit test coverage as sufficient. DONE WHEN: Decision made and implemented if needed."                                                                                                          │
 ││                                                                                                                                                                                                     │
 ││     ## Review Against                                                                                                                                                                               │
 ││                                                                                                                                                                                                     │

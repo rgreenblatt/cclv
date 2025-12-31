@@ -15,7 +15,7 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ││     Let me start with steps 1-3 in parallel.                                │
 │── 8 in / 1 out / $0.06 | Context: 191.4k (95%) ──                            │
 ││  12 Now let me follow the coordinator protocol. Starting with setup, branch/│
-││     erification, and checking for ready work:                               │
+││     epic verification, and checking for ready work:                         │
 │── 8 in / 1 out / $0.06 | Context: 233.1k (100%) ──                           │
 ││  13 🔧a Tool: Bash                                                           │
 ││       {                                                                     │

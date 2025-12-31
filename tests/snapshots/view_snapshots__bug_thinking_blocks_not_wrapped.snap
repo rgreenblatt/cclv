@@ -6,16 +6,16 @@ Model: Unknown | Main Agent
 ┌Conversations─────────────────────────────────────────────┐
 │ Main Agent                                               │
 └──────────────────────────────────────────────────────────┘
-┌Main Agent (1 entries) ▶──────────────────────────────────┐
+┌Main Agent (1 entries)────────────────────────────────────┐
 ││   1 This is a short line.                               │
 ││                                                         │
 ││     This is a very long line that should definitely wrap│
-││     displayed in a narrow terminal window because it exc│
-││     he typical width of most terminal displays.         │
+││      when displayed in a narrow terminal window because │
+││     it exceeds the typical width of most terminal displa│
+││     ys.                                                 │
 ││                                                         │
 ││     Another short line.                                 │
 │── 100 in / 50 out / $0.01 | Context: 100 (0%) ──         │
-│                                                          │
 │                                                          │
 │                                                          │
 │                                                          │
