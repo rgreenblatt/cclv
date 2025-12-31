@@ -278,7 +278,7 @@ fn test_default_bindings_application() {
 
     // ? for help
     assert_eq!(
-        kb.get(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT)),
+        kb.get(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE)),
         Some(KeyAction::Help)
     );
 
@@ -387,7 +387,7 @@ fn test_all_actions_have_default_bindings() {
         // Special characters
         test_keys.extend_from_slice(&[
             KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE),
-            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT),
+            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE),
             KeyEvent::new(KeyCode::Char('['), KeyModifiers::NONE),
             KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE),
             KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE),

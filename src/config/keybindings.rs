@@ -243,7 +243,7 @@ impl Default for KeyBindings {
             KeyAction::Quit,
         );
         bindings.insert(
-            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT),
+            KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE),
             KeyAction::Help,
         );
         bindings.insert(

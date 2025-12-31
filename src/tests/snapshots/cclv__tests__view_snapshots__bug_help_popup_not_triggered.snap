@@ -6,38 +6,38 @@ Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 ┌Conversations─────────────────────────────────────────────────────────────────┐
 │ Main Agent                                                                   │
 └──────────────────────────────────────────────────────────────────────────────┘
-┌Main Agent (6 entries)────────────────────────────────────────────────────────┐
-│                                                                              │
-││  2 Hello                                                                    │
-│                                                                              │
-││  3 Hi there!                                                                │
-│                                                                              │
-││  4 Can you help?                                                            │
-│                                                                              │
-││  5 Of course, I'd be happy to help.                                         │
-│                                                                              │
-││  6 Thanks                                                                   │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
+┌Main Agent ┌ Keyboard Shortcuts ──────────────────────────────────┐───────────┐
+│           │Navigation                                            │           │
+││  2 Hello │  j/↓         Scroll down                             │           │
+│           │  k/↑         Scroll up                               │           │
+││  3 Hi the│  h/←         Scroll left (for long lines)            │           │
+│           │  l/→         Scroll right                            │           │
+││  4 Can yo│  Ctrl+d/Page Down Page down                          │           │
+│           │  Ctrl+u/Page Up   Page up                            │           │
+││  5 Of cou│  g/Home      Go to top                               │           │
+│           │  G/End       Go to bottom                            │           │
+││  6 Thanks│                                                      │           │
+│           │Pane Focus                                            │           │
+│           │  Tab         Cycle focus between panes               │           │
+│           │  1           Focus main agent pane                   │           │
+│           │  2           Focus subagent pane                     │           │
+│           │  3           Focus stats panel                       │           │
+│           │                                                      │           │
+│           │Tabs (Subagent Pane)                                  │           │
+│           │  [/Shift+Tab Previous tab                            │           │
+│           │  ]           Next tab                                │           │
+│           │  1-9         Select tab by number                    │           │
+│           │                                                      │           │
+│           │Message Interaction                                   │           │
+│           │  Enter/Space Toggle expand/collapse message          │           │
+│           │  e           Expand all messages                     │           │
+│           │  c           Collapse all messages                   │           │
+│           │                                                      │           │
+│           │Search                                                │           │
+│           │  //Ctrl+f    Start search                            │           │
+│           │  Enter       Submit search                           │           │
+│           │  Esc         Cancel search                           │           │
+│           └─────────────── Press Esc or ? to close ──────────────┘           │
 │                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘

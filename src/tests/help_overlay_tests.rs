@@ -18,9 +18,9 @@ fn test_question_mark_shows_help_overlay() {
         "Help overlay should not be visible initially"
     );
 
-    // WHEN: User presses '?' (shift + '?')
+    // WHEN: User presses '?'
     let mut harness = harness;
-    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::NONE);
 
     // THEN: Help overlay becomes visible
     let state_after = harness.state();
@@ -37,13 +37,13 @@ fn test_question_mark_toggles_help_overlay() {
         .expect("Failed to load fixture");
 
     // WHEN: User presses '?' once
-    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::NONE);
 
     // VERIFY: Help visible
     assert!(harness.state().help_visible, "First '?' should show help");
 
     // WHEN: User presses '?' again
-    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::NONE);
 
     // THEN: Help hidden (toggle behavior)
     assert!(
@@ -57,7 +57,7 @@ fn test_escape_closes_help_when_visible() {
     // GIVEN: Application with help overlay visible
     let mut harness = AcceptanceTestHarness::from_fixture("tests/fixtures/minimal_session.jsonl")
         .expect("Failed to load fixture");
-    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::NONE);
 
     // VERIFY: Help is visible
     assert!(
@@ -80,7 +80,7 @@ fn test_help_overlay_renders_over_main_ui() {
     // GIVEN: Application with help visible
     let mut harness = AcceptanceTestHarness::from_fixture("tests/fixtures/minimal_session.jsonl")
         .expect("Failed to load fixture");
-    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::NONE);
 
     // WHEN: Rendering the UI
     harness.assert_snapshot("help_overlay_visible");
@@ -99,7 +99,7 @@ fn test_escape_with_search_active_doesnt_close_help() {
 
     // Then show help (this is a hypothetical edge case - may not be possible,
     // but worth testing to ensure state machines don't conflict)
-    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    harness.send_key_with_mods(KeyCode::Char('?'), KeyModifiers::NONE);
 
     // WHEN: User presses Escape (should close search, not help)
     harness.send_key(KeyCode::Esc);
