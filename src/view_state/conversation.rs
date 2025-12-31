@@ -1148,6 +1148,186 @@ mod tests {
         assert_eq!(result, HitTestResult::Miss);
     }
 
+    #[test]
+    fn hit_test_at_first_line_of_entry() {
+        let entries = vec![
+            make_valid_entry("uuid-1"),
+            make_valid_entry("uuid-2"),
+            make_valid_entry("uuid-3"),
+        ];
+        let mut state = ConversationViewState::new(None, None, entries);
+
+        let params = LayoutParams::new(80, WrapMode::Wrap);
+        state.recompute_layout(params, fixed_height_calculator(10));
+        // Entry 0: y=0..10
+        // Entry 1: y=10..20
+        // Entry 2: y=20..30
+
+        // Click at exact start of entry 1 (absolute_y=10)
+        let result = state.hit_test(10, 5, LineOffset::new(0));
+
+        assert_eq!(
+            result,
+            HitTestResult::Hit {
+                entry_index: EntryIndex::new(1),
+                line_in_entry: 0,
+                column: 5
+            },
+            "Click at first line of entry should hit that entry at line 0"
+        );
+    }
+
+    #[test]
+    fn hit_test_at_last_line_of_entry() {
+        let entries = vec![
+            make_valid_entry("uuid-1"),
+            make_valid_entry("uuid-2"),
+            make_valid_entry("uuid-3"),
+        ];
+        let mut state = ConversationViewState::new(None, None, entries);
+
+        let params = LayoutParams::new(80, WrapMode::Wrap);
+        state.recompute_layout(params, fixed_height_calculator(10));
+        // Entry 0: y=0..10 (lines 0-9)
+        // Entry 1: y=10..20 (lines 10-19)
+        // Entry 2: y=20..30 (lines 20-29)
+
+        // Click at last line of entry 0 (absolute_y=9)
+        let result = state.hit_test(9, 15, LineOffset::new(0));
+
+        assert_eq!(
+            result,
+            HitTestResult::Hit {
+                entry_index: EntryIndex::new(0),
+                line_in_entry: 9,
+                column: 15
+            },
+            "Click at last line of entry should hit that entry"
+        );
+    }
+
+    #[test]
+    fn hit_test_at_entry_boundaries_with_scroll() {
+        let entries = vec![
+            make_valid_entry("uuid-1"),
+            make_valid_entry("uuid-2"),
+            make_valid_entry("uuid-3"),
+        ];
+        let mut state = ConversationViewState::new(None, None, entries);
+
+        let params = LayoutParams::new(80, WrapMode::Wrap);
+        state.recompute_layout(params, fixed_height_calculator(10));
+        // Entry 0: y=0..10
+        // Entry 1: y=10..20
+        // Entry 2: y=20..30
+
+        // With scroll_offset=5, screen_y=5 means absolute_y=10 (first line of entry 1)
+        let result = state.hit_test(5, 0, LineOffset::new(5));
+
+        assert_eq!(
+            result,
+            HitTestResult::Hit {
+                entry_index: EntryIndex::new(1),
+                line_in_entry: 0,
+                column: 0
+            },
+            "Boundary with scroll should correctly identify entry"
+        );
+
+        // With scroll_offset=10, screen_y=9 means absolute_y=19 (last line of entry 1)
+        let result = state.hit_test(9, 10, LineOffset::new(10));
+
+        assert_eq!(
+            result,
+            HitTestResult::Hit {
+                entry_index: EntryIndex::new(1),
+                line_in_entry: 9,
+                column: 10
+            },
+            "Last line boundary with scroll should correctly identify entry"
+        );
+    }
+
+    #[test]
+    fn hit_test_single_entry_all_positions() {
+        let entries = vec![make_valid_entry("uuid-1")];
+        let mut state = ConversationViewState::new(None, None, entries);
+
+        let params = LayoutParams::new(80, WrapMode::Wrap);
+        state.recompute_layout(params, fixed_height_calculator(5));
+        // Entry 0: y=0..5 (lines 0-4)
+
+        // Test all valid positions within the entry
+        for line in 0..5 {
+            let result = state.hit_test(line as u16, 0, LineOffset::new(0));
+            assert_eq!(
+                result,
+                HitTestResult::Hit {
+                    entry_index: EntryIndex::new(0),
+                    line_in_entry: line,
+                    column: 0
+                },
+                "Line {} should be hit", line
+            );
+        }
+
+        // Test position beyond entry
+        let result = state.hit_test(5, 0, LineOffset::new(0));
+        assert_eq!(result, HitTestResult::Miss, "Line 5 should miss (beyond entry)");
+    }
+
+    #[test]
+    #[ignore = "Performance test - run manually with: cargo test hit_test_performance -- --ignored --nocapture"]
+    fn hit_test_performance_100k_entries() {
+        use std::time::Instant;
+
+        // Create 100k entries
+        let entries: Vec<ConversationEntry> = (0..100_000)
+            .map(|i| make_valid_entry(&format!("uuid-{}", i)))
+            .collect();
+
+        let mut state = ConversationViewState::new(None, None, entries);
+
+        let params = LayoutParams::new(80, WrapMode::Wrap);
+        state.recompute_layout(params, fixed_height_calculator(10));
+        // Total height: 1,000,000 lines
+
+        // Test hit-testing at various positions
+        let test_cases = vec![
+            (0, 0),           // First entry
+            (500_000, 25),    // Middle (entry 50,000)
+            (999_999, 50),    // Last entry, last line
+            (250_000, 10),    // Quarter
+            (750_000, 30),    // Three quarters
+        ];
+
+        let mut total_duration = std::time::Duration::ZERO;
+        let iterations = 100;
+
+        for &(absolute_y, column) in &test_cases {
+            for _ in 0..iterations {
+                let start = Instant::now();
+                let _result = state.hit_test(
+                    (absolute_y % 1000) as u16,  // screen_y
+                    column,
+                    LineOffset::new(absolute_y - (absolute_y % 1000))  // scroll_offset
+                );
+                total_duration += start.elapsed();
+            }
+        }
+
+        let avg_duration = total_duration / (test_cases.len() as u32 * iterations);
+
+        println!("Average hit_test duration for 100k entries: {:?}", avg_duration);
+        println!("Total test duration: {:?}", total_duration);
+
+        // Verify <1ms requirement
+        assert!(
+            avg_duration.as_millis() < 1,
+            "Hit test should complete in <1ms, got {:?}", avg_duration
+        );
+    }
+
     // === needs_relayout Tests ===
 
     #[test]
