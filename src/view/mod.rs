@@ -172,6 +172,13 @@ impl TuiApp<CrosstermBackend<Stdout>> {
                         self.draw()?;
                         continue;
                     }
+                    Event::Resize(width, height) => {
+                        // Terminal resized - relayout all views and repaint (FR-023)
+                        self.handle_resize(width, height);
+                        // Resize event - render immediately with new layout
+                        self.draw()?;
+                        continue;
+                    }
                     _ => {
                         // Unknown event - continue to timer handling
                         false
@@ -685,6 +692,27 @@ where
                 entry_result,
                 viewport_width,
             );
+        }
+    }
+
+    /// Handle a terminal resize event
+    ///
+    /// Relayouts all conversation views with the new terminal width
+    fn handle_resize(&mut self, width: u16, _height: u16) {
+        debug!("Handling resize to {}x{}", width, _height);
+        let wrap = self.app_state.global_wrap;
+
+        // Relayout main conversation with new width
+        if let Some(main_view) = self.app_state.main_conversation_view_mut() {
+            main_view.relayout(width, wrap);
+        }
+
+        // Relayout all subagent conversations with new width
+        let subagent_count = self.app_state.session_view().subagent_ids().count();
+        for idx in 0..subagent_count {
+            if let Some(sub_view) = self.app_state.subagent_conversation_view_mut(idx) {
+                sub_view.relayout(width, wrap);
+            }
         }
     }
 
@@ -2012,13 +2040,9 @@ mod tests {
         app.terminal.backend_mut().resize(40, 24);
 
         // Simulate Event::Resize(40, 24) - this should trigger relayout
-        // For now, manually call what we expect resize handler to do (test will fail)
-        // TODO: Once implemented, this will be done by the event handler
-        let _resize_width = 40u16;
-        let _resize_height = 24u16;
+        app.handle_resize(40, 24);
 
-        // Test expectation: After resize event, all views should be relayouted
-        // Since we haven't implemented the handler yet, heights should still be at 80 width
+        // Test expectation: After resize event, all views should be relayouted with new width
         let after_resize_main_height = app
             .app_state
             .main_conversation_view()
