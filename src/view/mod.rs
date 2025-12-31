@@ -139,43 +139,55 @@ impl TuiApp<CrosstermBackend<Stdout>> {
     ///
     /// Returns when user quits (q or Ctrl+C)
     /// Event-driven: redraws only on stdin data, user input, or timer events (FR-028)
+    /// Idle state (no events, no stdin data) consumes minimal CPU (FR-028a)
     pub fn run(&mut self) -> Result<(), TuiError> {
         // Timer interval for LIVE indicator blink (500ms)
         const TIMER_INTERVAL: Duration = Duration::from_millis(500);
 
         loop {
-            // Poll for new stdin data
-            self.poll_input()?;
-
-            // Poll for log pane entries from tracing subscriber
-            self.poll_log_entries();
-
-            // Check if we have new data to render
-            let has_new_data = !self.pending_entries.is_empty();
-
             // Poll for events with timer timeout (event-driven)
-            let event_occurred = if event::poll(TIMER_INTERVAL)? {
+            let event_result = if event::poll(TIMER_INTERVAL)? {
                 match event::read()? {
                     Event::Key(key) => {
                         if self.handle_key(key) {
                             return Ok(()); // User quit
                         }
-                        true // Keyboard event - trigger render
+                        // Keyboard event - render immediately, no need to poll stdin
+                        self.draw()?;
+                        continue;
                     }
                     Event::Mouse(mouse) => {
                         self.handle_mouse(mouse);
-                        true // Mouse event - trigger render
+                        // Mouse event - render immediately, no need to poll stdin
+                        self.draw()?;
+                        continue;
                     }
-                    _ => false,
+                    _ => {
+                        // Unknown event - continue to timer handling
+                        false
+                    }
                 }
             } else {
-                // Timer elapsed (500ms) - trigger render for LIVE indicator blink
+                // Timer elapsed - poll stdin and logs, then render if needed
                 true
             };
 
-            // Render only if: event occurred, timer elapsed, or new data arrived
-            if event_occurred || has_new_data {
-                self.draw()?;
+            // Only reach here on timer events - poll input sources
+            if event_result {
+                // Poll for new stdin data (only on timer tick, not on every event)
+                self.poll_input()?;
+
+                // Poll for log pane entries from tracing subscriber
+                self.poll_log_entries();
+
+                // Check if we have new data to render
+                let has_new_data = !self.pending_entries.is_empty();
+
+                // Render if: new data arrived OR timer elapsed (for LIVE blink)
+                // Timer always triggers render when live_mode for LIVE indicator animation
+                if has_new_data || self.app_state.live_mode {
+                    self.draw()?;
+                }
             }
         }
     }
@@ -290,7 +302,7 @@ where
             // Update line counter BEFORE accumulating entries
             self.line_counter += entries.len();
 
-            // Accumulate entries to pending buffer (batching for 60fps)
+            // Accumulate entries to pending buffer (batching until next render)
             self.accumulate_pending_entries(entries);
         }
 
