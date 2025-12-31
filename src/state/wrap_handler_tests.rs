@@ -194,12 +194,9 @@ fn test_toggle_wrap_maintains_height_index_invariant() {
             };
 
             assert_eq!(
-                index_height,
-                entry_height,
+                index_height, entry_height,
                 "HeightIndex invariant violated at entry {}: index={}, entry={}",
-                i,
-                index_height,
-                entry_height
+                i, index_height, entry_height
             );
         }
     }

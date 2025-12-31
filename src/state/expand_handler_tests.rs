@@ -104,11 +104,7 @@ fn test_expand_all_uses_toggle_entry_expanded() {
     if let Some(view) = result.main_conversation_view() {
         for i in 0..3 {
             let entry = view.get(EntryIndex::new(i)).expect("entry exists");
-            assert!(
-                entry.is_expanded(),
-                "Entry {} should be expanded",
-                i
-            );
+            assert!(entry.is_expanded(), "Entry {} should be expanded", i);
         }
     } else {
         panic!("Expected main conversation view");
@@ -120,10 +116,7 @@ fn test_expand_all_uses_toggle_entry_expanded() {
 /// Verifies that height_index[i] == entries[i].rendered_lines.len() after handler operations.
 #[test]
 fn test_toggle_maintains_height_index_invariant() {
-    let entries = vec![
-        make_valid_entry("uuid-1"),
-        make_valid_entry("uuid-2"),
-    ];
+    let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
 
     let mut state = AppState::new();
     state.add_entries(entries);
@@ -152,12 +145,9 @@ fn test_toggle_maintains_height_index_invariant() {
             };
 
             assert_eq!(
-                index_height,
-                entry_height,
+                index_height, entry_height,
                 "HeightIndex invariant violated at entry {}: index={}, entry={}",
-                i,
-                index_height,
-                entry_height
+                i, index_height, entry_height
             );
         }
     }

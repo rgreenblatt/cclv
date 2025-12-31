@@ -113,7 +113,10 @@ fn toggle_entry_expanded_updates_height_index() {
 
     // Total height should be consistent with individual heights
     let expected_total = total_before - height_before + height_after;
-    assert_eq!(total_after, expected_total, "Total height should be updated");
+    assert_eq!(
+        total_after, expected_total,
+        "Total height should be updated"
+    );
 
     // Verify HeightIndex is in sync
     let index_height = if 1 == 0 {
@@ -132,10 +135,7 @@ fn toggle_entry_expanded_updates_height_index() {
 
 #[test]
 fn set_entry_wrap_override_updates_height_index() {
-    let entries = vec![
-        make_valid_entry("uuid-1"),
-        make_valid_entry("uuid-2"),
-    ];
+    let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
     let mut state = ConversationViewState::new(None, None, entries);
 
     // Initial relayout with Wrap mode
@@ -215,11 +215,11 @@ fn visible_range_uses_height_index() {
     // The range should be computed using HeightIndex (O(log n))
     // We can't directly verify the algorithm, but we can verify correctness:
     // All entries in range should overlap with viewport
-    let scroll = state.scroll().resolve(
-        state.total_height(),
-        viewport.height as usize,
-        |idx| state.entry_cumulative_y(idx)
-    );
+    let scroll = state
+        .scroll()
+        .resolve(state.total_height(), viewport.height as usize, |idx| {
+            state.entry_cumulative_y(idx)
+        });
     let viewport_top = scroll.get();
     let viewport_bottom = viewport_top + viewport.height as usize;
 

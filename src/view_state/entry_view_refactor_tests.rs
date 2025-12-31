@@ -8,8 +8,8 @@
 
 use super::EntryView;
 use crate::model::{
-    ContentBlock, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry,
-    MalformedEntry, Message, MessageContent, Role, SessionId,
+    ContentBlock, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry,
+    Message, MessageContent, Role, SessionId,
 };
 use crate::state::WrapMode;
 use crate::view_state::types::{EntryIndex, LineHeight};
@@ -154,7 +154,11 @@ fn height_returns_one_for_minimal_entry() {
     let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80);
 
     let height = view.height();
-    assert_eq!(height, LineHeight::ONE, "Minimal entry should have height=1");
+    assert_eq!(
+        height,
+        LineHeight::ONE,
+        "Minimal entry should have height=1"
+    );
 }
 
 #[test]

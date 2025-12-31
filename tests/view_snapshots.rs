@@ -197,13 +197,13 @@ fn snapshot_stats_panel_with_cache_tokens() {
 #[test]
 fn snapshot_tab_bar_single_tab() {
     let agent1 = AgentId::new("agent-abc123").unwrap();
-    let agent_ids = vec![&agent1];
+    let conversation_tabs = vec![tabs::ConversationTab::Main, tabs::ConversationTab::Subagent(&agent1)];
     let matches = HashSet::new();
 
     let mut terminal = create_terminal(40, 5);
     terminal
         .draw(|frame| {
-            tabs::render_tab_bar(frame, frame.area(), &agent_ids, Some(0), &matches);
+            tabs::render_tab_bar(frame, frame.area(), &conversation_tabs, Some(0), &matches);
         })
         .unwrap();
 
@@ -216,13 +216,18 @@ fn snapshot_tab_bar_multiple_tabs() {
     let agent1 = AgentId::new("agent-1").unwrap();
     let agent2 = AgentId::new("agent-2").unwrap();
     let agent3 = AgentId::new("agent-3").unwrap();
-    let agent_ids = vec![&agent1, &agent2, &agent3];
+    let conversation_tabs = vec![
+        tabs::ConversationTab::Main,
+        tabs::ConversationTab::Subagent(&agent1),
+        tabs::ConversationTab::Subagent(&agent2),
+        tabs::ConversationTab::Subagent(&agent3),
+    ];
     let matches = HashSet::new();
 
     let mut terminal = create_terminal(60, 5);
     terminal
         .draw(|frame| {
-            tabs::render_tab_bar(frame, frame.area(), &agent_ids, Some(1), &matches);
+            tabs::render_tab_bar(frame, frame.area(), &conversation_tabs, Some(1), &matches);
         })
         .unwrap();
 
@@ -235,7 +240,12 @@ fn snapshot_tab_bar_with_search_matches() {
     let agent1 = AgentId::new("agent-1").unwrap();
     let agent2 = AgentId::new("agent-2").unwrap();
     let agent3 = AgentId::new("agent-3").unwrap();
-    let agent_ids = vec![&agent1, &agent2, &agent3];
+    let conversation_tabs = vec![
+        tabs::ConversationTab::Main,
+        tabs::ConversationTab::Subagent(&agent1),
+        tabs::ConversationTab::Subagent(&agent2),
+        tabs::ConversationTab::Subagent(&agent3),
+    ];
 
     let mut matches = HashSet::new();
     matches.insert(agent1.clone());
@@ -244,7 +254,7 @@ fn snapshot_tab_bar_with_search_matches() {
     let mut terminal = create_terminal(60, 5);
     terminal
         .draw(|frame| {
-            tabs::render_tab_bar(frame, frame.area(), &agent_ids, Some(0), &matches);
+            tabs::render_tab_bar(frame, frame.area(), &conversation_tabs, Some(0), &matches);
         })
         .unwrap();
 
@@ -256,13 +266,17 @@ fn snapshot_tab_bar_with_search_matches() {
 fn snapshot_tab_bar_no_selection() {
     let agent1 = AgentId::new("agent-1").unwrap();
     let agent2 = AgentId::new("agent-2").unwrap();
-    let agent_ids = vec![&agent1, &agent2];
+    let conversation_tabs = vec![
+        tabs::ConversationTab::Main,
+        tabs::ConversationTab::Subagent(&agent1),
+        tabs::ConversationTab::Subagent(&agent2),
+    ];
     let matches = HashSet::new();
 
     let mut terminal = create_terminal(50, 5);
     terminal
         .draw(|frame| {
-            tabs::render_tab_bar(frame, frame.area(), &agent_ids, None, &matches);
+            tabs::render_tab_bar(frame, frame.area(), &conversation_tabs, None, &matches);
         })
         .unwrap();
 
@@ -347,11 +361,7 @@ fn snapshot_message_expanded_multiline() {
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(80, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
         .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
@@ -393,11 +403,7 @@ That's the code."#;
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(80, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
         .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
@@ -439,11 +445,7 @@ That's the code."#;
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(80, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
         .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
@@ -494,11 +496,7 @@ fn main() {
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(80, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
         .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
@@ -517,7 +515,8 @@ fn main() {
     // Search for the 'fn' keyword which should be colored
     let area = buffer.area();
     let mut found_fn_keyword = false;
-    let mut color_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut color_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
 
     for y in area.top()..area.bottom() {
         let mut line_text = String::new();
@@ -591,11 +590,7 @@ fn snapshot_message_with_tool_use() {
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(80, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
         .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
@@ -639,11 +634,7 @@ Total lines: 3"#;
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(80, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
         .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
@@ -685,11 +676,7 @@ fn snapshot_message_with_thinking_block() {
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
-        .toggle_expand(
-            EntryIndex::new(0),
-            params,
-            ViewportDimensions::new(80, 24),
-        )
+        .toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24))
         .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
@@ -1487,7 +1474,8 @@ fn bug_horizontal_scroll_does_not_work() {
     // Press 'W' (Shift+w) to toggle GLOBAL wrap mode
     let toggle_global_wrap = KeyEvent::new(KeyCode::Char('W'), KeyModifiers::SHIFT);
     app.handle_key_test(toggle_global_wrap);
-    app.render_test().expect("Render after wrap toggle should succeed");
+    app.render_test()
+        .expect("Render after wrap toggle should succeed");
 
     // Capture initial state - tool block JSON line should be truncated, MARKER not visible
     // Tool blocks render as JSON which should NOT wrap in NoWrap mode
@@ -2079,9 +2067,7 @@ fn bug_subagent_entries_not_in_separate_tabs() {
     // Load minimal fixture with subagent entries
     let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/subagent_tab_repro.jsonl"))
         .expect("Should load fixture");
-    let log_entries = file_source
-        .drain_entries()
-        .expect("Should parse entries");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
     let entry_count = log_entries.len();
 
     let entries: Vec<ConversationEntry> = log_entries
@@ -2097,7 +2083,8 @@ fn bug_subagent_entries_not_in_separate_tabs() {
     let key_bindings = KeyBindings::default();
     let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
 
-    let mut app = TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
 
     app.render_test().expect("Render should succeed");
 

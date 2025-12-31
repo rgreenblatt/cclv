@@ -84,9 +84,7 @@ fn init_layout_for_state(state: &mut AppState) {
 
     // Initialize main conversation layout
     if let Some(session_view) = state.log_view_mut().current_session_mut() {
-        session_view
-            .main_mut()
-            .recompute_layout(params);
+        session_view.main_mut().recompute_layout(params);
 
         // Initialize subagent layouts
         let agent_ids: Vec<_> = session_view.subagent_ids().cloned().collect();
@@ -846,10 +844,7 @@ fn detect_entry_click_returns_no_entry_when_clicking_beyond_content() {
 /// Pattern from expand_handler_tests.rs::test_toggle_maintains_height_index_invariant
 #[test]
 fn test_mouse_expand_maintains_height_index_invariant() {
-    let entries = vec![
-        make_main_entry(),
-        make_main_entry(),
-    ];
+    let entries = vec![make_main_entry(), make_main_entry()];
 
     let mut state = AppState::new();
     state.add_entries(entries);
@@ -867,7 +862,9 @@ fn test_mouse_expand_maintains_height_index_invariant() {
     // Verify HeightIndex invariant holds
     if let Some(view) = result.main_conversation_view() {
         for i in 0..view.len() {
-            let entry = view.get(crate::view_state::types::EntryIndex::new(i)).expect("entry exists");
+            let entry = view
+                .get(crate::view_state::types::EntryIndex::new(i))
+                .expect("entry exists");
             let entry_height = entry.height().get() as usize;
 
             // Extract height from HeightIndex
@@ -878,12 +875,9 @@ fn test_mouse_expand_maintains_height_index_invariant() {
             };
 
             assert_eq!(
-                index_height,
-                entry_height,
+                index_height, entry_height,
                 "HeightIndex invariant violated at entry {}: index={}, entry={}",
-                i,
-                index_height,
-                entry_height
+                i, index_height, entry_height
             );
         }
     } else {

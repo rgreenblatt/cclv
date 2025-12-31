@@ -1,9 +1,12 @@
 //! Tests for compute_entry_lines unified renderer.
 
 use super::compute_entry_lines;
-use crate::model::{ContentBlock, ConversationEntry, EntryMetadata, EntryType, LogEntry, Message, MessageContent, Role};
-use crate::state::WrapMode;
 use crate::model::identifiers::{EntryUuid, SessionId};
+use crate::model::{
+    ContentBlock, ConversationEntry, EntryMetadata, EntryType, LogEntry, Message, MessageContent,
+    Role,
+};
+use crate::state::WrapMode;
 use crate::view::MessageStyles;
 use chrono::Utc;
 
@@ -30,7 +33,7 @@ fn test_user_entry_has_cyan_color() {
         10,
         3,
         &styles,
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -38,9 +41,9 @@ fn test_user_entry_has_cyan_color() {
     // FR-021: User messages should have Cyan color
     // Check that at least one line has Cyan foreground color
     let has_cyan = lines.iter().any(|line| {
-        line.spans.iter().any(|span| {
-            span.style.fg == Some(ratatui::style::Color::Cyan)
-        })
+        line.spans
+            .iter()
+            .any(|span| span.style.fg == Some(ratatui::style::Color::Cyan))
     });
 
     assert!(
@@ -65,7 +68,7 @@ fn test_assistant_entry_has_green_color() {
         10,
         3,
         &styles,
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -73,9 +76,9 @@ fn test_assistant_entry_has_green_color() {
     // FR-022: Assistant messages should have Green color
     // Check that at least one line has Green foreground color
     let has_green = lines.iter().any(|line| {
-        line.spans.iter().any(|span| {
-            span.style.fg == Some(ratatui::style::Color::Green)
-        })
+        line.spans
+            .iter()
+            .any(|span| span.style.fg == Some(ratatui::style::Color::Green))
     });
 
     assert!(
@@ -87,7 +90,10 @@ fn test_assistant_entry_has_green_color() {
 /// Helper to create a test LogEntry with Thinking block.
 fn create_entry_with_thinking(thinking_text: &str) -> ConversationEntry {
     let thinking_lines = thinking_text.lines().count();
-    eprintln!("Creating entry with {} lines of thinking content", thinking_lines);
+    eprintln!(
+        "Creating entry with {} lines of thinking content",
+        thinking_lines
+    );
 
     let blocks = vec![ContentBlock::Thinking {
         thinking: thinking_text.to_string(),
@@ -114,7 +120,10 @@ fn create_entry_with_thinking(thinking_text: &str) -> ConversationEntry {
 #[test]
 fn test_collapsed_thinking_block_respects_collapse_threshold() {
     // Create entry with 100 lines of Thinking content
-    let thinking_text = (0..100).map(|i| format!("Thinking line {}", i)).collect::<Vec<_>>().join("\n");
+    let thinking_text = (0..100)
+        .map(|i| format!("Thinking line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
     let entry = create_entry_with_thinking(&thinking_text);
 
     let collapse_threshold = 10;
@@ -129,7 +138,7 @@ fn test_collapsed_thinking_block_respects_collapse_threshold() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -154,7 +163,9 @@ fn test_collapsed_thinking_block_respects_collapse_threshold() {
     // Verify collapse indicator is present
     let has_collapse_indicator = lines.iter().any(|line: &ratatui::text::Line<'static>| {
         // Check if any span contains "more lines"
-        line.spans.iter().any(|span| span.content.contains("more lines"))
+        line.spans
+            .iter()
+            .any(|span| span.content.contains("more lines"))
     });
     assert!(
         has_collapse_indicator,
@@ -165,7 +176,10 @@ fn test_collapsed_thinking_block_respects_collapse_threshold() {
 #[test]
 fn test_expanded_thinking_block_shows_all_lines() {
     // Create entry with 100 lines of Thinking content
-    let thinking_text = (0..100).map(|i| format!("Thinking line {}", i)).collect::<Vec<_>>().join("\n");
+    let thinking_text = (0..100)
+        .map(|i| format!("Thinking line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
     let entry = create_entry_with_thinking(&thinking_text);
 
     let collapse_threshold = 10;
@@ -180,7 +194,7 @@ fn test_expanded_thinking_block_shows_all_lines() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -196,7 +210,9 @@ fn test_expanded_thinking_block_shows_all_lines() {
 
     // Verify NO collapse indicator
     let has_collapse_indicator = lines.iter().any(|line: &ratatui::text::Line<'static>| {
-        line.spans.iter().any(|span| span.content.contains("more lines"))
+        line.spans
+            .iter()
+            .any(|span| span.content.contains("more lines"))
     });
     assert!(
         !has_collapse_indicator,
@@ -207,7 +223,10 @@ fn test_expanded_thinking_block_shows_all_lines() {
 #[test]
 fn test_small_thinking_block_never_collapses() {
     // Create entry with 5 lines of Thinking content (below threshold)
-    let thinking_text = (0..5).map(|i| format!("Thinking line {}", i)).collect::<Vec<_>>().join("\n");
+    let thinking_text = (0..5)
+        .map(|i| format!("Thinking line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
     let entry = create_entry_with_thinking(&thinking_text);
 
     let collapse_threshold = 10;
@@ -222,7 +241,7 @@ fn test_small_thinking_block_never_collapses() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -240,7 +259,9 @@ fn test_small_thinking_block_never_collapses() {
 
     // Verify NO collapse indicator
     let has_collapse_indicator = lines.iter().any(|line: &ratatui::text::Line<'static>| {
-        line.spans.iter().any(|span| span.content.contains("more lines"))
+        line.spans
+            .iter()
+            .any(|span| span.content.contains("more lines"))
     });
     assert!(
         !has_collapse_indicator,
@@ -271,7 +292,10 @@ fn create_entry_with_text(text: &str) -> ConversationEntry {
 #[test]
 fn test_collapsed_text_content_respects_collapse_threshold() {
     // Create entry with 100 lines of text content
-    let text = (0..100).map(|i| format!("Text line {}", i)).collect::<Vec<_>>().join("\n");
+    let text = (0..100)
+        .map(|i| format!("Text line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
     let entry = create_entry_with_text(&text);
 
     let collapse_threshold = 10;
@@ -286,7 +310,7 @@ fn test_collapsed_text_content_respects_collapse_threshold() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -306,7 +330,9 @@ fn test_collapsed_text_content_respects_collapse_threshold() {
 
     // Verify collapse indicator is present
     let has_collapse_indicator = lines.iter().any(|line: &ratatui::text::Line<'static>| {
-        line.spans.iter().any(|span| span.content.contains("more lines"))
+        line.spans
+            .iter()
+            .any(|span| span.content.contains("more lines"))
     });
     assert!(
         has_collapse_indicator,
@@ -314,7 +340,9 @@ fn test_collapsed_text_content_respects_collapse_threshold() {
     );
 
     // Verify first line contains actual text content
-    let first_line_text = lines[0].spans.iter()
+    let first_line_text = lines[0]
+        .spans
+        .iter()
         .map(|span| span.content.as_ref())
         .collect::<String>();
     assert!(
@@ -327,7 +355,10 @@ fn test_collapsed_text_content_respects_collapse_threshold() {
 #[test]
 fn test_expanded_text_content_shows_all_lines() {
     // Create entry with 100 lines of text content
-    let text = (0..100).map(|i| format!("Text line {}", i)).collect::<Vec<_>>().join("\n");
+    let text = (0..100)
+        .map(|i| format!("Text line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
     let entry = create_entry_with_text(&text);
 
     let collapse_threshold = 10;
@@ -342,7 +373,7 @@ fn test_expanded_text_content_shows_all_lines() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -358,7 +389,9 @@ fn test_expanded_text_content_shows_all_lines() {
 
     // Verify NO collapse indicator
     let has_collapse_indicator = lines.iter().any(|line: &ratatui::text::Line<'static>| {
-        line.spans.iter().any(|span| span.content.contains("more lines"))
+        line.spans
+            .iter()
+            .any(|span| span.content.contains("more lines"))
     });
     assert!(
         !has_collapse_indicator,
@@ -369,7 +402,10 @@ fn test_expanded_text_content_shows_all_lines() {
 #[test]
 fn test_small_text_content_never_collapses() {
     // Create entry with 5 lines of text content (below threshold)
-    let text = (0..5).map(|i| format!("Text line {}", i)).collect::<Vec<_>>().join("\n");
+    let text = (0..5)
+        .map(|i| format!("Text line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
     let entry = create_entry_with_text(&text);
 
     let collapse_threshold = 10;
@@ -384,7 +420,7 @@ fn test_small_text_content_never_collapses() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -402,7 +438,9 @@ fn test_small_text_content_never_collapses() {
 
     // Verify NO collapse indicator
     let has_collapse_indicator = lines.iter().any(|line: &ratatui::text::Line<'static>| {
-        line.spans.iter().any(|span| span.content.contains("more lines"))
+        line.spans
+            .iter()
+            .any(|span| span.content.contains("more lines"))
     });
     assert!(
         !has_collapse_indicator,
@@ -433,7 +471,7 @@ fn test_text_block_wraps_long_lines() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -470,7 +508,7 @@ fn test_text_block_nowrap_does_not_wrap() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -532,7 +570,7 @@ fn test_tool_result_wraps_long_lines() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -569,7 +607,7 @@ fn test_tool_result_nowrap_does_not_wrap() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -636,7 +674,7 @@ fn test_tool_use_wraps_long_input_lines() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -678,7 +716,7 @@ fn test_tool_use_nowrap_does_not_wrap() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -691,7 +729,7 @@ fn test_tool_use_nowrap_does_not_wrap() {
         collapse_threshold,
         summary_lines,
         &default_styles(),
-        None, // No index prefix for existing tests
+        None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -723,13 +761,15 @@ fn test_tool_use_header_has_emoji_indicator() {
         10,
         3,
         &styles,
-        None, // No index prefix
+        None,  // No index prefix
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
 
     // ASSERTION: First line should be the header with emoji: "🔧 Tool: TestTool"
-    let first_line_text: String = lines[0].spans.iter()
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
         .map(|span| span.content.as_ref())
         .collect();
 
@@ -766,7 +806,7 @@ fn test_entry_index_0_shows_as_1_prefix() {
         3,
         &styles,
         Some(0), // Entry index 0 should display as "   1│"
-        false, // Not a subagent view
+        false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
 
@@ -775,7 +815,9 @@ fn test_entry_index_0_shows_as_1_prefix() {
     let content_lines = &lines[..lines.len() - 1]; // All but last (separator)
 
     for line in content_lines {
-        let line_text: String = line.spans.iter()
+        let line_text: String = line
+            .spans
+            .iter()
             .map(|span| span.content.as_ref())
             .collect();
 
@@ -794,7 +836,10 @@ fn test_entry_index_0_shows_as_1_prefix() {
         "Index prefix should be DarkGray"
     );
     assert!(
-        first_span.style.add_modifier.contains(ratatui::style::Modifier::DIM),
+        first_span
+            .style
+            .add_modifier
+            .contains(ratatui::style::Modifier::DIM),
         "Index prefix should have DIM modifier"
     );
 }
@@ -815,7 +860,7 @@ fn test_entry_index_41_shows_as_42_prefix() {
         3,
         &styles,
         Some(41), // Entry index 41 should display as "  42│"
-        false, // Not a subagent view
+        false,    // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
 
@@ -823,7 +868,9 @@ fn test_entry_index_41_shows_as_42_prefix() {
     let content_lines = &lines[..lines.len() - 1]; // All but last (separator)
 
     for line in content_lines {
-        let line_text: String = line.spans.iter()
+        let line_text: String = line
+            .spans
+            .iter()
             .map(|span| span.content.as_ref())
             .collect();
 
@@ -851,7 +898,7 @@ fn test_entry_index_999_shows_as_1000_prefix() {
         3,
         &styles,
         Some(999), // Entry index 999 should display as "1000│" (4 digits)
-        false, // Not a subagent view
+        false,     // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
 
@@ -859,7 +906,9 @@ fn test_entry_index_999_shows_as_1000_prefix() {
     let content_lines = &lines[..lines.len() - 1]; // All but last (separator)
 
     for line in content_lines {
-        let line_text: String = line.spans.iter()
+        let line_text: String = line
+            .spans
+            .iter()
             .map(|span| span.content.as_ref())
             .collect();
 
@@ -886,7 +935,7 @@ fn test_entry_index_none_shows_no_prefix() {
         10,
         3,
         &styles,
-        None, // No index = no prefix
+        None,  // No index = no prefix
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -895,7 +944,9 @@ fn test_entry_index_none_shows_no_prefix() {
     let content_lines = &lines[..lines.len() - 1]; // All but last (separator)
 
     for line in content_lines {
-        let line_text: String = line.spans.iter()
+        let line_text: String = line
+            .spans
+            .iter()
             .map(|span| span.content.as_ref())
             .collect();
 
@@ -910,7 +961,10 @@ fn test_entry_index_none_shows_no_prefix() {
 #[test]
 fn test_entry_index_prefix_on_multiline_entry() {
     // Create entry with 5 lines of text
-    let text = (0..5).map(|i| format!("Line {}", i)).collect::<Vec<_>>().join("\n");
+    let text = (0..5)
+        .map(|i| format!("Line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
     let entry = create_entry_with_text(&text);
 
     let styles = default_styles();
@@ -923,7 +977,7 @@ fn test_entry_index_prefix_on_multiline_entry() {
         3,
         &styles,
         Some(0), // Entry index 0 should display as "   1│"
-        false, // Not a subagent view
+        false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
 
@@ -934,7 +988,9 @@ fn test_entry_index_prefix_on_multiline_entry() {
     let content_lines = &lines[..5]; // First 5 lines are content
 
     for (i, line) in content_lines.iter().enumerate() {
-        let line_text: String = line.spans.iter()
+        let line_text: String = line
+            .spans
+            .iter()
             .map(|span| span.content.as_ref())
             .collect();
 
@@ -1132,7 +1188,10 @@ fn test_initial_prompt_label_without_entry_index() {
 #[test]
 fn test_entry_index_prefix_on_collapsed_entry() {
     // Create entry with 100 lines (will collapse)
-    let text = (0..100).map(|i| format!("Line {}", i)).collect::<Vec<_>>().join("\n");
+    let text = (0..100)
+        .map(|i| format!("Line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
     let entry = create_entry_with_text(&text);
 
     let collapse_threshold = 10;
@@ -1148,7 +1207,7 @@ fn test_entry_index_prefix_on_collapsed_entry() {
         summary_lines,
         &styles,
         Some(9), // Entry index 9 should display as "  10│"
-        false, // Not a subagent view
+        false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
 
@@ -1159,7 +1218,9 @@ fn test_entry_index_prefix_on_collapsed_entry() {
     let content_lines = &lines[..4]; // 3 summary + 1 collapse indicator
 
     for (i, line) in content_lines.iter().enumerate() {
-        let line_text: String = line.spans.iter()
+        let line_text: String = line
+            .spans
+            .iter()
             .map(|span| span.content.as_ref())
             .collect();
 
@@ -1191,7 +1252,7 @@ fn test_text_block_renders_bold_markdown() {
         10,
         3,
         &styles,
-        None, // No index prefix for clarity
+        None,  // No index prefix for clarity
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -1200,7 +1261,9 @@ fn test_text_block_renders_bold_markdown() {
     // (tui_markdown parses **bold** and applies Modifier::BOLD)
     let has_bold = lines.iter().any(|line| {
         line.spans.iter().any(|span| {
-            span.style.add_modifier.contains(ratatui::style::Modifier::BOLD)
+            span.style
+                .add_modifier
+                .contains(ratatui::style::Modifier::BOLD)
         })
     });
 
@@ -1225,7 +1288,7 @@ fn test_text_block_renders_italic_markdown() {
         10,
         3,
         &styles,
-        None, // No index prefix for clarity
+        None,  // No index prefix for clarity
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -1234,7 +1297,9 @@ fn test_text_block_renders_italic_markdown() {
     // (tui_markdown parses *italic* and applies Modifier::ITALIC)
     let has_italic = lines.iter().any(|line| {
         line.spans.iter().any(|span| {
-            span.style.add_modifier.contains(ratatui::style::Modifier::ITALIC)
+            span.style
+                .add_modifier
+                .contains(ratatui::style::Modifier::ITALIC)
         })
     });
 
@@ -1259,7 +1324,7 @@ fn test_text_block_renders_inline_code_markdown() {
         10,
         3,
         &styles,
-        None, // No index prefix for clarity
+        None,  // No index prefix for clarity
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -1294,7 +1359,7 @@ fn test_text_block_preserves_role_color_in_markdown() {
         10,
         3,
         &styles,
-        None, // No index prefix for clarity
+        None,  // No index prefix for clarity
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
     );
@@ -1303,15 +1368,20 @@ fn test_text_block_preserves_role_color_in_markdown() {
     // AND at least one span should have Bold or Italic modifier
     // This verifies that markdown styling is layered ON TOP of role color
     let has_cyan = lines.iter().any(|line| {
-        line.spans.iter().any(|span| {
-            span.style.fg == Some(ratatui::style::Color::Cyan)
-        })
+        line.spans
+            .iter()
+            .any(|span| span.style.fg == Some(ratatui::style::Color::Cyan))
     });
 
     let has_markdown_modifier = lines.iter().any(|line| {
         line.spans.iter().any(|span| {
-            span.style.add_modifier.contains(ratatui::style::Modifier::BOLD)
-                || span.style.add_modifier.contains(ratatui::style::Modifier::ITALIC)
+            span.style
+                .add_modifier
+                .contains(ratatui::style::Modifier::BOLD)
+                || span
+                    .style
+                    .add_modifier
+                    .contains(ratatui::style::Modifier::ITALIC)
         })
     });
 
@@ -1337,8 +1407,8 @@ fn test_search_match_highlighted_with_yellow_background() {
     let entry = create_entry_with_text(text);
 
     // Create search state with a match on "world" (offset 6, length 5)
-    use crate::state::{SearchState, SearchQuery, SearchMatch};
     use crate::model::EntryUuid;
+    use crate::state::{SearchMatch, SearchQuery, SearchState};
 
     let entry_uuid = EntryUuid::new("test-text-001").unwrap();
     let query = SearchQuery::new("world").unwrap();
@@ -1364,16 +1434,16 @@ fn test_search_match_highlighted_with_yellow_background() {
         10,
         3,
         &styles,
-        None, // No index prefix
+        None,  // No index prefix
         false, // Not a subagent view
         &search_state,
     );
 
     // ASSERTION: At least one span should have Yellow background (search highlight)
     let has_yellow_bg = lines.iter().any(|line| {
-        line.spans.iter().any(|span| {
-            span.style.bg == Some(ratatui::style::Color::Yellow)
-        })
+        line.spans
+            .iter()
+            .any(|span| span.style.bg == Some(ratatui::style::Color::Yellow))
     });
 
     assert!(
@@ -1389,8 +1459,8 @@ fn test_current_search_match_has_reversed_modifier() {
     let entry = create_entry_with_text(text);
 
     // Create search state with multiple matches on "test"
-    use crate::state::{SearchState, SearchQuery, SearchMatch};
     use crate::model::EntryUuid;
+    use crate::state::{SearchMatch, SearchQuery, SearchState};
 
     let entry_uuid = EntryUuid::new("test-text-001").unwrap();
     let query = SearchQuery::new("test").unwrap();
@@ -1432,7 +1502,7 @@ fn test_current_search_match_has_reversed_modifier() {
         10,
         3,
         &styles,
-        None, // No index prefix
+        None,  // No index prefix
         false, // Not a subagent view
         &search_state,
     );
@@ -1440,7 +1510,9 @@ fn test_current_search_match_has_reversed_modifier() {
     // ASSERTION: At least one span should have REVERSED modifier (current match)
     let has_reversed = lines.iter().any(|line| {
         line.spans.iter().any(|span| {
-            span.style.add_modifier.contains(ratatui::style::Modifier::REVERSED)
+            span.style
+                .add_modifier
+                .contains(ratatui::style::Modifier::REVERSED)
         })
     });
 
@@ -1457,8 +1529,8 @@ fn test_non_current_search_matches_no_reversed_modifier() {
     let entry = create_entry_with_text(text);
 
     // Create search state with multiple matches, current_match = 1
-    use crate::state::{SearchState, SearchQuery, SearchMatch};
     use crate::model::EntryUuid;
+    use crate::state::{SearchMatch, SearchQuery, SearchState};
 
     let entry_uuid = EntryUuid::new("test-text-001").unwrap();
     let query = SearchQuery::new("test").unwrap();
@@ -1493,14 +1565,15 @@ fn test_non_current_search_matches_no_reversed_modifier() {
         10,
         3,
         &styles,
-        None, // No index prefix
+        None,  // No index prefix
         false, // Not a subagent view
         &search_state,
     );
 
     // ASSERTION: Count spans with Yellow background
     // Should have at least 2 (both matches highlighted)
-    let yellow_bg_count = lines.iter()
+    let yellow_bg_count = lines
+        .iter()
         .flat_map(|line| &line.spans)
         .filter(|span| span.style.bg == Some(ratatui::style::Color::Yellow))
         .count();
@@ -1552,7 +1625,8 @@ That's the code."#;
         .iter()
         .enumerate()
         .map(|(i, line)| {
-            let line_text: String = line.spans
+            let line_text: String = line
+                .spans
                 .iter()
                 .map(|span| span.content.as_ref())
                 .collect();

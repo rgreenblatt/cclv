@@ -20,6 +20,7 @@
 ### Session 2025-12-29
 
 - Q: Should subagent view-states be created lazily on tab selection or eagerly on first entry arrival? → A: Eagerly on first entry arrival. Lazy initialization on tab selection conflicts with rendering architecture (immutable &AppState during render vs &mut self for init). Eager init has negligible memory impact since entries exist anyway.
+- Q: Should UI use split-pane (main 60% / subagent 40%) or unified tabs for all conversations? → A: Unified tabs. All conversations (main agent and subagents) appear as top-level tabs in a single tabbed container. Main agent is tab 0, subagents are tabs 1..N. This reduces cognitive overhead (main agent is no longer "special") and provides consistent interaction patterns. Full viewport width for active conversation.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -166,6 +167,15 @@ A user scrolls through content and previously viewed entries render instantly fr
 - **FR-081**: Subagent tab bar MUST display subagents from the active session only
 - **FR-082**: Tab bar MUST update when scroll position crosses session boundary
 
+#### Conversation Display (Unified Tab Model)
+
+- **FR-083**: System MUST display ALL conversations (main agent and subagents) as top-level tabs in a single tabbed container
+- **FR-084**: Main agent MUST appear as first tab (index 0), with subagents as subsequent tabs (index 1..N) in spawn order
+- **FR-085**: All conversations MUST use identical tab rendering and interaction patterns
+- **FR-086**: Tab switching MUST work identically for main agent tab and subagent tabs
+- **FR-087**: Active tab MUST receive full viewport width (no horizontal split between main and subagent)
+- **FR-088**: Tab bar MUST be visible at all times when any conversation exists
+
 #### Invalidation
 
 - **FR-060**: System MUST track what state was used to compute layout (viewport, expand states, wrap mode)
@@ -214,7 +224,6 @@ The following are explicitly **NOT** part of this feature:
 - **Search highlighting**: Visual indicators for search matches (separate feature)
 - **Keyboard shortcut changes**: No new keybindings introduced
 - **New CLI flags**: No command-line interface changes
-- **Subagent tab UI**: Tab rendering/styling (existing, unchanged)
 
 The view-state layer is purely a **data structure and layout computation layer**. Features that consume the view-state layer are separate specifications.
 

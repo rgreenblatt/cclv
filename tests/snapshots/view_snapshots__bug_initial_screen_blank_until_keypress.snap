@@ -1,8 +1,12 @@
 ---
 source: tests/view_snapshots.rs
+assertion_line: 801
 expression: output
 ---
 Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Conversations─────────────────────────────────────────────────────────────────┐
+│ Main Agent                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
 ┌Main Agent (20 entries) ▶─────────────────────────────────────────────────────┐
 │                                                                              │
 │                                                                              │
@@ -37,8 +41,5 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │  10│ing                                                                      │
 │  10│                                                                         │
 │  10│(+210 more lines)                                                        │
-│                                                                              │
-│  11│Now let me follow the coordinator protocol:                              │
-│  11│                                                                         │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

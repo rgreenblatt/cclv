@@ -1,10 +1,10 @@
 ---
 source: tests/view_snapshots.rs
-assertion_line: 195
+assertion_line: 211
 expression: output
 ---
-┌Subagents─────────────────────────────┐
-│ agent-abc123                         │
+┌Conversations─────────────────────────┐
+│ Main Agent │ agent-abc123            │
 │                                      │
 │                                      │
 └──────────────────────────────────────┘

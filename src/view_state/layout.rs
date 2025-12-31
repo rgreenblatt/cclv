@@ -56,7 +56,6 @@ impl Default for EntryLayout {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,5 +142,4 @@ mod tests {
         assert_eq!(layout1.height(), LineHeight::new(2).unwrap());
         assert_eq!(layout2.height(), LineHeight::new(2).unwrap());
     }
-
 }

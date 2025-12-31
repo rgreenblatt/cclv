@@ -45,7 +45,12 @@ fn create_test_entry(uuid_str: &str, text: &str) -> ConversationEntry {
 fn create_long_entry(uuid_str: &str) -> ConversationEntry {
     // Create text with 15 lines (exceeds COLLAPSE_THRESHOLD of 10)
     let long_text = (0..15)
-        .map(|i| format!("This is line {} of a long message that will be collapsible", i))
+        .map(|i| {
+            format!(
+                "This is line {} of a long message that will be collapsible",
+                i
+            )
+        })
         .collect::<Vec<_>>()
         .join("\n");
     create_test_entry(uuid_str, &long_text)
@@ -88,7 +93,10 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
     );
 
     // Scroll to show entry 2
-    let entry_2_y = view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get();
+    let entry_2_y = view_state
+        .entry_cumulative_y(EntryIndex::new(2))
+        .unwrap()
+        .get();
     view_state.set_scroll(ScrollPosition::at_line(entry_2_y));
 
     // Verify entry 2 is NOT expanded
@@ -103,7 +111,10 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
         .map(|e| e.height().get() as usize)
         .sum();
     assert_eq!(
-        view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
+        view_state
+            .entry_cumulative_y(EntryIndex::new(2))
+            .unwrap()
+            .get(),
         entry_2_y_expected,
         "Entry 2 cumulative_y should be sum of previous entry heights"
     );
@@ -111,8 +122,14 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
     // Capture state before toggle
     let entry_2_height_before = entry_2.height().get();
     let total_height_before = view_state.total_height();
-    let entry_2_y_before = view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get();
-    let entry_3_y_before = view_state.entry_cumulative_y(EntryIndex::new(3)).unwrap().get();
+    let entry_2_y_before = view_state
+        .entry_cumulative_y(EntryIndex::new(2))
+        .unwrap()
+        .get();
+    let entry_3_y_before = view_state
+        .entry_cumulative_y(EntryIndex::new(3))
+        .unwrap()
+        .get();
 
     // WHEN: Toggle expand on entry 2
     let result = view_state.toggle_expand(EntryIndex::new(2), params, viewport);
@@ -151,14 +168,20 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
 
     // THEN: Entry 2 remains at same cumulative_y (scroll stability)
     assert_eq!(
-        view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
+        view_state
+            .entry_cumulative_y(EntryIndex::new(2))
+            .unwrap()
+            .get(),
         entry_2_y_before,
         "Entry 2 cumulative_y should remain stable"
     );
 
     // THEN: Following entries shifted down by height delta
     assert_eq!(
-        view_state.entry_cumulative_y(EntryIndex::new(3)).unwrap().get(),
+        view_state
+            .entry_cumulative_y(EntryIndex::new(3))
+            .unwrap()
+            .get(),
         entry_3_y_before + height_delta as usize,
         "Entry 3 should shift down by height delta"
     );
@@ -211,7 +234,10 @@ fn us2_scenario2_collapse_expanded_entry_smooth_shift() {
         .map(|e| e.height().get() as usize)
         .sum();
     assert_eq!(
-        view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
+        view_state
+            .entry_cumulative_y(EntryIndex::new(2))
+            .unwrap()
+            .get(),
         entry_2_y_expected,
         "Entry 2 cumulative_y should be sum of previous entry heights"
     );
@@ -219,7 +245,10 @@ fn us2_scenario2_collapse_expanded_entry_smooth_shift() {
     // Capture heights before collapse
     let entry_1_height_before = entry_1_before.height().get();
     let total_height_before = view_state.total_height();
-    let entry_2_y_before = view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get();
+    let entry_2_y_before = view_state
+        .entry_cumulative_y(EntryIndex::new(2))
+        .unwrap()
+        .get();
 
     // WHEN: Collapse entry 1
     let result = view_state.toggle_expand(EntryIndex::new(1), params, viewport);
@@ -254,7 +283,10 @@ fn us2_scenario2_collapse_expanded_entry_smooth_shift() {
     );
 
     // THEN: Entry 2 shifted up smoothly
-    let entry_2_y_after = view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get();
+    let entry_2_y_after = view_state
+        .entry_cumulative_y(EntryIndex::new(2))
+        .unwrap()
+        .get();
     assert_eq!(
         entry_2_y_after,
         entry_2_y_before - height_delta as usize,
@@ -345,7 +377,10 @@ fn us2_scenario4_entries_above_viewport_toggle_visible_stable() {
     );
 
     // Record entry 6 position and entry 2 height before toggle
-    let entry_6_y_before = view_state.entry_cumulative_y(EntryIndex::new(6)).unwrap().get();
+    let entry_6_y_before = view_state
+        .entry_cumulative_y(EntryIndex::new(6))
+        .unwrap()
+        .get();
     let entry_2_height_before = view_state.get(EntryIndex::new(2)).unwrap().height().get();
 
     // WHEN: Toggle entry 2 (above viewport)
@@ -361,7 +396,10 @@ fn us2_scenario4_entries_above_viewport_toggle_visible_stable() {
     let entry_2_height_after = entry_2.height().get();
     let height_delta = entry_2_height_after - entry_2_height_before;
     assert_eq!(
-        view_state.entry_cumulative_y(EntryIndex::new(6)).unwrap().get(),
+        view_state
+            .entry_cumulative_y(EntryIndex::new(6))
+            .unwrap()
+            .get(),
         entry_6_y_before + height_delta as usize,
         "Entry 6 should shift down by height delta"
     );

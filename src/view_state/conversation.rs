@@ -284,7 +284,6 @@ impl ConversationViewState {
         self.relayout(params.width, params.global_wrap);
     }
 
-
     /// Toggle expand state for entry at index and relayout.
     /// Returns new expanded state, or None if index out of bounds.
     ///
@@ -393,8 +392,8 @@ impl ConversationViewState {
         // Binary search for first visible entry
         // Find first entry whose bottom_y > scroll_line
         let indices: Vec<usize> = (0..self.entries.len()).collect();
-        let start_index = indices
-            .partition_point(|&i| self.height_index.prefix_sum(i) <= scroll_line);
+        let start_index =
+            indices.partition_point(|&i| self.height_index.prefix_sum(i) <= scroll_line);
 
         // Binary search for first entry past viewport
         // Find first entry whose cumulative_y >= viewport_bottom
@@ -440,8 +439,7 @@ impl ConversationViewState {
         // Binary search for entry containing absolute_y
         // Find first entry whose bottom_y > absolute_y
         let indices: Vec<usize> = (0..self.entries.len()).collect();
-        let index = indices
-            .partition_point(|&i| self.height_index.prefix_sum(i) <= absolute_y);
+        let index = indices.partition_point(|&i| self.height_index.prefix_sum(i) <= absolute_y);
 
         if index >= self.entries.len() {
             return HitTestResult::miss();
@@ -983,7 +981,9 @@ mod tests {
         );
 
         // Verify invariant
-        let total: usize = state.entries().iter()
+        let total: usize = state
+            .entries()
+            .iter()
             .map(|e| e.height().get() as usize)
             .sum();
         assert_eq!(
@@ -1031,11 +1031,7 @@ mod tests {
         state.recompute_layout(params);
 
         let viewport = ViewportDimensions::new(80, 24);
-        let result = state.toggle_expand(
-            EntryIndex::new(0),
-            params,
-            viewport,
-        );
+        let result = state.toggle_expand(EntryIndex::new(0), params, viewport);
 
         assert_eq!(result, Some(true), "Should toggle to expanded");
         assert!(state.get(EntryIndex::new(0)).unwrap().is_expanded());
@@ -1047,11 +1043,7 @@ mod tests {
         let params = LayoutParams::new(80, WrapMode::Wrap);
 
         let viewport = ViewportDimensions::new(80, 24);
-        let result = state.toggle_expand(
-            EntryIndex::new(0),
-            params,
-            viewport,
-        );
+        let result = state.toggle_expand(EntryIndex::new(0), params, viewport);
 
         assert_eq!(result, None);
     }
@@ -1067,14 +1059,22 @@ mod tests {
         let viewport = ViewportDimensions::new(80, 24);
 
         // Verify expand state changes
-        assert!(!state.entries()[0].is_expanded(), "Entry should start collapsed");
+        assert!(
+            !state.entries()[0].is_expanded(),
+            "Entry should start collapsed"
+        );
 
         state.toggle_expand(EntryIndex::new(0), params, viewport);
 
-        assert!(state.entries()[0].is_expanded(), "Entry should be expanded after toggle");
+        assert!(
+            state.entries()[0].is_expanded(),
+            "Entry should be expanded after toggle"
+        );
 
         // Verify height_index invariant: total_height == sum(entry.height())
-        let total: usize = state.entries().iter()
+        let total: usize = state
+            .entries()
+            .iter()
             .map(|e| e.height().get() as usize)
             .sum();
         assert_eq!(
@@ -1124,10 +1124,7 @@ mod tests {
         );
 
         // Record the first visible entry's position
-        let first_visible_y_before = state
-            .entry_cumulative_y(first_visible_entry)
-            .unwrap()
-            .get();
+        let first_visible_y_before = state.entry_cumulative_y(first_visible_entry).unwrap().get();
         let scroll_offset_before = range_before.scroll_offset.get();
         let offset_in_viewport_before = first_visible_y_before.saturating_sub(scroll_offset_before);
 
@@ -1150,7 +1147,9 @@ mod tests {
 
         // Total height may or may not change depending on content (plain text won't change)
         // Just verify invariant holds
-        let total_after: usize = state.entries().iter()
+        let total_after: usize = state
+            .entries()
+            .iter()
             .map(|e| e.height().get() as usize)
             .sum();
         assert_eq!(
@@ -1168,10 +1167,7 @@ mod tests {
             "First visible entry should remain stable after toggling entry above viewport"
         );
 
-        let first_visible_y_after = state
-            .entry_cumulative_y(first_visible_entry)
-            .unwrap()
-            .get();
+        let first_visible_y_after = state.entry_cumulative_y(first_visible_entry).unwrap().get();
         let scroll_offset_after = range_after.scroll_offset.get();
         let offset_in_viewport_after = first_visible_y_after.saturating_sub(scroll_offset_after);
 
@@ -1196,10 +1192,7 @@ mod tests {
     fn hit_test_before_layout_returns_miss() {
         // Reproduces bug: hit_test called before recompute_layout
         // HeightIndex is empty (len=0) even though entries exist
-        let entries = vec![
-            make_valid_entry("uuid-1"),
-            make_valid_entry("uuid-2"),
-        ];
+        let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
         let state = ConversationViewState::new(None, None, entries);
 
         // NO layout computation - height_index.len() == 0
@@ -1207,8 +1200,11 @@ mod tests {
         // This should return Miss, not panic
         let result = state.hit_test(0, 10, LineOffset::new(0));
 
-        assert_eq!(result, HitTestResult::Miss,
-            "hit_test before layout should return Miss, not panic");
+        assert_eq!(
+            result,
+            HitTestResult::Miss,
+            "hit_test before layout should return Miss, not panic"
+        );
     }
 
     #[test]
@@ -1405,11 +1401,7 @@ mod tests {
 
         // Test position beyond entry
         let result = state.hit_test(entry_height, 0, LineOffset::new(0));
-        assert_eq!(
-            result,
-            HitTestResult::Miss,
-            "Line beyond entry should miss"
-        );
+        assert_eq!(result, HitTestResult::Miss, "Line beyond entry should miss");
     }
 
     #[test]
@@ -1544,11 +1536,7 @@ mod tests {
         );
 
         // Set override to NoWrap
-        state.set_wrap_override(
-            EntryIndex::new(0),
-            Some(WrapMode::NoWrap),
-            params,
-        );
+        state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::NoWrap), params);
 
         assert_eq!(
             state.get(EntryIndex::new(0)).unwrap().wrap_override(),
@@ -1565,27 +1553,15 @@ mod tests {
         state.recompute_layout(params);
 
         // First call: previous was None
-        let result = state.set_wrap_override(
-            EntryIndex::new(0),
-            Some(WrapMode::NoWrap),
-            params,
-        );
+        let result = state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::NoWrap), params);
         assert_eq!(result, Some(None));
 
         // Second call: previous was Some(NoWrap)
-        let result = state.set_wrap_override(
-            EntryIndex::new(0),
-            Some(WrapMode::Wrap),
-            params,
-        );
+        let result = state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::Wrap), params);
         assert_eq!(result, Some(Some(WrapMode::NoWrap)));
 
         // Third call: clearing override
-        let result = state.set_wrap_override(
-            EntryIndex::new(0),
-            None,
-            params,
-        );
+        let result = state.set_wrap_override(EntryIndex::new(0), None, params);
         assert_eq!(result, Some(Some(WrapMode::Wrap)));
     }
 
@@ -1594,11 +1570,7 @@ mod tests {
         let mut state = ConversationViewState::empty();
         let params = LayoutParams::new(80, WrapMode::Wrap);
 
-        let result = state.set_wrap_override(
-            EntryIndex::new(0),
-            Some(WrapMode::NoWrap),
-            params,
-        );
+        let result = state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::NoWrap), params);
 
         assert_eq!(result, None);
 
@@ -1606,11 +1578,7 @@ mod tests {
         let mut state = ConversationViewState::new(None, None, vec![make_valid_entry("uuid-1")]);
         state.recompute_layout(params);
 
-        let result = state.set_wrap_override(
-            EntryIndex::new(999),
-            Some(WrapMode::NoWrap),
-            params,
-        );
+        let result = state.set_wrap_override(EntryIndex::new(999), Some(WrapMode::NoWrap), params);
 
         assert_eq!(result, None);
     }
@@ -1635,11 +1603,7 @@ mod tests {
         assert_eq!(y0_before, 0);
 
         // Set wrap override on entry 1
-        state.set_wrap_override(
-            EntryIndex::new(1),
-            Some(WrapMode::NoWrap),
-            params,
-        );
+        state.set_wrap_override(EntryIndex::new(1), Some(WrapMode::NoWrap), params);
 
         // Verify entry 0 unchanged (before the wrap override)
         assert_eq!(
@@ -1664,7 +1628,9 @@ mod tests {
         );
 
         // Verify invariant
-        let total: usize = state.entries().iter()
+        let total: usize = state
+            .entries()
+            .iter()
             .map(|e| e.height().get() as usize)
             .sum();
         assert_eq!(
@@ -1805,11 +1771,7 @@ mod tests {
         assert_eq!(entry.effective_wrap(WrapMode::NoWrap), WrapMode::NoWrap);
 
         // Set override to NoWrap
-        state.set_wrap_override(
-            EntryIndex::new(0),
-            Some(WrapMode::NoWrap),
-            params,
-        );
+        state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::NoWrap), params);
 
         let entry = state.get(EntryIndex::new(0)).unwrap();
 
@@ -1818,11 +1780,7 @@ mod tests {
         assert_eq!(entry.effective_wrap(WrapMode::NoWrap), WrapMode::NoWrap);
 
         // Set override to Wrap
-        state.set_wrap_override(
-            EntryIndex::new(0),
-            Some(WrapMode::Wrap),
-            params,
-        );
+        state.set_wrap_override(EntryIndex::new(0), Some(WrapMode::Wrap), params);
 
         let entry = state.get(EntryIndex::new(0)).unwrap();
 
@@ -1831,11 +1789,7 @@ mod tests {
         assert_eq!(entry.effective_wrap(WrapMode::NoWrap), WrapMode::Wrap);
 
         // Clear override
-        state.set_wrap_override(
-            EntryIndex::new(0),
-            None,
-            params,
-        );
+        state.set_wrap_override(EntryIndex::new(0), None, params);
 
         let entry = state.get(EntryIndex::new(0)).unwrap();
 

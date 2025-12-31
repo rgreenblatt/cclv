@@ -1,8 +1,12 @@
 ---
 source: tests/acceptance_harness.rs
+assertion_line: 236
 expression: output
 ---
 Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
+┌Conversations─────────────────────────────────────────────────────────────────┐
+│ Main Agent                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
 ┌Main Agent (6 entries)────────────────────────────────────────────────────────┐
 │                                                                              │
 │   2│Hello                                                                    │
@@ -14,9 +18,6 @@ Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 │   5│Of course, I'd be happy to help.                                         │
 │                                                                              │
 │   6│Thanks                                                                   │
-│                                                                              │
-│                                                                              │
-│                                                                              │
 │                                                                              │
 │                                                                              │
 │                                                                              │

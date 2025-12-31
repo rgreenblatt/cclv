@@ -1,8 +1,12 @@
 ---
 source: tests/acceptance_scroll.rs
+assertion_line: 102
 expression: scrolled_up_output
 ---
 Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
+┌Conversations─────────────────────────────────────────────────────────────────┐
+│ Main Agent                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
 ┌Main Agent (20 entries) ▶─────────────────────────────────────────────────────┐
 │   6│  }                                                                      │
 │                                                                              │
@@ -21,8 +25,5 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │  10│(+210 more lines)                                                        │
 │                                                                              │
 │  11│Now let me follow the coordinator protocol:                              │
-│  11│                                                                         │
-│  11│1. **Setup**: Run the prerequisites check                                │
-│  11│2. **Get feature branch and epic**: Get current branch and find epic     │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

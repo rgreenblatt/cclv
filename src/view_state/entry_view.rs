@@ -98,7 +98,7 @@ impl EntryView {
         width: u16,
     ) -> Self {
         let expanded = false; // Start collapsed
-        // TODO: Pass MessageStyles from caller instead of default
+                              // TODO: Pass MessageStyles from caller instead of default
         let styles = crate::view::MessageStyles::new();
         let rendered_lines = compute_entry_lines(
             &entry,
@@ -108,8 +108,8 @@ impl EntryView {
             Self::COLLAPSE_THRESHOLD,
             Self::SUMMARY_LINES,
             &styles,
-            Some(index.get()), // Pass entry index for prefixing
-            false, // TODO: Pass is_subagent_view from caller
+            Some(index.get()),                    // Pass entry index for prefixing
+            false,                                // TODO: Pass is_subagent_view from caller
             &crate::state::SearchState::Inactive, // TODO: Pass search_state from caller
         );
         Self {
@@ -187,7 +187,7 @@ impl EntryView {
             Self::SUMMARY_LINES,
             &styles,
             Some(self.index.get()), // Pass entry index for prefixing
-            false, // TODO: Pass is_subagent_view from caller
+            false,                  // TODO: Pass is_subagent_view from caller
             &crate::state::SearchState::Inactive, // TODO: Pass search_state from caller
         );
     }
@@ -308,7 +308,11 @@ mod legacy_tests {
             "Default should have no wrap override"
         );
         // rendered_lines will be minimal placeholder (1 line)
-        assert_eq!(view.rendered_lines().len(), 1, "Should have placeholder line");
+        assert_eq!(
+            view.rendered_lines().len(),
+            1,
+            "Should have placeholder line"
+        );
     }
 
     // Additional legacy tests omitted for brevity.

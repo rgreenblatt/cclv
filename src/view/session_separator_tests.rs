@@ -43,7 +43,6 @@ fn make_valid_entry(uuid: &str, session_id: &str, text: &str) -> ConversationEnt
     ConversationEntry::Valid(Box::new(log_entry))
 }
 
-
 // ===== Session Separator Tests =====
 
 #[test]

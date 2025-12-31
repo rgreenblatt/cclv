@@ -223,14 +223,15 @@ impl<'a> Widget for ConversationView<'a> {
         let has_long_lines_flag = has_long_lines(&lines, viewport_width as usize);
 
         // Apply horizontal scroll offset if in NoWrap mode
-        let final_lines: Vec<Line<'static>> = if self.global_wrap == WrapMode::NoWrap && horizontal_offset > 0 {
-            lines
-                .into_iter()
-                .map(|line| apply_horizontal_offset(line, horizontal_offset as usize))
-                .collect()
-        } else {
-            lines
-        };
+        let final_lines: Vec<Line<'static>> =
+            if self.global_wrap == WrapMode::NoWrap && horizontal_offset > 0 {
+                lines
+                    .into_iter()
+                    .map(|line| apply_horizontal_offset(line, horizontal_offset as usize))
+                    .collect()
+            } else {
+                lines
+            };
 
         // Add scroll indicators to title if content extends beyond viewport
         let has_left = horizontal_offset > 0;

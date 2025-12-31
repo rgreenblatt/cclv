@@ -174,7 +174,8 @@ pub fn compute_entry_lines(
                             if match_start < line_end && match_end > line_start {
                                 // Convert to line-relative offset
                                 let line_relative_start = match_start.saturating_sub(line_start);
-                                let line_relative_end = (match_end - line_start).min(line_text.len());
+                                let line_relative_end =
+                                    (match_end - line_start).min(line_text.len());
                                 let line_relative_length =
                                     line_relative_end.saturating_sub(line_relative_start);
 
@@ -229,7 +230,16 @@ pub fn compute_entry_lines(
         MessageContent::Blocks(blocks) => {
             // Render each content block with role-based styling
             for block in blocks {
-                let block_lines = render_block(block, expanded, wrap_mode, width, collapse_threshold, summary_lines, role_style, styles);
+                let block_lines = render_block(
+                    block,
+                    expanded,
+                    wrap_mode,
+                    width,
+                    collapse_threshold,
+                    summary_lines,
+                    role_style,
+                    styles,
+                );
                 lines.extend(block_lines);
             }
 
@@ -279,7 +289,11 @@ fn render_markdown_with_style(markdown_text: &str, base_style: Style) -> Vec<Lin
         .filter_map(|line| {
             // Filter out fence marker lines that tui-markdown adds
             // Fence markers start with ``` and contain only that marker (possibly with language)
-            let line_text: String = line.spans.iter().map(|span| span.content.as_ref()).collect();
+            let line_text: String = line
+                .spans
+                .iter()
+                .map(|span| span.content.as_ref())
+                .collect();
             let trimmed = line_text.trim();
 
             // Skip lines that are fence markers: ``` or ```lang
@@ -419,8 +433,7 @@ fn render_block(
             )));
 
             // Tool input/parameters - collapsible
-            let input_json =
-                serde_json::to_string_pretty(tool_call.input()).unwrap_or_default();
+            let input_json = serde_json::to_string_pretty(tool_call.input()).unwrap_or_default();
             let input_lines: Vec<_> = input_json.lines().collect();
 
             // Wrap lines to match height calculation
@@ -431,10 +444,7 @@ fn render_block(
             if should_collapse {
                 // Show summary lines with ToolUse styling
                 for line in wrapped_lines.iter().take(summary_lines) {
-                    lines.push(Line::from(Span::styled(
-                        format!("  {}", line),
-                        base_style,
-                    )));
+                    lines.push(Line::from(Span::styled(format!("  {}", line), base_style)));
                 }
                 // Add collapse indicator
                 let remaining = total_lines - summary_lines;
@@ -445,10 +455,7 @@ fn render_block(
             } else {
                 // Show all lines with ToolUse styling
                 for line in wrapped_lines {
-                    lines.push(Line::from(Span::styled(
-                        format!("  {}", line),
-                        base_style,
-                    )));
+                    lines.push(Line::from(Span::styled(format!("  {}", line), base_style)));
                 }
             }
 
