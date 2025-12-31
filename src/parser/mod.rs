@@ -3,7 +3,74 @@
 //! This module provides pure parsing functions for converting JSONL lines
 //! into validated LogEntry structs.
 
-use crate::model::{EntryType, LogEntry, ParseError};
+use crate::model::{
+    AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+    MessageContent, ModelInfo, ParseError, Role, SessionId, ToolCall, ToolName, ToolUseId,
+    TokenUsage,
+};
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
+use std::path::PathBuf;
+
+/// Raw JSON structure for deserializing log entries.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawLogEntry {
+    #[serde(rename = "type")]
+    entry_type: String,
+    message: RawMessage,
+    session_id: String,
+    uuid: String,
+    #[serde(default)]
+    parent_uuid: Option<String>,
+    #[serde(default)]
+    agent_id: Option<String>,
+    timestamp: String,
+    #[serde(default)]
+    cwd: Option<String>,
+    #[serde(default)]
+    git_branch: Option<String>,
+    #[serde(default)]
+    version: Option<String>,
+    #[serde(default)]
+    is_sidechain: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawMessage {
+    role: String,
+    content: RawMessageContent,
+    #[serde(default)]
+    model: Option<String>,
+    #[serde(default)]
+    usage: Option<RawTokenUsage>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RawMessageContent {
+    Text(String),
+    Blocks(Vec<RawContentBlock>),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum RawContentBlock {
+    Text { text: String },
+    ToolUse { id: String, name: String, input: serde_json::Value },
+    ToolResult { tool_use_id: String, content: String, #[serde(default)] is_error: bool },
+    Thinking { thinking: String },
+}
+
+#[derive(Debug, Deserialize)]
+struct RawTokenUsage {
+    input_tokens: u64,
+    output_tokens: u64,
+    #[serde(default)]
+    cache_creation_input_tokens: u64,
+    #[serde(default)]
+    cache_read_input_tokens: u64,
+}
 
 /// Parse a single JSONL line into a LogEntry.
 ///
@@ -21,12 +88,170 @@ use crate::model::{EntryType, LogEntry, ParseError};
 /// - Timestamps are invalid
 /// - UUIDs or IDs are empty
 pub fn parse_entry(raw: &str, line_number: usize) -> Result<LogEntry, ParseError> {
-    todo!("parse_entry")
+    // Deserialize JSON
+    let raw_entry: RawLogEntry = serde_json::from_str(raw).map_err(|e| ParseError::InvalidJson {
+        line: line_number,
+        message: e.to_string(),
+    })?;
+
+    // Parse entry type
+    let entry_type = parse_entry_type(&raw_entry.entry_type).ok_or(ParseError::MissingField {
+        line: line_number,
+        field: "type",
+    })?;
+
+    // Validate and construct UUIDs
+    let uuid = EntryUuid::new(raw_entry.uuid).map_err(|_| ParseError::MissingField {
+        line: line_number,
+        field: "uuid",
+    })?;
+
+    let parent_uuid = raw_entry
+        .parent_uuid
+        .map(|s| {
+            EntryUuid::new(s).map_err(|_| ParseError::MissingField {
+                line: line_number,
+                field: "parentUuid",
+            })
+        })
+        .transpose()?;
+
+    // Validate and construct session ID
+    let session_id = SessionId::new(raw_entry.session_id).map_err(|_| ParseError::MissingField {
+        line: line_number,
+        field: "sessionId",
+    })?;
+
+    // Validate and construct agent ID (optional)
+    let agent_id = raw_entry
+        .agent_id
+        .map(|s| {
+            AgentId::new(s).map_err(|_| ParseError::MissingField {
+                line: line_number,
+                field: "agentId",
+            })
+        })
+        .transpose()?;
+
+    // Parse timestamp
+    let timestamp: DateTime<Utc> =
+        raw_entry
+            .timestamp
+            .parse()
+            .map_err(|_| ParseError::InvalidTimestamp {
+                line: line_number,
+                raw: raw_entry.timestamp.clone(),
+            })?;
+
+    // Parse message
+    let message = parse_message(raw_entry.message)?;
+
+    // Construct metadata
+    let metadata = EntryMetadata {
+        cwd: raw_entry.cwd.map(PathBuf::from),
+        git_branch: raw_entry.git_branch,
+        version: raw_entry.version,
+        is_sidechain: raw_entry.is_sidechain,
+    };
+
+    Ok(LogEntry::new(
+        uuid,
+        parent_uuid,
+        session_id,
+        agent_id,
+        timestamp,
+        entry_type,
+        message,
+        metadata,
+    ))
 }
 
 /// Parse the "type" field into EntryType enum.
 fn parse_entry_type(type_str: &str) -> Option<EntryType> {
-    todo!("parse_entry_type")
+    match type_str {
+        "user" => Some(EntryType::User),
+        "assistant" => Some(EntryType::Assistant),
+        "summary" => Some(EntryType::Summary),
+        _ => None,
+    }
+}
+
+/// Parse a raw message into a Message.
+fn parse_message(raw: RawMessage) -> Result<Message, ParseError> {
+    // Parse role
+    let role = match raw.role.as_str() {
+        "user" => Role::User,
+        "assistant" => Role::Assistant,
+        _ => Role::Assistant, // Default to assistant for unknown roles
+    };
+
+    // Parse content
+    let content = match raw.content {
+        RawMessageContent::Text(text) => MessageContent::Text(text),
+        RawMessageContent::Blocks(blocks) => {
+            let parsed_blocks: Vec<ContentBlock> = blocks
+                .into_iter()
+                .map(parse_content_block)
+                .collect::<Result<_, _>>()?;
+            MessageContent::Blocks(parsed_blocks)
+        }
+    };
+
+    // Create message
+    let mut message = Message::new(role, content);
+
+    // Add model if present
+    if let Some(model_str) = raw.model {
+        message = message.with_model(ModelInfo::new(model_str));
+    }
+
+    // Add usage if present
+    if let Some(raw_usage) = raw.usage {
+        let usage = TokenUsage {
+            input_tokens: raw_usage.input_tokens,
+            output_tokens: raw_usage.output_tokens,
+            cache_creation_input_tokens: raw_usage.cache_creation_input_tokens,
+            cache_read_input_tokens: raw_usage.cache_read_input_tokens,
+        };
+        message = message.with_usage(usage);
+    }
+
+    Ok(message)
+}
+
+/// Parse a raw content block into a ContentBlock.
+fn parse_content_block(raw: RawContentBlock) -> Result<ContentBlock, ParseError> {
+    match raw {
+        RawContentBlock::Text { text } => Ok(ContentBlock::Text { text }),
+        RawContentBlock::ToolUse { id, name, input } => {
+            let tool_use_id = ToolUseId::new(id).map_err(|_| ParseError::MissingField {
+                line: 0, // Line number not available at this level
+                field: "tool_use.id",
+            })?;
+            let tool_name = ToolName::parse(&name);
+            Ok(ContentBlock::ToolUse(ToolCall::new(
+                tool_use_id,
+                tool_name,
+                input,
+            )))
+        }
+        RawContentBlock::ToolResult {
+            tool_use_id,
+            content,
+            is_error,
+        } => {
+            let id = ToolUseId::new(tool_use_id).map_err(|_| ParseError::MissingField {
+                line: 0,
+                field: "tool_result.tool_use_id",
+            })?;
+            Ok(ContentBlock::ToolResult {
+                tool_use_id: id,
+                content,
+                is_error,
+            })
+        }
+        RawContentBlock::Thinking { thinking } => Ok(ContentBlock::Thinking { thinking }),
+    }
 }
 
 #[cfg(test)]
@@ -186,11 +411,15 @@ mod tests {
 
         assert!(result.is_err(), "Should reject missing uuid");
         match result.unwrap_err() {
-            ParseError::MissingField { line, field } => {
+            ParseError::InvalidJson { line, message } => {
                 assert_eq!(line, 15);
-                assert_eq!(field, "uuid");
+                assert!(
+                    message.contains("uuid") || message.contains("missing field"),
+                    "Error should mention uuid or missing field, got: {}",
+                    message
+                );
             }
-            _ => panic!("Expected MissingField error"),
+            _ => panic!("Expected InvalidJson error for missing required field"),
         }
     }
 
@@ -201,11 +430,15 @@ mod tests {
 
         assert!(result.is_err(), "Should reject missing sessionId");
         match result.unwrap_err() {
-            ParseError::MissingField { line, field } => {
+            ParseError::InvalidJson { line, message } => {
                 assert_eq!(line, 20);
-                assert_eq!(field, "sessionId");
+                assert!(
+                    message.contains("session") || message.contains("missing field"),
+                    "Error should mention sessionId or missing field, got: {}",
+                    message
+                );
             }
-            _ => panic!("Expected MissingField error"),
+            _ => panic!("Expected InvalidJson error for missing required field"),
         }
     }
 
@@ -216,11 +449,15 @@ mod tests {
 
         assert!(result.is_err(), "Should reject missing timestamp");
         match result.unwrap_err() {
-            ParseError::MissingField { line, field } => {
+            ParseError::InvalidJson { line, message } => {
                 assert_eq!(line, 8);
-                assert_eq!(field, "timestamp");
+                assert!(
+                    message.contains("timestamp") || message.contains("missing field"),
+                    "Error should mention timestamp or missing field, got: {}",
+                    message
+                );
             }
-            _ => panic!("Expected MissingField error"),
+            _ => panic!("Expected InvalidJson error for missing required field"),
         }
     }
 

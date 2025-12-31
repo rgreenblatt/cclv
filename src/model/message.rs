@@ -165,6 +165,12 @@ impl Message {
         self
     }
 
+    /// Set model for this message (for testing and parsing)
+    pub fn with_model(mut self, model: ModelInfo) -> Self {
+        self.model = Some(model);
+        self
+    }
+
     /// Extract all tool calls from this message
     pub fn tool_calls(&self) -> Vec<&ToolCall> {
         match &self.content {
