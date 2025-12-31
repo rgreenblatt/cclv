@@ -1,0 +1,11 @@
+{"type":"system","subtype":"init","cwd":"/workspace","session_id":"session-001","tools":["Bash"],"model":"claude-opus-4-5-20251101","uuid":"uuid-001"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"First message"}]},"session_id":"session-001","uuid":"uuid-002"}
+{"type":"assistant","message":{"model":"claude-opus-4-5-20251101","role":"assistant","content":[{"type":"text","text":"Response one."}]},"session_id":"session-001","uuid":"uuid-003"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Second message"}]},"session_id":"session-001","uuid":"uuid-004"}
+{"type":"assistant","message":{"model":"claude-opus-4-5-20251101","role":"assistant","content":[{"type":"text","text":"Response two."}]},"session_id":"session-001","uuid":"uuid-005"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Third message"}]},"session_id":"session-001","uuid":"uuid-006"}
+{"type":"assistant","message":{"model":"claude-opus-4-5-20251101","role":"assistant","content":[{"type":"text","text":"Response three."}]},"session_id":"session-001","uuid":"uuid-007"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Fourth message"}]},"session_id":"session-001","uuid":"uuid-008"}
+{"type":"assistant","message":{"model":"claude-opus-4-5-20251101","role":"assistant","content":[{"type":"text","text":"Response four."}]},"session_id":"session-001","uuid":"uuid-009"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Fifth message"}]},"session_id":"session-001","uuid":"uuid-010"}
+{"type":"assistant","message":{"model":"claude-opus-4-5-20251101","role":"assistant","content":[{"type":"text","text":"Response five."}]},"session_id":"session-001","uuid":"uuid-011"}
