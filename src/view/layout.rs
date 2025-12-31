@@ -6,7 +6,13 @@
 use crate::model::{AgentId, PricingConfig};
 use crate::state::{agent_ids_with_matches, AppState, FocusPane, SearchState, WrapMode};
 use crate::view::{
-    help::render_help_overlay, message, stats::StatsPanel, tabs, MessageStyles, SearchInput,
+    constants::{SEARCH_INPUT_HEIGHT, STATS_PANEL_HEIGHT, STATUS_BAR_HEIGHT, TAB_BAR_HEIGHT},
+    help::render_help_overlay,
+    message,
+    stats::StatsPanel,
+    tabs,
+    MessageStyles,
+    SearchInput,
 };
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -35,17 +41,17 @@ pub fn calculate_tab_area(frame_area: Rect, state: &AppState) -> Option<Rect> {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),    // Content
-                Constraint::Length(3), // Search
-                Constraint::Length(1), // Status
+                Constraint::Min(0),                     // Content
+                Constraint::Length(SEARCH_INPUT_HEIGHT), // Search
+                Constraint::Length(STATUS_BAR_HEIGHT),   // Status
             ])
             .split(frame_area)
     } else {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),    // Content
-                Constraint::Length(1), // Status
+                Constraint::Min(0),                   // Content
+                Constraint::Length(STATUS_BAR_HEIGHT), // Status
             ])
             .split(frame_area)
     };
@@ -56,7 +62,7 @@ pub fn calculate_tab_area(frame_area: Rect, state: &AppState) -> Option<Rect> {
     let conversation_area = if state.stats_visible {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(10)])
+            .constraints([Constraint::Min(0), Constraint::Length(STATS_PANEL_HEIGHT)])
             .split(content_area);
         chunks[0]
     } else {
@@ -64,10 +70,10 @@ pub fn calculate_tab_area(frame_area: Rect, state: &AppState) -> Option<Rect> {
     };
 
     // FR-083-088: Tab bar is at top of conversation area (no horizontal split)
-    // Split conversation area vertically: tab bar (3 lines) + content
+    // Split conversation area vertically: tab bar + content
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(0)])
+        .constraints([Constraint::Length(TAB_BAR_HEIGHT), Constraint::Min(0)])
         .split(conversation_area);
 
     Some(chunks[0])
@@ -90,17 +96,17 @@ pub fn calculate_pane_area(frame_area: Rect, state: &AppState) -> Rect {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),    // Content
-                Constraint::Length(3), // Search
-                Constraint::Length(1), // Status
+                Constraint::Min(0),                     // Content
+                Constraint::Length(SEARCH_INPUT_HEIGHT), // Search
+                Constraint::Length(STATUS_BAR_HEIGHT),   // Status
             ])
             .split(frame_area)
     } else {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),    // Content
-                Constraint::Length(1), // Status
+                Constraint::Min(0),                   // Content
+                Constraint::Length(STATUS_BAR_HEIGHT), // Status
             ])
             .split(frame_area)
     };
@@ -111,7 +117,7 @@ pub fn calculate_pane_area(frame_area: Rect, state: &AppState) -> Rect {
     if state.stats_visible {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(10)])
+            .constraints([Constraint::Min(0), Constraint::Length(STATS_PANEL_HEIGHT)])
             .split(content_area);
         chunks[0]
     } else {
@@ -140,17 +146,17 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),    // Main content area
-                Constraint::Length(3), // Search input (3 lines for border + text)
-                Constraint::Length(1), // Status bar (1 line)
+                Constraint::Min(0),                     // Main content area
+                Constraint::Length(SEARCH_INPUT_HEIGHT), // Search input
+                Constraint::Length(STATUS_BAR_HEIGHT),   // Status bar
             ])
             .split(frame.area())
     } else {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),    // Main content area
-                Constraint::Length(1), // Status bar (1 line)
+                Constraint::Min(0),                   // Main content area
+                Constraint::Length(STATUS_BAR_HEIGHT), // Status bar
             ])
             .split(frame.area())
     };
@@ -167,8 +173,8 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),     // Conversation area (flexible)
-                Constraint::Length(10), // Stats panel (fixed ~10 lines)
+                Constraint::Min(0),                       // Conversation area (flexible)
+                Constraint::Length(STATS_PANEL_HEIGHT),   // Stats panel
             ])
             .split(content_area);
         (chunks[0], Some(chunks[1]))
@@ -216,8 +222,8 @@ fn render_conversation_pane(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Tab bar (border + title + content)
-            Constraint::Min(0),    // Conversation content
+            Constraint::Length(TAB_BAR_HEIGHT), // Tab bar
+            Constraint::Min(0),                  // Conversation content
         ])
         .split(area);
 
@@ -417,7 +423,6 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
     let paragraph = Paragraph::new(Line::from(spans));
     frame.render_widget(paragraph, area);
 }
-
 
 // ===== Tests =====
 

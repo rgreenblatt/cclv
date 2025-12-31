@@ -3,6 +3,7 @@
 //! Shows a centered modal overlay with all keyboard shortcuts grouped by category.
 //! Triggered by '?' key, dismissed by 'Esc' or '?'.
 
+use super::constants::{HELP_POPUP_HEIGHT_PERCENT, HELP_POPUP_WIDTH_PERCENT};
 use ratatui::{
     layout::{Alignment, Rect},
     style::{Color, Modifier, Style},
@@ -26,7 +27,7 @@ use ratatui::{
 /// The overlay is centered on the screen with a border and dismissal hint.
 pub fn render_help_overlay(frame: &mut Frame) {
     let area = frame.area();
-    let popup_area = centered_rect(70, 80, area);
+    let popup_area = centered_rect(HELP_POPUP_WIDTH_PERCENT, HELP_POPUP_HEIGHT_PERCENT, area);
 
     // Clear the background for the overlay
     frame.render_widget(Clear, popup_area);

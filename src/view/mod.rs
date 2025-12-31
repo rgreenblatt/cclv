@@ -1,5 +1,6 @@
 //! TUI rendering and terminal management (impure shell)
 
+pub mod constants;
 mod help;
 mod layout;
 pub mod live_indicator;
