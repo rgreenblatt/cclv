@@ -96,7 +96,49 @@ pub fn render_tool_use(
     collapse_threshold: usize,
     summary_lines: usize,
 ) -> Vec<Line<'static>> {
-    todo!("render_tool_use with collapse/expand")
+    use ratatui::text::Span;
+
+    let mut lines = Vec::new();
+
+    // Tool name header (always visible)
+    let tool_name = tool_call.name().as_str();
+    let header = format!("🔧 Tool: {}", tool_name);
+    lines.push(Line::from(vec![Span::styled(
+        header,
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    )]));
+
+    // Tool input/parameters - collapsible
+    let input_json = serde_json::to_string_pretty(tool_call.input()).unwrap_or_default();
+    let input_lines: Vec<_> = input_json.lines().collect();
+    let total_lines = input_lines.len();
+
+    let is_expanded = scroll_state.is_expanded(entry_uuid);
+    let should_collapse = total_lines > collapse_threshold && !is_expanded;
+
+    if should_collapse {
+        // Show summary lines
+        for line in input_lines.iter().take(summary_lines) {
+            lines.push(Line::from(format!("  {}", line)));
+        }
+        // Add collapse indicator
+        let remaining = total_lines - summary_lines;
+        lines.push(Line::from(vec![Span::styled(
+            format!("  (+{} more lines)", remaining),
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::DIM),
+        )]));
+    } else {
+        // Show all lines
+        for line in input_lines {
+            lines.push(Line::from(format!("  {}", line)));
+        }
+    }
+
+    lines
 }
 
 /// Render a ContentBlock::ToolResult as formatted lines with collapse/expand support.
@@ -125,7 +167,47 @@ pub fn render_tool_result(
     collapse_threshold: usize,
     summary_lines: usize,
 ) -> Vec<Line<'static>> {
-    todo!("render_tool_result with collapse/expand")
+    use ratatui::text::Span;
+
+    let mut lines = Vec::new();
+    let content_lines: Vec<_> = content.lines().collect();
+    let total_lines = content_lines.len();
+
+    let is_expanded = scroll_state.is_expanded(entry_uuid);
+    let should_collapse = total_lines > collapse_threshold && !is_expanded;
+
+    // Determine which lines to show
+    let lines_to_show = if should_collapse {
+        summary_lines
+    } else {
+        total_lines
+    };
+
+    // Render the visible lines with error styling if needed
+    for line in content_lines.iter().take(lines_to_show) {
+        let rendered_line = if is_error {
+            Line::from(vec![Span::styled(
+                line.to_string(),
+                Style::default().fg(Color::Red),
+            )])
+        } else {
+            Line::from(line.to_string())
+        };
+        lines.push(rendered_line);
+    }
+
+    // Add collapse indicator if collapsed
+    if should_collapse {
+        let remaining = total_lines - summary_lines;
+        lines.push(Line::from(vec![Span::styled(
+            format!("(+{} more lines)", remaining),
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::DIM),
+        )]));
+    }
+
+    lines
 }
 
 /// Render any ContentBlock variant as formatted lines with collapse/expand support.
@@ -148,7 +230,40 @@ pub fn render_content_block(
     collapse_threshold: usize,
     summary_lines: usize,
 ) -> Vec<Line<'static>> {
-    todo!("render_content_block with collapse/expand")
+    use ratatui::text::Span;
+
+    match block {
+        ContentBlock::Text { text } => text
+            .lines()
+            .map(|line| Line::from(line.to_string()))
+            .collect(),
+        ContentBlock::ToolUse(tool_call) => {
+            render_tool_use(tool_call, entry_uuid, scroll_state, collapse_threshold, summary_lines)
+        }
+        ContentBlock::ToolResult {
+            tool_use_id: _,
+            content,
+            is_error,
+        } => render_tool_result(
+            content,
+            *is_error,
+            entry_uuid,
+            scroll_state,
+            collapse_threshold,
+            summary_lines,
+        ),
+        ContentBlock::Thinking { thinking } => thinking
+            .lines()
+            .map(|line| {
+                Line::from(vec![Span::styled(
+                    line.to_string(),
+                    Style::default()
+                        .add_modifier(Modifier::ITALIC)
+                        .add_modifier(Modifier::DIM),
+                )])
+            })
+            .collect(),
+    }
 }
 
 // ===== Tests =====
@@ -201,7 +316,7 @@ mod tests {
     #[test]
     fn render_tool_use_with_long_input_collapsed_shows_summary() {
         let id = ToolUseId::new("tool-456").expect("valid id");
-        // Create long JSON input with many fields
+        // Create long JSON input with many fields (12+ to ensure >10 lines when pretty-printed)
         let long_input = serde_json::json!({
             "field1": "value1",
             "field2": "value2",
@@ -211,6 +326,10 @@ mod tests {
             "field6": "value6",
             "field7": "value7",
             "field8": "value8",
+            "field9": "value9",
+            "field10": "value10",
+            "field11": "value11",
+            "field12": "value12",
         });
         let tool_call = ToolCall::new(id, ToolName::Bash, long_input);
         let uuid = crate::model::EntryUuid::new("entry-2").expect("valid uuid");
@@ -236,7 +355,7 @@ mod tests {
     #[test]
     fn render_tool_use_with_long_input_expanded_shows_all() {
         let id = ToolUseId::new("tool-789").expect("valid id");
-        // Create long JSON input with many fields
+        // Create long JSON input with many fields (12+ to ensure >10 lines when pretty-printed)
         let long_input = serde_json::json!({
             "field1": "value1",
             "field2": "value2",
@@ -246,6 +365,10 @@ mod tests {
             "field6": "value6",
             "field7": "value7",
             "field8": "value8",
+            "field9": "value9",
+            "field10": "value10",
+            "field11": "value11",
+            "field12": "value12",
         });
         let tool_call = ToolCall::new(id, ToolName::Bash, long_input);
         let uuid = crate::model::EntryUuid::new("entry-3").expect("valid uuid");
