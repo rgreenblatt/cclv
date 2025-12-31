@@ -29,6 +29,11 @@ unicode-width = "0.2"
 [dev-dependencies]
 proptest = "1"
 insta = "1"
+criterion = "0.5"
+
+[[bench]]
+name = "search_benchmark"
+harness = false
 
 [profile.release]
 opt-level = 3

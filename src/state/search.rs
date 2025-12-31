@@ -174,7 +174,12 @@ fn find_matches_in_text(
             char_offset,
             length: query_len,
         });
-        start = char_offset + 1; // Move by 1 to find overlapping matches
+        // Advance to next character boundary for UTF-8 safety
+        start = text_lower[char_offset..]
+            .char_indices()
+            .nth(1)
+            .map(|(idx, _)| char_offset + idx)
+            .unwrap_or(text_lower.len());
     }
 }
 
