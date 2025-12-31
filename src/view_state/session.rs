@@ -530,4 +530,169 @@ mod tests {
             "Subagent conversation should contain 2 entries added before initialization"
         );
     }
+
+    // ===== Subagent Model Extraction Tests (cclv-5ur.40.13) =====
+
+    #[test]
+    fn add_subagent_entry_extracts_model_from_first_assistant_message() {
+        // TEST for cclv-5ur.40.13: Extract model from first assistant message
+        //
+        // REQUIREMENT: When adding an assistant entry with model field to a subagent
+        // that has no model yet, store the model in the ConversationViewState.
+        //
+        // Real log analysis shows assistant messages in subagent conversations have
+        // the model field (e.g., claude-sonnet-4-5-20250929, claude-haiku-4-5-20251001).
+
+        let session_id = make_session_id("session-1");
+        let mut state = SessionViewState::new(session_id);
+        let agent_id = make_agent_id("agent-1");
+
+        // Create assistant message with model
+        let model_info = crate::model::ModelInfo::new("claude-sonnet-4-5-20250929");
+        let message = Message::new(
+            Role::Assistant,
+            MessageContent::Text("Response from subagent".to_string()),
+        )
+        .with_model(model_info.clone());
+
+        let entry = ConversationEntry::Valid(Box::new(LogEntry::new(
+            make_entry_uuid("uuid-1"),
+            None,
+            make_session_id("session-1"),
+            None,
+            make_timestamp(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        )));
+
+        // Before adding: subagent doesn't exist yet
+        assert!(!state.has_subagent(&agent_id));
+
+        // Add assistant entry with model
+        state.add_subagent_entry(agent_id.clone(), entry);
+
+        // After adding: subagent should exist and have the model
+        assert!(state.has_subagent(&agent_id));
+        let subagent = state.get_subagent(&agent_id).expect("subagent should exist");
+
+        assert!(
+            subagent.model().is_some(),
+            "Subagent should have model extracted from first assistant message"
+        );
+        assert_eq!(
+            subagent.model().unwrap().id(),
+            "claude-sonnet-4-5-20250929",
+            "Model should match the one from the assistant message"
+        );
+    }
+
+    #[test]
+    fn add_subagent_entry_does_not_overwrite_existing_model() {
+        // TEST for cclv-5ur.40.13: Don't overwrite if model already set
+        //
+        // REQUIREMENT: Only extract model if subagent has no model yet.
+        // If model is already set, don't overwrite it.
+
+        let session_id = make_session_id("session-1");
+        let mut state = SessionViewState::new(session_id);
+        let agent_id = make_agent_id("agent-1");
+
+        // Create first assistant message with model
+        let first_model = crate::model::ModelInfo::new("claude-haiku-4-5-20251001");
+        let first_message = Message::new(
+            Role::Assistant,
+            MessageContent::Text("First response".to_string()),
+        )
+        .with_model(first_model.clone());
+
+        let first_entry = ConversationEntry::Valid(Box::new(LogEntry::new(
+            make_entry_uuid("uuid-1"),
+            None,
+            make_session_id("session-1"),
+            None,
+            make_timestamp(),
+            EntryType::Assistant,
+            first_message,
+            EntryMetadata::default(),
+        )));
+
+        // Add first entry (should set model)
+        state.add_subagent_entry(agent_id.clone(), first_entry);
+
+        let subagent = state.get_subagent(&agent_id).expect("subagent should exist");
+        assert_eq!(
+            subagent.model().unwrap().id(),
+            "claude-haiku-4-5-20251001",
+            "First model should be set"
+        );
+
+        // Create second assistant message with DIFFERENT model
+        let second_model = crate::model::ModelInfo::new("claude-sonnet-4-5-20250929");
+        let second_message = Message::new(
+            Role::Assistant,
+            MessageContent::Text("Second response".to_string()),
+        )
+        .with_model(second_model.clone());
+
+        let second_entry = ConversationEntry::Valid(Box::new(LogEntry::new(
+            make_entry_uuid("uuid-2"),
+            None,
+            make_session_id("session-1"),
+            None,
+            make_timestamp(),
+            EntryType::Assistant,
+            second_message,
+            EntryMetadata::default(),
+        )));
+
+        // Add second entry (should NOT overwrite model)
+        state.add_subagent_entry(agent_id.clone(), second_entry);
+
+        let subagent = state.get_subagent(&agent_id).expect("subagent should exist");
+        assert_eq!(
+            subagent.model().unwrap().id(),
+            "claude-haiku-4-5-20251001",
+            "Model should NOT be overwritten - should still be the first one"
+        );
+    }
+
+    #[test]
+    fn add_subagent_entry_ignores_user_messages_for_model_extraction() {
+        // TEST for cclv-5ur.40.13: Only extract from assistant messages
+        //
+        // REQUIREMENT: User messages don't have model field (expected).
+        // Only assistant messages should trigger model extraction.
+
+        let session_id = make_session_id("session-1");
+        let mut state = SessionViewState::new(session_id);
+        let agent_id = make_agent_id("agent-1");
+
+        // Create user message (no model)
+        let user_message = Message::new(
+            Role::User,
+            MessageContent::Text("User question".to_string()),
+        );
+
+        let user_entry = ConversationEntry::Valid(Box::new(LogEntry::new(
+            make_entry_uuid("uuid-1"),
+            None,
+            make_session_id("session-1"),
+            None,
+            make_timestamp(),
+            EntryType::User,
+            user_message,
+            EntryMetadata::default(),
+        )));
+
+        // Add user entry
+        state.add_subagent_entry(agent_id.clone(), user_entry);
+
+        // Subagent should exist but have no model
+        let subagent = state.get_subagent(&agent_id).expect("subagent should exist");
+        assert!(
+            subagent.model().is_none(),
+            "Subagent should have no model from user message"
+        );
+    }
 }
