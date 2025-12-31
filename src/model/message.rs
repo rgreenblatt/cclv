@@ -3,7 +3,7 @@
 //! Types represent the structure of messages exchanged during sessions.
 //! Raw constructors are never exported - use smart constructors only.
 
-use crate::model::{ModelInfo, ToolUseId};
+use crate::model::{ModelInfo, TokenUsage, ToolUseId};
 
 // ===== Role =====
 
@@ -129,7 +129,7 @@ pub struct Message {
     role: Role,
     content: MessageContent,
     model: Option<ModelInfo>,
-    // TODO: Add usage field when needed
+    usage: Option<TokenUsage>,
 }
 
 impl Message {
@@ -139,6 +139,7 @@ impl Message {
             role,
             content,
             model: None,
+            usage: None,
         }
     }
 
@@ -152,6 +153,16 @@ impl Message {
 
     pub fn model(&self) -> Option<&ModelInfo> {
         self.model.as_ref()
+    }
+
+    pub fn usage(&self) -> Option<&TokenUsage> {
+        self.usage.as_ref()
+    }
+
+    /// Set usage for this message (for testing and parsing)
+    pub fn with_usage(mut self, usage: TokenUsage) -> Self {
+        self.usage = Some(usage);
+        self
     }
 
     /// Extract all tool calls from this message
