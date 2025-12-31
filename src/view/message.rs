@@ -696,6 +696,7 @@ pub fn render_content_block(
 mod tests {
     use super::*;
     use crate::model::{ToolName, ToolUseId};
+    use std::collections::HashSet;
 
     // ===== Helper: Create test scroll state =====
 
@@ -2165,6 +2166,272 @@ mod tests {
         assert!(
             !content.contains("Initial Prompt"),
             "Main agent should NOT show initial prompt label"
+        );
+    }
+
+    // ===== Horizontal Scrolling Tests (FR-039/040, cclv-07v.4.7) =====
+
+    #[test]
+    fn conversation_view_applies_horizontal_offset_to_long_lines() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        let mut conversation = AgentConversation::new(None);
+
+        // Create entry with a very long line (100 chars)
+        let long_line = "0123456789".repeat(10); // 100 chars total
+        let message = Message::new(Role::Assistant, MessageContent::Text(long_line));
+
+        let entry = LogEntry::new(
+            EntryUuid::new("entry-hscroll-1").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        // Create scroll state with horizontal_offset = 10
+        let scroll_state = ScrollState {
+            vertical_offset: 0,
+            horizontal_offset: 10,
+            expanded_messages: HashSet::new(),
+        };
+
+        let backend = TestBackend::new(80, 10);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+
+        // FR-039: With offset=10, first 10 chars (0123456789) should be skipped
+        // Should NOT see the first "0123456789", but SHOULD see chars starting from position 10
+        assert!(
+            !content.contains("0123456789012"),
+            "Should NOT show first chars when horizontally scrolled"
+        );
+        // After skipping first 10, next visible should start with second repetition
+        assert!(
+            content.contains("0123456789") && content.contains("1234567890"),
+            "Should show content starting from offset position 10"
+        );
+    }
+
+    #[test]
+    fn conversation_view_shows_left_scroll_indicator_when_offset_greater_than_zero() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        let mut conversation = AgentConversation::new(None);
+
+        let long_line = "x".repeat(200);
+        let message = Message::new(Role::Assistant, MessageContent::Text(long_line));
+
+        let entry = LogEntry::new(
+            EntryUuid::new("entry-hscroll-2").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        // Scroll right by 20 chars
+        let scroll_state = ScrollState {
+            vertical_offset: 0,
+            horizontal_offset: 20,
+            expanded_messages: HashSet::new(),
+        };
+
+        let backend = TestBackend::new(80, 10);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+
+        // FR-040: Should show left arrow indicator (◀) when offset > 0
+        assert!(
+            content.contains("◀") || content.contains("<"),
+            "Should show left scroll indicator when horizontally scrolled right (offset > 0)"
+        );
+    }
+
+    #[test]
+    fn conversation_view_shows_right_scroll_indicator_when_content_extends_beyond_viewport() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        let mut conversation = AgentConversation::new(None);
+
+        // Line much longer than viewport width (80 cols)
+        let long_line = "x".repeat(200);
+        let message = Message::new(Role::Assistant, MessageContent::Text(long_line));
+
+        let entry = LogEntry::new(
+            EntryUuid::new("entry-hscroll-3").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        // No horizontal scroll (offset = 0), but line extends beyond viewport
+        let scroll_state = ScrollState::default();
+
+        let backend = TestBackend::new(80, 10);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+
+        // FR-040: Should show right arrow indicator (▶) when content extends beyond visible area
+        assert!(
+            content.contains("▶") || content.contains(">"),
+            "Should show right scroll indicator when long line extends beyond viewport"
+        );
+    }
+
+    #[test]
+    fn conversation_view_no_scroll_indicators_for_short_lines() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        let mut conversation = AgentConversation::new(None);
+
+        // Short line that fits in viewport
+        let short_line = "Short message";
+        let message = Message::new(Role::Assistant, MessageContent::Text(short_line.to_string()));
+
+        let entry = LogEntry::new(
+            EntryUuid::new("entry-hscroll-4").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        let scroll_state = ScrollState::default();
+
+        let backend = TestBackend::new(80, 10);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+
+        // Should NOT show scroll indicators for short lines
+        assert!(
+            !content.contains("◀") && !content.contains("▶"),
+            "Should NOT show scroll indicators for short lines that fit in viewport"
         );
     }
 
