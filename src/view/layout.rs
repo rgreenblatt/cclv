@@ -125,6 +125,7 @@ fn render_main_pane(frame: &mut Frame, area: Rect, state: &AppState, styles: &Me
         &state.search,
         styles,
         state.focus == FocusPane::Main,
+        state.global_wrap,
     );
 }
 
@@ -177,6 +178,7 @@ fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState, styles:
             &state.search,
             styles,
             state.focus == FocusPane::Subagent,
+            state.global_wrap,
         );
     }
 }

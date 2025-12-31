@@ -4,7 +4,7 @@
 //! Only renders visible messages (plus ±20 buffer) based on scroll position.
 
 use crate::model::{AgentConversation, ContentBlock, ConversationEntry, MessageContent, ToolCall};
-use crate::state::ScrollState;
+use crate::state::{ScrollState, WrapMode};
 use crate::view::MessageStyles;
 use ratatui::{
     buffer::Buffer,
@@ -332,6 +332,7 @@ impl<'a> Widget for ConversationView<'a> {
 /// * `scroll` - Scroll state (for expansion tracking and scrolling)
 /// * `styles` - Message styling configuration
 /// * `focused` - Whether this pane currently has focus (affects border color)
+/// * `global_wrap` - Global wrap mode setting (FR-039)
 pub fn render_conversation_view(
     frame: &mut Frame,
     area: Rect,
@@ -339,7 +340,9 @@ pub fn render_conversation_view(
     scroll: &ScrollState,
     styles: &MessageStyles,
     focused: bool,
+    global_wrap: WrapMode,
 ) {
+    let _ = global_wrap; // TODO: Use global_wrap to control wrap behavior (LW-008)
     let entry_count = conversation.entries().len();
 
     // Build title with agent info
@@ -512,6 +515,7 @@ pub fn render_conversation_view(
 /// * `search` - Search state (for match highlighting)
 /// * `styles` - Message styling configuration
 /// * `focused` - Whether this pane currently has focus (affects border color)
+/// * `global_wrap` - Global wrap mode setting (FR-039)
 pub fn render_conversation_view_with_search(
     frame: &mut Frame,
     area: Rect,
@@ -520,8 +524,10 @@ pub fn render_conversation_view_with_search(
     search: &crate::state::SearchState,
     styles: &MessageStyles,
     focused: bool,
+    global_wrap: WrapMode,
 ) {
     use ratatui::text::Span;
+    let _ = global_wrap; // TODO: Use global_wrap to control wrap behavior (LW-008)
 
     let entry_count = conversation.entries().len();
 
@@ -1729,6 +1735,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -1798,6 +1805,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -2603,6 +2611,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -2662,6 +2671,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -2736,6 +2746,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -2812,6 +2823,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -2871,6 +2883,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -2932,6 +2945,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -2943,6 +2957,128 @@ mod tests {
         assert!(
             !content.contains("◀") && !content.contains("▶"),
             "Should NOT show scroll indicators for short lines that fit in viewport"
+        );
+    }
+
+    // ===== Wrap Mode Tests (FR-039/040, LW-008) =====
+
+    #[test]
+    fn conversation_view_no_scroll_indicators_when_wrap_enabled() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use crate::state::WrapMode;
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        let mut conversation = AgentConversation::new(None);
+
+        // Create a message with a very long line (exceeds viewport width)
+        let long_line = "This is a very long line that will definitely exceed the viewport width and would normally trigger horizontal scroll indicators when wrap is disabled but should NOT show indicators when wrap is enabled.";
+        let message = Message::new(Role::Assistant, MessageContent::Text(long_line.to_string()));
+
+        let entry = LogEntry::new(
+            EntryUuid::new("entry-wrap-1").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        let scroll_state = ScrollState::default();
+
+        let backend = TestBackend::new(80, 10);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                    WrapMode::Wrap, // FR-039: Wrap mode enabled
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // FR-039: When wrap is enabled, should NOT show horizontal scroll indicators
+        assert!(
+            !content.contains("◀") && !content.contains("▶"),
+            "Should NOT show scroll indicators when wrap mode is enabled"
+        );
+    }
+
+    #[test]
+    fn conversation_view_shows_scroll_indicators_when_wrap_disabled() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use crate::state::WrapMode;
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        let mut conversation = AgentConversation::new(None);
+
+        // Create a message with a very long line (exceeds viewport width)
+        let long_line = "This is a very long line that will definitely exceed the viewport width and should trigger horizontal scroll indicators when wrap is disabled since the content extends beyond the visible area.";
+        let message = Message::new(Role::Assistant, MessageContent::Text(long_line.to_string()));
+
+        let entry = LogEntry::new(
+            EntryUuid::new("entry-wrap-2").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        let scroll_state = ScrollState::default();
+
+        let backend = TestBackend::new(80, 10);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                    WrapMode::NoWrap, // FR-040: Wrap disabled, horizontal scrolling
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // FR-040: When wrap is disabled, should show right scroll indicator for long lines
+        assert!(
+            content.contains("▶") || content.contains(">"),
+            "Should show right scroll indicator when wrap disabled and content extends beyond viewport"
         );
     }
 
@@ -2994,6 +3130,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3074,6 +3211,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3234,6 +3372,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3300,6 +3439,7 @@ mod tests {
                     &search_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3367,6 +3507,7 @@ mod tests {
                     &search_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3444,6 +3585,7 @@ mod tests {
                     &search_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3577,6 +3719,7 @@ mod tests {
                     &search_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3650,6 +3793,7 @@ mod tests {
                     &search_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3719,6 +3863,7 @@ mod tests {
                     &search_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
@@ -3790,6 +3935,7 @@ mod tests {
                     &search_state,
                     &create_test_styles(),
                     false,
+                    WrapMode::default(),
                 );
             })
             .expect("Failed to draw");
