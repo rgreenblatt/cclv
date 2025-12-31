@@ -10,7 +10,7 @@
 use super::*;
 use crate::model::{
     AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
-    MessageContent, Role, Session, SessionId,
+    MessageContent, Role, SessionId,
 };
 use crate::state::{AppState, FocusPane};
 use chrono::Utc;
@@ -23,10 +23,6 @@ fn make_session_id(s: &str) -> SessionId {
 
 fn make_entry_uuid(s: &str) -> EntryUuid {
     EntryUuid::new(s).expect("valid uuid")
-}
-
-fn make_test_session() -> Session {
-    Session::new(make_session_id("test-session"))
 }
 
 fn make_subagent_entry(agent_id: &str) -> ConversationEntry {
@@ -51,13 +47,13 @@ fn make_subagent_entry(agent_id: &str) -> ConversationEntry {
 
 #[test]
 fn next_tab_moves_to_next_tab() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
-    session.add_conversation_entry(make_subagent_entry("agent-3"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
+    entries.push(make_subagent_entry("agent-3"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(0);
 
@@ -72,12 +68,12 @@ fn next_tab_moves_to_next_tab() {
 
 #[test]
 fn next_tab_wraps_from_last_to_first() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(1); // Last tab
 
@@ -92,11 +88,11 @@ fn next_tab_wraps_from_last_to_first() {
 
 #[test]
 fn next_tab_initializes_to_first_when_none() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
@@ -111,12 +107,12 @@ fn next_tab_initializes_to_first_when_none() {
 
 #[test]
 fn next_tab_does_nothing_when_focus_not_on_subagent() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Main;
     state.selected_tab = Some(0);
 
@@ -131,9 +127,7 @@ fn next_tab_does_nothing_when_focus_not_on_subagent() {
 
 #[test]
 fn next_tab_does_nothing_when_no_subagents() {
-    let session = make_test_session();
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
     state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
@@ -149,13 +143,13 @@ fn next_tab_does_nothing_when_no_subagents() {
 
 #[test]
 fn prev_tab_moves_to_previous_tab() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
-    session.add_conversation_entry(make_subagent_entry("agent-3"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
+    entries.push(make_subagent_entry("agent-3"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(2); // Third tab
 
@@ -170,13 +164,13 @@ fn prev_tab_moves_to_previous_tab() {
 
 #[test]
 fn prev_tab_wraps_from_first_to_last() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
-    session.add_conversation_entry(make_subagent_entry("agent-3"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
+    entries.push(make_subagent_entry("agent-3"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(0); // First tab
 
@@ -191,11 +185,11 @@ fn prev_tab_wraps_from_first_to_last() {
 
 #[test]
 fn prev_tab_initializes_to_first_when_none() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
@@ -210,12 +204,12 @@ fn prev_tab_initializes_to_first_when_none() {
 
 #[test]
 fn prev_tab_does_nothing_when_focus_not_on_subagent() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Stats;
     state.selected_tab = Some(1);
 
@@ -230,9 +224,7 @@ fn prev_tab_does_nothing_when_focus_not_on_subagent() {
 
 #[test]
 fn prev_tab_does_nothing_when_no_subagents() {
-    let session = make_test_session();
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
     state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
@@ -248,13 +240,13 @@ fn prev_tab_does_nothing_when_no_subagents() {
 
 #[test]
 fn select_tab_sets_tab_by_one_indexed_number() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
-    session.add_conversation_entry(make_subagent_entry("agent-3"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
+    entries.push(make_subagent_entry("agent-3"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(0);
 
@@ -269,11 +261,11 @@ fn select_tab_sets_tab_by_one_indexed_number() {
 
 #[test]
 fn select_tab_handles_tab_1() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
@@ -288,12 +280,12 @@ fn select_tab_handles_tab_1() {
 
 #[test]
 fn select_tab_clamps_to_last_when_too_high() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(0);
 
@@ -308,12 +300,12 @@ fn select_tab_clamps_to_last_when_too_high() {
 
 #[test]
 fn select_tab_ignores_zero() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(1);
 
@@ -328,12 +320,12 @@ fn select_tab_ignores_zero() {
 
 #[test]
 fn select_tab_does_nothing_when_focus_not_on_subagent() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Main;
     state.selected_tab = Some(0);
 
@@ -348,9 +340,7 @@ fn select_tab_does_nothing_when_focus_not_on_subagent() {
 
 #[test]
 fn select_tab_does_nothing_when_no_subagents() {
-    let session = make_test_session();
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
     state.focus = FocusPane::Subagent;
     state.selected_tab = None;
 
@@ -366,12 +356,12 @@ fn select_tab_does_nothing_when_no_subagents() {
 
 #[test]
 fn non_tab_actions_return_state_unchanged() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
-    session.add_conversation_entry(make_subagent_entry("agent-2"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
+    entries.push(make_subagent_entry("agent-2"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(1);
 
@@ -386,11 +376,11 @@ fn non_tab_actions_return_state_unchanged() {
 
 #[test]
 fn non_tab_actions_like_quit_return_state_unchanged() {
-    let mut session = make_test_session();
-    session.add_conversation_entry(make_subagent_entry("agent-1"));
+    let mut entries = Vec::new();
+    entries.push(make_subagent_entry("agent-1"));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state.focus = FocusPane::Subagent;
     state.selected_tab = Some(0);
 

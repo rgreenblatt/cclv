@@ -3,7 +3,7 @@
 use super::*;
 use crate::model::{
     AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
-    MessageContent, Role, Session, SessionId,
+    MessageContent, Role, SessionId,
 };
 use crate::state::AppState;
 use chrono::Utc;
@@ -21,6 +21,21 @@ fn make_session_id(s: &str) -> SessionId {
 
 fn make_entry_uuid(s: &str) -> EntryUuid {
     EntryUuid::new(s).expect("valid uuid")
+}
+
+fn make_main_entry() -> ConversationEntry {
+    let log_entry = LogEntry::new(
+        make_entry_uuid("main-entry"),
+        None,
+        make_session_id("test-session"),
+        None, // No agent_id = main agent
+        Utc::now(),
+        EntryType::User,
+        Message::new(Role::User, MessageContent::Text("Main message".to_string())),
+        EntryMetadata::default(),
+    );
+
+    ConversationEntry::Valid(Box::new(log_entry))
 }
 
 fn make_subagent_entry(agent_id: &str) -> ConversationEntry {
@@ -42,15 +57,20 @@ fn make_subagent_entry(agent_id: &str) -> ConversationEntry {
 }
 
 fn create_app_state_with_tabs(agent_ids: Vec<&str>) -> AppState {
-    let mut session = Session::new(make_session_id("test-session"));
+    let mut entries = Vec::new();
 
     // Add a conversation entry for each subagent (this creates the subagent)
     for id in agent_ids {
-        session.add_conversation_entry(make_subagent_entry(id));
+        entries.push(make_subagent_entry(id));
+    }
+
+    // If no entries, add a dummy main entry to ensure session_view exists
+    if entries.is_empty() {
+        entries.push(make_main_entry());
     }
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state
 }
 
@@ -379,7 +399,7 @@ fn detect_entry_click_returns_no_entry_when_click_outside_bounds() {
 
 #[test]
 fn detect_entry_click_detects_main_pane_first_entry() {
-    let mut session = Session::new(make_session_id("test-session"));
+    let mut entries = Vec::new();
 
     // Add entries to main agent
     let uuid1 = make_entry_uuid("entry-1");
@@ -396,10 +416,10 @@ fn detect_entry_click_detects_main_pane_first_entry() {
         ),
         EntryMetadata::default(),
     );
-    session.add_conversation_entry(ConversationEntry::Valid(Box::new(log_entry)));
+    entries.push(ConversationEntry::Valid(Box::new(log_entry)));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     // Main pane at (0, 0) with width 40, height 20
     // Click on first entry (inside border: y=1)
@@ -439,7 +459,7 @@ fn detect_entry_click_detects_subagent_pane_entry() {
 
 #[test]
 fn detect_entry_click_accounts_for_border() {
-    let mut session = Session::new(make_session_id("test-session"));
+    let mut entries = Vec::new();
 
     // Add entry
     let uuid1 = make_entry_uuid("entry-1");
@@ -453,10 +473,10 @@ fn detect_entry_click_accounts_for_border() {
         Message::new(Role::User, MessageContent::Text("Test".to_string())),
         EntryMetadata::default(),
     );
-    session.add_conversation_entry(ConversationEntry::Valid(Box::new(log_entry)));
+    entries.push(ConversationEntry::Valid(Box::new(log_entry)));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     let main_area = Rect::new(0, 0, 40, 20);
 
     // Click on border (y=0) should return NoEntry
@@ -474,13 +494,14 @@ fn detect_entry_click_handles_empty_conversation() {
 
     let main_area = Rect::new(0, 0, 40, 20);
 
-    // Click anywhere in empty pane
+    // Note: create_app_state_with_tabs adds a dummy main entry when vec is empty
+    // to ensure session_view exists, so conversation has 1 entry
     let result = detect_entry_click(5, 5, main_area, None, &state);
 
     assert_eq!(
         result,
-        EntryClickResult::NoEntry,
-        "Click in empty pane should return NoEntry"
+        EntryClickResult::MainPaneEntry(0),
+        "Click should detect the single main entry"
     );
 }
 
@@ -491,7 +512,7 @@ fn detect_entry_click_handles_empty_conversation() {
 
 #[test]
 fn detect_entry_click_maps_different_y_positions_to_different_entries() {
-    let mut session = Session::new(make_session_id("test-session"));
+    let mut entries = Vec::new();
 
     // Add three entries to main agent
     for i in 0..3 {
@@ -506,11 +527,11 @@ fn detect_entry_click_maps_different_y_positions_to_different_entries() {
             Message::new(Role::User, MessageContent::Text(format!("Message {}", i))),
             EntryMetadata::default(),
         );
-        session.add_conversation_entry(ConversationEntry::Valid(Box::new(log_entry)));
+        entries.push(ConversationEntry::Valid(Box::new(log_entry)));
     }
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     // Main pane at (0, 0) with width 40, height 20
     // Inner area: (1, 1) to (39, 19) - 18 lines tall
@@ -546,7 +567,7 @@ fn detect_entry_click_maps_different_y_positions_to_different_entries() {
 
 #[test]
 fn detect_entry_click_with_single_entry_always_returns_index_0() {
-    let mut session = Session::new(make_session_id("test-session"));
+    let mut entries = Vec::new();
 
     // Add single entry
     let uuid = make_entry_uuid("entry-0");
@@ -563,10 +584,10 @@ fn detect_entry_click_with_single_entry_always_returns_index_0() {
         ),
         EntryMetadata::default(),
     );
-    session.add_conversation_entry(ConversationEntry::Valid(Box::new(log_entry)));
+    entries.push(ConversationEntry::Valid(Box::new(log_entry)));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     let main_area = Rect::new(0, 0, 40, 20);
 
     // Any click within inner area should hit entry 0

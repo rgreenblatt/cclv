@@ -18,7 +18,7 @@ pub use styles::{ColorConfig, MessageStyles};
 
 use crate::config::keybindings::KeyBindings;
 use crate::integration;
-use crate::model::{AppError, KeyAction, SessionId};
+use crate::model::{AppError, KeyAction};
 use crate::source::InputSource;
 use crate::state::{
     expand_handler, handle_toggle_wrap, next_match, prev_match, scroll_handler,
@@ -79,7 +79,7 @@ impl TuiApp<CrosstermBackend<Stdout>> {
     /// Create and initialize a new TUI application
     ///
     /// Sets up terminal in raw mode with alternate screen
-    pub fn new(mut input_source: InputSource, session_id: SessionId) -> Result<Self, TuiError> {
+    pub fn new(mut input_source: InputSource) -> Result<Self, TuiError> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         stdout.execute(EnterAlternateScreen)?;
@@ -102,16 +102,10 @@ impl TuiApp<CrosstermBackend<Stdout>> {
             }
         }
 
-        // Build model session for initial entries
-        let mut session = crate::model::Session::new(session_id);
-        for entry in &entries {
-            session.add_conversation_entry(entry.clone());
-        }
+        // Create AppState and populate with initial entries
         let line_counter = entries.len();
-
-        // Create AppState and populate from session
         let mut app_state = AppState::new();
-        app_state.populate_log_view_from_model_session(&session);
+        app_state.add_entries(entries);
         let key_bindings = KeyBindings::default();
 
         Ok(Self {
@@ -748,17 +742,8 @@ impl CliArgs {
 ///
 /// Note: Logging must be initialized by caller before calling this function.
 pub fn run_with_source(input_source: InputSource, args: CliArgs) -> Result<(), TuiError> {
-    // Extract or create session ID
-    // For now, use a default session ID. In the future, this could be
-    // extracted from the first log entry or passed via args.
-    let session_id = SessionId::new("default-session").map_err(|_| {
-        TuiError::Io(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Invalid session ID",
-        ))
-    })?;
-
-    let mut app = TuiApp::new(input_source, session_id)?;
+    // Sessions are automatically created from entry session_ids in the log
+    let mut app = TuiApp::new(input_source)?;
 
     // Apply initial args (stats visible, search query, etc.)
     app.app_state.stats_visible = args.stats;
@@ -816,10 +801,24 @@ mod tests {
         let stdin_source = crate::source::StdinSource::from_reader(&stdin_data[..]);
         let input_source = InputSource::Stdin(stdin_source);
 
-        let session_id = SessionId::new("test-session").unwrap();
-        let session = crate::model::Session::new(session_id);
         let mut app_state = AppState::new();
-        app_state.populate_log_view_from_model_session(&session);
+
+        // Add a minimal entry so session_view is created
+        let entry = crate::model::LogEntry::new(
+            crate::model::EntryUuid::new("test-1").unwrap(),
+            None,
+            crate::model::SessionId::new("test-session").unwrap(),
+            None,
+            chrono::Utc::now(),
+            crate::model::EntryType::User,
+            crate::model::Message::new(
+                crate::model::Role::User,
+                crate::model::MessageContent::Text("test".to_string()),
+            ),
+            crate::model::EntryMetadata::default(),
+        );
+        app_state.add_entries(vec![crate::model::ConversationEntry::Valid(Box::new(entry))]);
+
         let key_bindings = KeyBindings::default();
 
         TuiApp {
@@ -1287,10 +1286,11 @@ mod tests {
         );
 
         // Verify session hasn't been updated yet (batched)
+        // Note: create_test_app() adds 1 initial entry for session_view creation
         assert_eq!(
             app.app_state.session_view().main().len(),
-            0,
-            "Entries should not be added to session until flush"
+            1,
+            "Only initial entry should be in session until flush"
         );
     }
 
@@ -1314,10 +1314,11 @@ mod tests {
             0,
             "Buffer should be empty after flush"
         );
+        // Note: create_test_app() adds 1 initial entry + 50 flushed = 51 total
         assert_eq!(
             app.app_state.session_view().main().len(),
-            50,
-            "All entries should be in session after flush"
+            51,
+            "Initial entry + 50 flushed entries should be in session"
         );
     }
 

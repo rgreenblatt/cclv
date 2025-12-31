@@ -21,10 +21,24 @@ fn create_test_app() -> TuiApp<TestBackend> {
     let stdin_source = cclv::source::StdinSource::from_reader(&stdin_data[..]);
     let input_source = InputSource::Stdin(stdin_source);
 
-    let session_id = cclv::model::SessionId::new("test-session").unwrap();
-    let session = cclv::model::Session::new(session_id);
     let mut app_state = AppState::new();
-    app_state.populate_log_view_from_model_session(&session);
+
+    // Add a minimal entry so session_view is created
+    let entry = cclv::model::LogEntry::new(
+        cclv::model::EntryUuid::new("test-1").unwrap(),
+        None,
+        cclv::model::SessionId::new("test-session").unwrap(),
+        None,
+        chrono::Utc::now(),
+        cclv::model::EntryType::User,
+        cclv::model::Message::new(
+            cclv::model::Role::User,
+            cclv::model::MessageContent::Text("test".to_string()),
+        ),
+        cclv::model::EntryMetadata::default(),
+    );
+    app_state.add_entries(vec![cclv::model::ConversationEntry::Valid(Box::new(entry))]);
+
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
 
     TuiApp::new_for_test(terminal, app_state, input_source, 0, key_bindings)
@@ -69,8 +83,8 @@ fn test_pending_entries_flushed_on_event() {
     // (This tests that flush happens on render, not on timer)
     let main_entries = app.app_state().session_view().main().len();
 
-    // Initially should be 0 since we haven't added entries yet
-    assert_eq!(main_entries, 0, "Initially no entries in session");
+    // Note: create_test_app() adds 1 initial entry for session_view creation
+    assert_eq!(main_entries, 1, "Should have initial entry from create_test_app");
 }
 
 /// Test: Keyboard event triggers immediate render

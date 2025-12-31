@@ -2,8 +2,8 @@
 
 use super::*;
 use crate::model::{
-    ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
-    Session, SessionId,
+    AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent,
+    Role, SessionId,
 };
 use crate::state::AppState;
 use chrono::Utc;
@@ -216,11 +216,11 @@ fn make_blocks_entry(uuid: &str, agent_id: Option<AgentId>, blocks: Vec<ContentB
 
 #[test]
 fn execute_search_finds_match_in_main_agent_text() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "This is an error message"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "This is an error message"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -235,11 +235,11 @@ fn execute_search_finds_match_in_main_agent_text() {
 
 #[test]
 fn execute_search_is_case_insensitive() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "ERROR in uppercase"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "ERROR in uppercase"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -250,15 +250,15 @@ fn execute_search_is_case_insensitive() {
 
 #[test]
 fn execute_search_finds_multiple_matches_in_single_entry() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry(
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry(
         "entry-1",
         None,
         "error at start and error at end",
-    ));
+    ))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -270,12 +270,12 @@ fn execute_search_finds_multiple_matches_in_single_entry() {
 
 #[test]
 fn execute_search_finds_matches_across_multiple_entries() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "first error"));
-    session.add_entry(make_text_entry("entry-2", None, "second error"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "first error"))));
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-2", None, "second error"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -287,16 +287,16 @@ fn execute_search_finds_matches_across_multiple_entries() {
 
 #[test]
 fn execute_search_finds_match_in_subagent() {
-    let mut session = Session::new(make_session_id("session-1"));
+    let mut entries = Vec::new();
     let agent_id = make_agent_id("agent-123");
-    session.add_entry(make_text_entry(
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry(
         "entry-1",
         Some(agent_id.clone()),
         "subagent error",
-    ));
+    ))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -308,18 +308,18 @@ fn execute_search_finds_match_in_subagent() {
 
 #[test]
 fn execute_search_finds_matches_in_main_and_subagent() {
-    let mut session = Session::new(make_session_id("session-1"));
+    let mut entries = Vec::new();
     let agent_id = make_agent_id("agent-abc");
 
-    session.add_entry(make_text_entry("entry-1", None, "main error"));
-    session.add_entry(make_text_entry(
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "main error"))));
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry(
         "entry-2",
         Some(agent_id.clone()),
         "sub error",
-    ));
+    ))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -331,7 +331,7 @@ fn execute_search_finds_matches_in_main_and_subagent() {
 
 #[test]
 fn execute_search_searches_all_text_blocks_in_blocks_content() {
-    let mut session = Session::new(make_session_id("session-1"));
+    let mut entries = Vec::new();
     let blocks = vec![
         ContentBlock::Text {
             text: "first error".to_string(),
@@ -343,10 +343,10 @@ fn execute_search_searches_all_text_blocks_in_blocks_content() {
             text: "second error".to_string(),
         },
     ];
-    session.add_entry(make_blocks_entry("entry-1", None, blocks));
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_blocks_entry("entry-1", None, blocks))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -360,11 +360,11 @@ fn execute_search_searches_all_text_blocks_in_blocks_content() {
 
 #[test]
 fn execute_search_returns_empty_when_no_matches() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "no matching text"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "no matching text"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -374,10 +374,11 @@ fn execute_search_returns_empty_when_no_matches() {
 
 #[test]
 fn execute_search_returns_empty_for_empty_session() {
-    let session = Session::new(make_session_id("session-1"));
-
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    // Add a single entry with no searchable content (empty text)
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, ""))));
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -387,11 +388,11 @@ fn execute_search_returns_empty_for_empty_session() {
 
 #[test]
 fn execute_search_handles_overlapping_matches() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "aaa"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "aaa"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("aa").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -404,11 +405,11 @@ fn execute_search_handles_overlapping_matches() {
 
 #[test]
 fn execute_search_stores_correct_match_length() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "find this pattern"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "find this pattern"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("pattern").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -419,14 +420,14 @@ fn execute_search_stores_correct_match_length() {
 
 #[test]
 fn execute_search_searches_thinking_blocks() {
-    let mut session = Session::new(make_session_id("session-1"));
+    let mut entries = Vec::new();
     let blocks = vec![ContentBlock::Thinking {
         thinking: "I'm thinking about the error".to_string(),
     }];
-    session.add_entry(make_blocks_entry("entry-1", None, blocks));
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_blocks_entry("entry-1", None, blocks))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -439,16 +440,16 @@ fn execute_search_searches_thinking_blocks() {
 fn execute_search_searches_tool_result_blocks() {
     use crate::model::ToolUseId;
 
-    let mut session = Session::new(make_session_id("session-1"));
+    let mut entries = Vec::new();
     let blocks = vec![ContentBlock::ToolResult {
         tool_use_id: ToolUseId::new("tool-1").expect("valid id"),
         content: "command failed with error".to_string(),
         is_error: true,
     }];
-    session.add_entry(make_blocks_entry("entry-1", None, blocks));
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_blocks_entry("entry-1", None, blocks))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -635,11 +636,11 @@ fn agent_ids_with_matches_mixed_main_and_subagent_matches() {
 #[test]
 fn execute_search_handles_emoji_in_content_before_match() {
     // Content: "🦀 error" - emoji is 4 bytes, then space (1 byte), then "error" at byte 5
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "🦀 error"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "🦀 error"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -657,11 +658,11 @@ fn execute_search_handles_emoji_in_content_before_match() {
 #[test]
 fn execute_search_finds_emoji_in_content() {
     // Search for emoji within content
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "Rust 🦀 rocks"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "Rust 🦀 rocks"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("🦀").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -676,11 +677,11 @@ fn execute_search_finds_emoji_in_content() {
 #[test]
 fn execute_search_handles_multibyte_unicode_characters() {
     // Japanese characters (3 bytes each in UTF-8)
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "Hello 日本語 world"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "Hello 日本語 world"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("world").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -694,15 +695,15 @@ fn execute_search_handles_multibyte_unicode_characters() {
 
 #[test]
 fn execute_search_finds_japanese_text() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry(
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry(
         "entry-1",
         None,
         "Searching for 日本語 here",
-    ));
+    ))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("日本語").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -714,11 +715,11 @@ fn execute_search_finds_japanese_text() {
 
 #[test]
 fn execute_search_multiple_emojis_in_text() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "🔥🦀🚀 test 🎉"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "🔥🦀🚀 test 🎉"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("test").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -732,11 +733,11 @@ fn execute_search_multiple_emojis_in_text() {
 #[test]
 fn execute_search_emoji_case_insensitive_ascii_only() {
     // Case insensitivity should work for ASCII parts, emoji stays as-is
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "ERROR 🔥 here"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "ERROR 🔥 here"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("error").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -749,11 +750,11 @@ fn execute_search_emoji_case_insensitive_ascii_only() {
 #[test]
 fn execute_search_overlapping_matches_with_unicode() {
     // "ää" where ä is 2 bytes each in UTF-8
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "ääää"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "ääää"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("ää").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -769,11 +770,11 @@ fn execute_search_overlapping_matches_with_unicode() {
 #[test]
 fn execute_search_unicode_at_match_boundary() {
     // Emoji right at the end of a match
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "test🦀 more test🦀"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "test🦀 more test🦀"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("test").expect("valid query");
     let matches = execute_search(state.session_view(), &query);
@@ -787,11 +788,11 @@ fn execute_search_unicode_at_match_boundary() {
 
 #[test]
 fn execute_search_stores_correct_match_length_for_unicode_query() {
-    let mut session = Session::new(make_session_id("session-1"));
-    session.add_entry(make_text_entry("entry-1", None, "Find the 🚀 emoji"));
+    let mut entries = Vec::new();
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(make_text_entry("entry-1", None, "Find the 🚀 emoji"))));
 
     let mut state = AppState::new();
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
 
     let query = SearchQuery::new("🚀").expect("valid query");
     let matches = execute_search(state.session_view(), &query);

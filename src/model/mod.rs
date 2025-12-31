@@ -9,7 +9,6 @@ pub mod key_action;
 pub mod log_entry;
 pub mod malformed_entry;
 pub mod message;
-pub mod session;
 pub mod stats;
 pub mod usage;
 
@@ -24,6 +23,5 @@ pub use key_action::KeyAction;
 pub use log_entry::{EntryMetadata, EntryType, LogEntry, ResultMetadata, SystemMetadata};
 pub use malformed_entry::MalformedEntry;
 pub use message::{ContentBlock, Message, MessageContent, Role, ToolCall, ToolName};
-pub use session::{AgentConversation, Session};
 pub use stats::{ModelPricing, PricingConfig, SessionStats, StatsFilter};
 pub use usage::{ModelInfo, TokenUsage};

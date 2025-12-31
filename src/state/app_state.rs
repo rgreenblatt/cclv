@@ -261,44 +261,6 @@ impl AppState {
         Some(session.subagent_mut(&agent_id))
     }
 
-    /// Populate log_view from existing model Session entries (test helper).
-    ///
-    /// This is needed for tests that build model::Session first, then create AppState.
-    /// In production, entries arrive via add_entries().
-    /// In tests, model::Session is already populated, so we need to sync log_view.
-    ///
-    /// # Warning
-    /// This is a test-only helper. Do not use in production code.
-    #[doc(hidden)]
-    pub fn populate_log_view_from_model_session(&mut self, session: &crate::model::Session) {
-        // Ensure at least one session exists in log_view, even if model session is empty.
-        // This prevents panics in code that assumes session_view() returns Some.
-        let main_has_entries = !session.main_agent().entries().is_empty();
-        let subagents_have_entries = session
-            .subagents()
-            .values()
-            .any(|conv| !conv.entries().is_empty());
-
-        if !main_has_entries && !subagents_have_entries {
-            // Create an empty session view-state to match the model session
-            self.log_view
-                .create_empty_session(session.session_id().clone());
-        }
-
-        // Main agent entries
-        for entry in session.main_agent().entries() {
-            self.log_view.add_entry(entry.clone(), None);
-        }
-
-        // Subagent entries
-        for (agent_id, conversation) in session.subagents() {
-            for entry in conversation.entries() {
-                self.log_view
-                    .add_entry(entry.clone(), Some(agent_id.clone()));
-            }
-        }
-    }
-
     /// Check if new messages indicator should be shown.
     /// Returns true when live_mode is active but auto_scroll is paused.
     /// This signals to the UI that new content has arrived below the current view.

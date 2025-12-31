@@ -4,7 +4,6 @@
 //! TuiApp<TestBackend> with convenient methods for simulating user interactions.
 
 use cclv::config::keybindings::KeyBindings;
-use cclv::model::{Session, SessionId};
 use cclv::source::{FileSource, StdinSource};
 use cclv::state::AppState;
 use cclv::view::{TuiApp, TuiError};
@@ -80,26 +79,20 @@ impl AcceptanceTestHarness {
 
         // Load fixture file using FileSource
         let mut file_source = FileSource::new(PathBuf::from(path))?;
-        let entries = file_source.drain_entries()?;
+        let log_entries = file_source.drain_entries()?;
 
         // Track entry count for line counter
-        let entry_count = entries.len();
+        let entry_count = log_entries.len();
 
-        // Build session from entries
-        let mut session = if let Some(first_entry) = entries.first() {
-            Session::new(first_entry.session_id().clone())
-        } else {
-            Session::new(SessionId::unknown())
-        };
+        // Convert LogEntry to ConversationEntry
+        let entries: Vec<cclv::model::ConversationEntry> = log_entries
+            .into_iter()
+            .map(|e| cclv::model::ConversationEntry::Valid(Box::new(e)))
+            .collect();
 
-        for entry in entries {
-            session.add_entry(entry);
-        }
-
-        // Create app state
+        // Create app state and populate with entries
         let mut app_state = AppState::new();
-        // Populate log_view from existing session entries (needed for tests)
-        app_state.populate_log_view_from_model_session(&session);
+        app_state.add_entries(entries);
         let key_bindings = KeyBindings::default();
 
         // Create dummy stdin source (won't be used for testing, but required by TuiApp)

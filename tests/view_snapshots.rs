@@ -5,8 +5,8 @@
 //! accidental UI changes.
 
 use cclv::model::{
-    AgentConversation, AgentId, ContentBlock, ConversationEntry, EntryMetadata, EntryType,
-    EntryUuid, LogEntry, Message, MessageContent, PricingConfig, Role, Session, SessionId,
+    AgentId, ContentBlock, ConversationEntry, EntryMetadata, EntryType,
+    EntryUuid, LogEntry, Message, MessageContent, PricingConfig, Role, SessionId,
     SessionStats, StatsFilter, TokenUsage, ToolCall, ToolName, ToolUseId,
 };
 use cclv::state::WrapMode;
@@ -295,16 +295,11 @@ fn create_test_log_entry(
 }
 
 /// Create a test conversation with given entries.
-fn create_test_conversation(entries: Vec<LogEntry>) -> AgentConversation {
-    let session_id = SessionId::new("test-session").unwrap();
-    let mut session = Session::new(session_id);
-
-    for entry in entries {
-        session.add_conversation_entry(ConversationEntry::Valid(Box::new(entry)));
-    }
-
-    // Return the main agent conversation
-    session.main_agent().clone()
+fn create_test_conversation(entries: Vec<LogEntry>) -> Vec<ConversationEntry> {
+    entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect()
 }
 
 #[test]
@@ -319,7 +314,7 @@ fn snapshot_message_collapsed_multiline() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let view_state = ConversationViewState::new(None, None, conversation.clone());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 15);
@@ -348,7 +343,7 @@ fn snapshot_message_expanded_multiline() {
 
     let conversation = create_test_conversation(vec![entry.clone()]);
     // Create view state and expand the message
-    let mut view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state
         .toggle_expand(
@@ -396,7 +391,7 @@ That's the code."#;
 
     let conversation = create_test_conversation(vec![entry.clone()]);
     // Expand to see full code block
-    let mut view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state.toggle_expand(
         EntryIndex::new(0),
@@ -447,7 +442,7 @@ fn snapshot_message_with_tool_use() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state.toggle_expand(
         EntryIndex::new(0),
@@ -495,7 +490,7 @@ Total lines: 3"#;
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state.toggle_expand(
         EntryIndex::new(0),
@@ -541,7 +536,7 @@ fn snapshot_message_with_thinking_block() {
     );
 
     let conversation = create_test_conversation(vec![entry.clone()]);
-    let mut view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     view_state.toggle_expand(
         EntryIndex::new(0),
@@ -607,7 +602,7 @@ fn bug_scroll_offset_adds_blank_lines_instead_of_moving_viewport() {
         .collect();
 
     let conversation = create_test_conversation(entries);
-    let view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let view_state = ConversationViewState::new(None, None, conversation.clone());
     let styles = MessageStyles::new();
 
     // Render at offset 0 and offset 10 - they should show DIFFERENT content
@@ -663,7 +658,7 @@ fn diagnostic_scroll_rendering_with_many_entries() {
         .collect();
 
     let conversation = create_test_conversation(entries);
-    let view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let view_state = ConversationViewState::new(None, None, conversation.clone());
     let styles = MessageStyles::new();
 
     // Test at different scroll offsets
@@ -714,7 +709,7 @@ fn bug_entry_indices_not_visible_in_rendered_output() {
     );
 
     let conversation = create_test_conversation(vec![entry]);
-    let view_state = ConversationViewState::new(None, None, conversation.entries().to_vec());
+    let view_state = ConversationViewState::new(None, None, conversation.clone());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(60, 10);
@@ -751,7 +746,6 @@ fn bug_entry_indices_not_visible_in_rendered_output() {
 /// ACTUAL: Terminal buffer is empty until first event triggers render.
 #[test]
 fn bug_initial_screen_blank_until_keypress() {
-    use cclv::model::Session;
     use cclv::source::FileSource;
     use cclv::state::AppState;
     use cclv::view::TuiApp;
@@ -762,19 +756,20 @@ fn bug_initial_screen_blank_until_keypress() {
     // Load fixture
     let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/blank_lines_repro.jsonl"))
         .expect("Should load fixture");
-    let entries = file_source.drain_entries().expect("Should parse entries");
-    let entry_count = entries.len();
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
 
-    let mut session = Session::new(entries[0].session_id().clone());
-    for entry in entries {
-        session.add_entry(entry);
-    }
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
 
     // Create app
     let backend = TestBackend::new(80, 40);
     let terminal = Terminal::new(backend).unwrap();
     let mut app_state = AppState::new();
-    app_state.populate_log_view_from_model_session(&session);
+    app_state.add_entries(entries);
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
     let input_source =
         cclv::source::InputSource::Stdin(cclv::source::StdinSource::from_reader(&b""[..]));
@@ -811,7 +806,6 @@ fn bug_initial_screen_blank_until_keypress() {
 #[test]
 #[ignore = "cclv-07v.12.21.3: excessive blank lines before/between entries"]
 fn bug_excessive_blank_lines_in_entry_rendering() {
-    use cclv::model::Session;
     use cclv::source::FileSource;
     use cclv::state::AppState;
     use cclv::view::TuiApp;
@@ -822,22 +816,24 @@ fn bug_excessive_blank_lines_in_entry_rendering() {
     // Load real fixture that reproduces the bug
     let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/blank_lines_repro.jsonl"))
         .expect("Should load fixture");
-    let entries = file_source.drain_entries().expect("Should parse entries");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
 
     let entry_count = entries.len();
     assert!(entry_count > 0, "Fixture should have entries");
 
     // Build session
-    let mut session = Session::new(entries[0].session_id().clone());
-    for entry in entries {
-        session.add_entry(entry);
-    }
 
     // Create app and render
     let backend = TestBackend::new(80, 40);
     let terminal = Terminal::new(backend).unwrap();
     let mut app_state = AppState::new();
-    app_state.populate_log_view_from_model_session(&session);
+    app_state.add_entries(entries);
 
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
     let input_source =
@@ -905,7 +901,6 @@ fn bug_excessive_blank_lines_in_entry_rendering() {
 #[test]
 #[ignore = "Enabled by cclv-5ur.2.12, will pass after Integration phase (cclv-5ur.6) wires view-state layer"]
 fn bug_page_down_twice_causes_blank_viewport() {
-    use cclv::model::Session;
     use cclv::source::FileSource;
     use cclv::state::AppState;
     use cclv::view::TuiApp;
@@ -917,14 +912,16 @@ fn bug_page_down_twice_causes_blank_viewport() {
     // Load minimal fixture from real log data (300 lines → ~294 entries)
     let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/page_down_repro.jsonl"))
         .expect("Should load fixture");
-    let entries = file_source.drain_entries().expect("Should parse entries");
-    let entry_count = entries.len();
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
 
     // Build session
-    let mut session = Session::new(entries[0].session_id().clone());
-    for entry in entries {
-        session.add_entry(entry);
-    }
 
     // Create TuiApp like the real app
     let backend = TestBackend::new(100, 46); // Match tmux viewport
@@ -935,7 +932,7 @@ fn bug_page_down_twice_causes_blank_viewport() {
     // The tests build Session first, then create AppState, so log_view is empty.
     // In production, entries are added via AppState::add_entries() which does dual-write.
     // Here we sync log_view from the already-populated Session.
-    app_state.populate_log_view_from_model_session(&session);
+    app_state.add_entries(entries);
 
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
     let input_source =
@@ -1004,7 +1001,6 @@ fn bug_page_down_twice_causes_blank_viewport() {
 /// (not entry count), preventing blank viewports at any scroll position.
 #[test]
 fn us1_page_down_to_bottom_always_shows_content() {
-    use cclv::model::Session;
     use cclv::source::FileSource;
     use cclv::state::AppState;
     use cclv::view::TuiApp;
@@ -1016,18 +1012,20 @@ fn us1_page_down_to_bottom_always_shows_content() {
     // Load large fixture: cc-session-log.jsonl has 31,210 entries
     let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
         .expect("Should load large fixture");
-    let entries = file_source.drain_entries().expect("Should parse entries");
-    let entry_count = entries.len();
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
     assert!(
         entry_count >= 30_000,
         "Fixture should have 30,000+ entries for this test"
     );
 
     // Build session
-    let mut session = Session::new(entries[0].session_id().clone());
-    for entry in entries {
-        session.add_entry(entry);
-    }
 
     // Create TuiApp
     let backend = TestBackend::new(100, 46);
@@ -1035,7 +1033,7 @@ fn us1_page_down_to_bottom_always_shows_content() {
     let mut app_state = AppState::new();
 
     // CRITICAL: Populate log_view from session entries (dual-write pattern)
-    app_state.populate_log_view_from_model_session(&session);
+    app_state.add_entries(entries);
 
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
     let input_source =
@@ -1102,7 +1100,6 @@ fn us1_page_down_to_bottom_always_shows_content() {
 /// This verifies ScrollPosition::Top resolves correctly and content renders from line 0.
 #[test]
 fn us1_home_key_shows_first_entries_from_bottom() {
-    use cclv::model::Session;
     use cclv::source::FileSource;
     use cclv::state::AppState;
     use cclv::view::TuiApp;
@@ -1114,14 +1111,16 @@ fn us1_home_key_shows_first_entries_from_bottom() {
     // Load large fixture
     let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
         .expect("Should load fixture");
-    let entries = file_source.drain_entries().expect("Should parse entries");
-    let entry_count = entries.len();
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
 
     // Build session
-    let mut session = Session::new(entries[0].session_id().clone());
-    for entry in entries {
-        session.add_entry(entry);
-    }
 
     // Create TuiApp
     let backend = TestBackend::new(100, 46);
@@ -1129,7 +1128,7 @@ fn us1_home_key_shows_first_entries_from_bottom() {
     let mut app_state = AppState::new();
 
     // CRITICAL: Populate log_view from session entries (dual-write pattern)
-    app_state.populate_log_view_from_model_session(&session);
+    app_state.add_entries(entries);
 
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
     let input_source =
@@ -1177,7 +1176,6 @@ fn us1_home_key_shows_first_entries_from_bottom() {
 /// This verifies ScrollPosition::Bottom resolves correctly and last entries render.
 #[test]
 fn us1_end_key_shows_last_entries_with_content() {
-    use cclv::model::Session;
     use cclv::source::FileSource;
     use cclv::state::AppState;
     use cclv::view::TuiApp;
@@ -1189,20 +1187,22 @@ fn us1_end_key_shows_last_entries_with_content() {
     // Load large fixture
     let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
         .expect("Should load fixture");
-    let entries = file_source.drain_entries().expect("Should parse entries");
-    let entry_count = entries.len();
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
 
     // Build session
-    let mut session = Session::new(entries[0].session_id().clone());
-    for entry in entries {
-        session.add_entry(entry);
-    }
 
     // Create TuiApp
     let backend = TestBackend::new(100, 46);
     let terminal = Terminal::new(backend).unwrap();
     let mut app_state = AppState::new();
-    app_state.populate_log_view_from_model_session(&session);
+    app_state.add_entries(entries);
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
     let input_source =
         cclv::source::InputSource::Stdin(cclv::source::StdinSource::from_reader(&b""[..]));
@@ -1248,7 +1248,6 @@ fn us1_end_key_shows_last_entries_with_content() {
 #[test]
 #[ignore = "Performance target (16ms/60fps) not yet achieved - requires O(log n) optimization in cclv-5ur.6"]
 fn us1_rapid_scroll_updates_within_60fps() {
-    use cclv::model::Session;
     use cclv::source::FileSource;
     use cclv::state::AppState;
     use cclv::view::TuiApp;
@@ -1261,14 +1260,16 @@ fn us1_rapid_scroll_updates_within_60fps() {
     // Load large fixture
     let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/cc-session-log.jsonl"))
         .expect("Should load fixture");
-    let entries = file_source.drain_entries().expect("Should parse entries");
-    let entry_count = entries.len();
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
 
     // Build session
-    let mut session = Session::new(entries[0].session_id().clone());
-    for entry in entries {
-        session.add_entry(entry);
-    }
 
     // Create TuiApp
     let backend = TestBackend::new(100, 46);
@@ -1276,7 +1277,7 @@ fn us1_rapid_scroll_updates_within_60fps() {
     let mut app_state = AppState::new();
 
     // CRITICAL: Populate log_view from session entries (dual-write pattern)
-    app_state.populate_log_view_from_model_session(&session);
+    app_state.add_entries(entries);
 
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
     let input_source =

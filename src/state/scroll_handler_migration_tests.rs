@@ -6,20 +6,19 @@
 //! This is the NEW behavior after removing vertical_offset from ScrollState.
 
 use super::*;
-use crate::model::{KeyAction, Session, SessionId};
+use crate::model::{KeyAction, SessionId};
 use crate::state::{AppState, FocusPane};
 use crate::view_state::scroll::ScrollPosition;
 use crate::view_state::types::LineOffset;
 
 /// Helper to create test AppState with populated log_view
 fn create_test_state_with_log_view(main_entries: usize, subagent_entries: usize) -> AppState {
-    let session_id = SessionId::new("test-session").unwrap();
-    let mut session = Session::new(session_id);
+    let mut entries = Vec::new();
 
     // Add main agent entries
     for i in 0..main_entries {
         let entry = create_test_log_entry(format!("main-{}", i), None);
-        session.add_conversation_entry(crate::model::ConversationEntry::Valid(Box::new(entry)));
+        entries.push(crate::model::ConversationEntry::Valid(Box::new(entry)));
     }
 
     // Add subagent entries
@@ -27,13 +26,12 @@ fn create_test_state_with_log_view(main_entries: usize, subagent_entries: usize)
         let agent_id = crate::model::AgentId::new("test-agent").unwrap();
         for i in 0..subagent_entries {
             let entry = create_test_log_entry(format!("sub-{}", i), Some(agent_id.clone()));
-            session.add_conversation_entry(crate::model::ConversationEntry::Valid(Box::new(entry)));
+            entries.push(crate::model::ConversationEntry::Valid(Box::new(entry)));
         }
     }
 
     let mut state = AppState::new();
-    // Populate log_view from session entries (test helper)
-    state.populate_log_view_from_model_session(&session);
+    state.add_entries(entries);
     state
 }
 

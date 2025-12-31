@@ -78,19 +78,12 @@ pub fn process_lines_legacy(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Session, SessionId};
-
-    // ===== Test Helpers =====
-
-    fn make_session_id(s: &str) -> SessionId {
-        SessionId::new(s).expect("valid session id")
-    }
+    use crate::state::AppState;
 
     // ===== process_lines Tests =====
 
     #[test]
     fn process_lines_adds_valid_entry_to_session() {
-        let mut session = Session::new(make_session_id("session-1"));
         let lines = vec![
             r#"{"type":"user","message":{"role":"user","content":"Hello"},"sessionId":"session-1","uuid":"uuid-1","timestamp":"2025-12-25T10:00:00Z"}"#.to_string(),
         ];
@@ -103,19 +96,17 @@ mod tests {
             "Entry should be valid for well-formed JSON"
         );
 
-        for entry in entries {
-            session.add_conversation_entry(entry);
-        }
+        let mut state = AppState::new();
+        state.add_entries(entries);
         assert_eq!(
-            session.main_agent().len(),
+            state.session_view().main().len(),
             1,
-            "Should have added entry to session"
+            "Should have added entry to main conversation"
         );
     }
 
     #[test]
     fn process_lines_adds_multiple_valid_entries() {
-        let mut session = Session::new(make_session_id("session-1"));
         let lines = vec![
             r#"{"type":"user","message":{"role":"user","content":"First"},"sessionId":"session-1","uuid":"uuid-1","timestamp":"2025-12-25T10:00:00Z"}"#.to_string(),
             r#"{"type":"assistant","message":{"role":"assistant","content":"Second"},"sessionId":"session-1","uuid":"uuid-2","timestamp":"2025-12-25T10:00:01Z"}"#.to_string(),
@@ -127,10 +118,9 @@ mod tests {
         assert!(entries[0].is_valid());
         assert!(entries[1].is_valid());
 
-        for entry in entries {
-            session.add_conversation_entry(entry);
-        }
-        assert_eq!(session.main_agent().len(), 2);
+        let mut state = AppState::new();
+        state.add_entries(entries);
+        assert_eq!(state.session_view().main().len(), 2);
     }
 
     #[test]
@@ -159,7 +149,6 @@ mod tests {
 
     #[test]
     fn process_lines_continues_after_parse_error() {
-        let mut session = Session::new(make_session_id("session-1"));
         let lines = vec![
             r#"{"type":"user","message":{"role":"user","content":"Good"},"sessionId":"session-1","uuid":"uuid-1","timestamp":"2025-12-25T10:00:00Z"}"#.to_string(),
             r#"{"malformed"#.to_string(),
@@ -176,11 +165,10 @@ mod tests {
         );
         assert!(entries[2].is_valid(), "Third entry should be valid");
 
-        for entry in entries {
-            session.add_conversation_entry(entry);
-        }
+        let mut state = AppState::new();
+        state.add_entries(entries);
         assert_eq!(
-            session.main_agent().len(),
+            state.session_view().main().len(),
             3,
             "Should have added all 3 entries (2 valid, 1 malformed)"
         );
@@ -188,7 +176,6 @@ mod tests {
 
     #[test]
     fn process_lines_routes_to_subagent() {
-        let mut session = Session::new(make_session_id("session-1"));
         let lines = vec![
             r#"{"type":"user","message":{"role":"user","content":"Test"},"sessionId":"session-1","uuid":"uuid-1","agentId":"agent-123","timestamp":"2025-12-25T10:00:00Z"}"#.to_string(),
         ];
@@ -198,15 +185,17 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert!(entries[0].is_valid());
 
-        for entry in entries {
-            session.add_conversation_entry(entry);
-        }
+        let mut state = AppState::new();
+        state.add_entries(entries);
         assert_eq!(
-            session.main_agent().len(),
+            state.session_view().main().len(),
             0,
             "Should not add to main agent"
         );
-        assert_eq!(session.subagents().len(), 1, "Should create subagent");
+        assert!(
+            state.session_view().has_subagents(),
+            "Should create subagent (pending or materialized)"
+        );
     }
 
     #[test]
