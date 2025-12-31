@@ -323,7 +323,6 @@ fn handle_mouse_click_switches_from_none_to_first_tab() {
     let state = create_app_state_with_tabs(vec!["agent-1", "agent-2"]);
 
     // Start with main selected (default)
-    let state = state;
 
     let tab_area = Rect::new(0, 0, 40, 3);
 
