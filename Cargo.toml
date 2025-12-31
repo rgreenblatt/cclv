@@ -30,6 +30,7 @@ fenwick = "1"
 
 [features]
 e2e-tests = []  # Feature flag to enable E2E smoke tests
+bench-internals = []  # Feature flag for whitebox tests with crate access
 
 [dev-dependencies]
 proptest = "1"

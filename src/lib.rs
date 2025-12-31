@@ -20,3 +20,6 @@ pub mod view_state;
 
 // Re-export main loop integration
 pub mod integration;
+
+#[cfg(test)]
+mod tests;
