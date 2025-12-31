@@ -13,7 +13,7 @@ use cclv::state::{ScrollState, WrapMode};
 use cclv::view::{tabs, ConversationView, MessageStyles, StatsPanel};
 use cclv::view_state::conversation::ConversationViewState;
 use cclv::view_state::layout_params::LayoutParams;
-use cclv::view_state::types::{EntryIndex, LineHeight};
+use cclv::view_state::types::{EntryIndex, LineHeight, ViewportDimensions};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use std::collections::{HashMap, HashSet};
@@ -355,6 +355,7 @@ fn snapshot_message_expanded_multiline() {
     view_state.toggle_expand(
         EntryIndex::new(0),
         params,
+        ViewportDimensions::new(80, 24),
         |_, _, _| LineHeight::new(100).unwrap(), // Mock height calculation
     ).expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
@@ -397,7 +398,7 @@ That's the code."#;
     // Expand to see full code block
     let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
+    view_state.toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24), |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(70, 25);
@@ -443,7 +444,7 @@ fn snapshot_message_with_tool_use() {
     let scroll_state = ScrollState::default();
     let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
+    view_state.toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24), |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
@@ -486,7 +487,7 @@ Total lines: 3"#;
     let scroll_state = ScrollState::default();
     let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
+    view_state.toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24), |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
@@ -527,7 +528,7 @@ fn snapshot_message_with_thinking_block() {
     let scroll_state = ScrollState::default();
     let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
+    view_state.toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24), |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
@@ -564,7 +565,7 @@ fn snapshot_message_with_search_highlighting() {
     let scroll_state = ScrollState::default();
     let mut view_state = ConversationViewState::new(conversation.entries().to_vec());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(EntryIndex::new(0), params, |_, _, _| LineHeight::new(100).unwrap());
+    view_state.toggle_expand(EntryIndex::new(0), params, ViewportDimensions::new(80, 24), |_, _, _| LineHeight::new(100).unwrap());
     let styles = MessageStyles::new();
 
     // Create active search state with query "test"
