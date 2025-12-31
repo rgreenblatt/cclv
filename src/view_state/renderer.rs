@@ -90,6 +90,7 @@ pub fn compute_entry_lines(
     entry_index: Option<usize>,
     is_subagent_view: bool,
     search_state: &crate::state::SearchState,
+    focused: bool,
 ) -> Vec<Line<'static>> {
     // Extract match information if search is active
     let match_info = match search_state {
@@ -254,7 +255,7 @@ pub fn compute_entry_lines(
         let separator = lines.pop(); // Remove separator temporarily
         lines = lines
             .into_iter()
-            .map(|line| prepend_index_to_line(line, index))
+            .map(|line| prepend_index_to_line(line, index, focused))
             .collect();
         if let Some(sep) = separator {
             lines.push(sep); // Re-add separator without prefix
@@ -573,17 +574,24 @@ fn format_entry_index(entry_index: usize) -> String {
 
 /// Prepend the entry index to a line as a styled prefix.
 ///
-/// Takes an existing Line and prepends the entry index with DarkGray + DIM styling.
-/// The index is formatted as a right-aligned number with separator (e.g., "   1│").
+/// Takes an existing Line and prepends the entry index with styling that indicates
+/// whether this entry is focused. Focused entries use Cyan color, unfocused entries
+/// use DarkGray + DIM.
 ///
 /// # Arguments
 /// * `line` - The line to prepend the index to
 /// * `entry_index` - 0-based index of the entry in the conversation
+/// * `focused` - Whether this entry is currently focused
 ///
 /// # Returns
 /// A new Line with the index prepended as the first span
-fn prepend_index_to_line(line: Line<'static>, entry_index: usize) -> Line<'static> {
+fn prepend_index_to_line(line: Line<'static>, entry_index: usize, focused: bool) -> Line<'static> {
     let index_text = format_entry_index(entry_index);
+
+    // TODO: cclv-5ur.27 - Use different styling for focused entries
+    // Focused: Cyan, unfocused: DarkGray + DIM
+    let _ = focused; // Silence unused warning until implemented
+
     let index_span = Span::styled(
         index_text,
         Style::default()

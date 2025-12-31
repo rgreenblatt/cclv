@@ -36,6 +36,7 @@ fn test_user_entry_has_cyan_color() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // FR-021: User messages should have Cyan color
@@ -71,6 +72,7 @@ fn test_assistant_entry_has_green_color() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // FR-022: Assistant messages should have Green color
@@ -141,6 +143,7 @@ fn test_collapsed_thinking_block_respects_collapse_threshold() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Collapsed Thinking block should show:
@@ -197,6 +200,7 @@ fn test_expanded_thinking_block_shows_all_lines() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Expanded Thinking block should show all 100 lines + 1 separator
@@ -244,6 +248,7 @@ fn test_small_thinking_block_never_collapses() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Below-threshold entry shows all lines even when "collapsed"
@@ -313,6 +318,7 @@ fn test_collapsed_text_content_respects_collapse_threshold() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Collapsed Text content should show:
@@ -376,6 +382,7 @@ fn test_expanded_text_content_shows_all_lines() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Expanded Text content should show all 100 lines + 1 separator
@@ -423,6 +430,7 @@ fn test_small_text_content_never_collapses() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Below-threshold text entry shows all lines even when "collapsed"
@@ -474,6 +482,7 @@ fn test_text_block_wraps_long_lines() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: With content_width = 40 - 2 = 38 chars, a 100-char line
@@ -511,6 +520,7 @@ fn test_text_block_nowrap_does_not_wrap() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: NoWrap mode keeps the 100-char line as a single line
@@ -574,6 +584,7 @@ fn test_tool_result_wraps_long_lines() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: With content_width = 40 - 2 = 38 chars, a 100-char line
@@ -611,6 +622,7 @@ fn test_tool_result_nowrap_does_not_wrap() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: NoWrap mode keeps the 100-char line as a single line
@@ -678,6 +690,7 @@ fn test_tool_use_wraps_long_input_lines() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: ToolUse renders as:
@@ -721,6 +734,7 @@ fn test_tool_use_nowrap_does_not_wrap() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // Render with global Wrap (defaults to NoWrap for ToolUse)
@@ -735,6 +749,7 @@ fn test_tool_use_nowrap_does_not_wrap() {
         None,  // No index prefix for existing tests
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Explicit Wrap override should produce MORE lines than default NoWrap
@@ -766,6 +781,7 @@ fn test_tool_use_header_has_emoji_indicator() {
         None,  // No index prefix
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: First line should be the header with emoji: "🔧 Tool: TestTool"
@@ -810,6 +826,7 @@ fn test_entry_index_0_shows_as_1_prefix() {
         Some(0), // Entry index 0 should display as "   1│"
         false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Every content line should have "   1│" prefix
@@ -864,6 +881,7 @@ fn test_entry_index_41_shows_as_42_prefix() {
         Some(41), // Entry index 41 should display as "  42│"
         false,    // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Every content line should have "  42│" prefix (right-aligned in 4 chars)
@@ -902,6 +920,7 @@ fn test_entry_index_999_shows_as_1000_prefix() {
         Some(999), // Entry index 999 should display as "1000│" (4 digits)
         false,     // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Every content line should have "1000│" prefix (right-aligned in 4 chars)
@@ -940,6 +959,7 @@ fn test_entry_index_none_shows_no_prefix() {
         None,  // No index = no prefix
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Lines should NOT have index prefix
@@ -981,6 +1001,7 @@ fn test_entry_index_prefix_on_multiline_entry() {
         Some(0), // Entry index 0 should display as "   1│"
         false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: All 5 content lines should have "   1│" prefix
@@ -1027,6 +1048,7 @@ fn test_initial_prompt_label_appears_for_first_entry_in_subagent_view() {
         Some(0), // First entry (index 0)
         true,    // IS a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: First line should be "🔷 Initial Prompt" with Magenta + Bold
@@ -1089,6 +1111,7 @@ fn test_initial_prompt_label_does_not_appear_in_main_view() {
         Some(0), // First entry (index 0)
         false,   // NOT a subagent view (main view)
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Should NOT have Initial Prompt label
@@ -1130,6 +1153,7 @@ fn test_initial_prompt_label_only_for_first_entry_in_subagent() {
         Some(1), // Second entry (index 1, not 0)
         true,    // IS a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Should NOT have Initial Prompt label (only for index 0)
@@ -1170,6 +1194,7 @@ fn test_initial_prompt_label_without_entry_index() {
         None, // No entry index (but we need entry_index == Some(0) for label!)
         true, // IS a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Should NOT have Initial Prompt label because entry_index is None
@@ -1211,6 +1236,7 @@ fn test_entry_index_prefix_on_collapsed_entry() {
         Some(9), // Entry index 9 should display as "  10│"
         false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: Should have 3 summary lines + 1 collapse indicator + 1 separator = 5 total
@@ -1257,6 +1283,7 @@ fn test_text_block_renders_bold_markdown() {
         None,  // No index prefix for clarity
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: At least one span should have Bold modifier
@@ -1293,6 +1320,7 @@ fn test_text_block_renders_italic_markdown() {
         None,  // No index prefix for clarity
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: At least one span should have Italic modifier
@@ -1329,6 +1357,7 @@ fn test_text_block_renders_inline_code_markdown() {
         None,  // No index prefix for clarity
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: The inline code should be styled differently from plain text
@@ -1364,6 +1393,7 @@ fn test_text_block_preserves_role_color_in_markdown() {
         None,  // No index prefix for clarity
         false, // Not a subagent view
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // ASSERTION: At least one span should have Cyan foreground (User role color)
@@ -1439,6 +1469,7 @@ fn test_search_match_highlighted_with_yellow_background() {
         None,  // No index prefix
         false, // Not a subagent view
         &search_state,
+        false, // Not focused
     );
 
     // ASSERTION: At least one span should have Yellow background (search highlight)
@@ -1507,6 +1538,7 @@ fn test_current_search_match_has_reversed_modifier() {
         None,  // No index prefix
         false, // Not a subagent view
         &search_state,
+        false, // Not focused
     );
 
     // ASSERTION: At least one span should have REVERSED modifier (current match)
@@ -1570,6 +1602,7 @@ fn test_non_current_search_matches_no_reversed_modifier() {
         None,  // No index prefix
         false, // Not a subagent view
         &search_state,
+        false, // Not focused
     );
 
     // ASSERTION: Count spans with Yellow background
@@ -1617,6 +1650,7 @@ That's the code."#;
         None,
         false,
         &crate::state::SearchState::Inactive,
+        false, // Not focused
     );
 
     // Debug: Show how many lines were rendered
@@ -1652,5 +1686,87 @@ That's the code."#;
     assert!(
         rendered_text.contains("fn main"),
         "Code content should be rendered (without fence markers)"
+    );
+}
+
+// ===== Focused Entry Visual Indicator Tests (cclv-5ur.27) =====
+
+#[test]
+fn test_focused_entry_has_cyan_index() {
+    // ACCEPTANCE: Visual indicator shows focused entry (distinct from scroll position)
+    //
+    // This test verifies that focused entries have Cyan-colored index prefixes,
+    // while unfocused entries have DarkGray+DIM index prefixes.
+
+    let entry = create_entry_with_text("Test message");
+    let styles = default_styles();
+
+    // Render entry as FOCUSED with index prefix
+    let focused_lines = compute_entry_lines(
+        &entry,
+        false, // collapsed
+        WrapContext::from_global(WrapMode::Wrap),
+        80,
+        10,
+        3,
+        &styles,
+        Some(0),  // With index prefix
+        false,    // Not a subagent view
+        &crate::state::SearchState::Inactive,
+        true,     // FOCUSED
+    );
+
+    // Render entry as UNFOCUSED with index prefix
+    let unfocused_lines = compute_entry_lines(
+        &entry,
+        false, // collapsed
+        WrapContext::from_global(WrapMode::Wrap),
+        80,
+        10,
+        3,
+        &styles,
+        Some(0),  // With index prefix
+        false,    // Not a subagent view
+        &crate::state::SearchState::Inactive,
+        false,    // NOT FOCUSED
+    );
+
+    // ASSERTION 1: Focused entry should have Cyan-colored INDEX PREFIX
+    // The index prefix is the FIRST span of each line and contains "│"
+    let has_cyan_index_in_focused = focused_lines.iter().any(|line| {
+        line.spans.first().map_or(false, |span| {
+            span.content.contains("│") && span.style.fg == Some(ratatui::style::Color::Cyan)
+        })
+    });
+
+    assert!(
+        has_cyan_index_in_focused,
+        "Focused entry should have Cyan-colored index prefix (first span with '│')"
+    );
+
+    // ASSERTION 2: Unfocused entry should NOT have Cyan in the INDEX PREFIX
+    // Check the first span (index prefix) specifically
+    let has_cyan_index_in_unfocused = unfocused_lines.iter().any(|line| {
+        line.spans.first().map_or(false, |span| {
+            span.content.contains("│") && span.style.fg == Some(ratatui::style::Color::Cyan)
+        })
+    });
+
+    assert!(
+        !has_cyan_index_in_unfocused,
+        "Unfocused entry should NOT have Cyan-colored index prefix"
+    );
+
+    // ASSERTION 3: Unfocused entry should have DarkGray in the INDEX PREFIX
+    // Check the first span (index prefix) specifically
+    let has_darkgray_index_in_unfocused = unfocused_lines.iter().any(|line| {
+        line.spans.first().map_or(false, |span| {
+            span.content.contains("│") && span.style.fg == Some(ratatui::style::Color::DarkGray)
+        })
+    });
+
+    assert!(
+        has_darkgray_index_in_unfocused,
+        "Unfocused entry should have DarkGray-colored index prefix"
     );
 }

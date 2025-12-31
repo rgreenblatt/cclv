@@ -553,9 +553,10 @@ impl ConversationViewState {
         self.global_wrap = wrap;
         self.height_index.clear();
 
-        for entry_view in &mut self.entries {
+        for (idx, entry_view) in self.entries.iter_mut().enumerate() {
             let effective_wrap = entry_view.effective_wrap(wrap);
-            entry_view.recompute_lines(effective_wrap, width);
+            let is_focused = self.focused_message.map_or(false, |f| f.get() == idx);
+            entry_view.recompute_lines(effective_wrap, width, is_focused);
 
             let height = entry_view.height().get() as usize;
             self.height_index.push(height);
@@ -580,7 +581,8 @@ impl ConversationViewState {
 
         // Recompute lines with new expand state
         let effective_wrap = entry.effective_wrap(self.global_wrap);
-        entry.recompute_lines(effective_wrap, self.viewport_width);
+        let is_focused = self.focused_message.map_or(false, |f| f.get() == index);
+        entry.recompute_lines(effective_wrap, self.viewport_width, is_focused);
 
         let new_height = entry.height().get() as usize;
 
@@ -606,7 +608,8 @@ impl ConversationViewState {
 
         // Recompute lines with new wrap mode
         let effective_wrap = entry.effective_wrap(self.global_wrap);
-        entry.recompute_lines(effective_wrap, self.viewport_width);
+        let is_focused = self.focused_message.map_or(false, |f| f.get() == index);
+        entry.recompute_lines(effective_wrap, self.viewport_width, is_focused);
 
         let new_height = entry.height().get() as usize;
 
@@ -629,7 +632,8 @@ impl ConversationViewState {
 
             // Compute rendered lines
             let effective_wrap = entry_view.effective_wrap(self.global_wrap);
-            entry_view.recompute_lines(effective_wrap, self.viewport_width);
+            let is_focused = self.focused_message.map_or(false, |f| f.get() == (start_idx + offset));
+            entry_view.recompute_lines(effective_wrap, self.viewport_width, is_focused);
 
             let height = entry_view.height().get() as usize;
 

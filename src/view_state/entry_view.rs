@@ -113,6 +113,7 @@ impl EntryView {
             Some(index.get()),                    // Pass entry index for prefixing
             false,                                // TODO: Pass is_subagent_view from caller
             &crate::state::SearchState::Inactive, // TODO: Pass search_state from caller
+            false,                                // Default to not focused on creation
         );
         Self {
             entry,
@@ -175,7 +176,7 @@ impl EntryView {
     /// This is `pub(crate)` because only ConversationViewState should
     /// trigger recomputation (to maintain HeightIndex consistency).
     #[allow(dead_code)] // Will be used by ConversationViewState in future tasks
-    pub(crate) fn recompute_lines(&mut self, wrap_mode: WrapMode, width: u16) {
+    pub(crate) fn recompute_lines(&mut self, wrap_mode: WrapMode, width: u16, focused: bool) {
         // Bug fix cclv-5ur.22: Create WrapContext that encodes override status
         let wrap_ctx = match self.wrap_override {
             Some(override_mode) => WrapContext::from_override(override_mode),
@@ -194,6 +195,7 @@ impl EntryView {
             Some(self.index.get()), // Pass entry index for prefixing
             false,                  // TODO: Pass is_subagent_view from caller
             &crate::state::SearchState::Inactive, // TODO: Pass search_state from caller
+            focused,
         );
     }
 

@@ -234,7 +234,7 @@ fn recompute_lines_updates_rendered_lines() {
     // NOTE: This test assumes we can change expanded state internally
     // The actual API will be determined during implementation
     // For now, just verify recompute_lines exists and can be called
-    view.recompute_lines(WrapMode::Wrap, 80);
+    view.recompute_lines(WrapMode::Wrap, 80, false);
 
     // Height should still be consistent with rendered_lines
     let new_height = view.height();
@@ -253,7 +253,7 @@ fn recompute_lines_with_different_width() {
     let mut view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80);
 
     // Recompute with different width (wrapping behavior might change)
-    view.recompute_lines(WrapMode::Wrap, 40);
+    view.recompute_lines(WrapMode::Wrap, 40, false);
 
     let new_lines = view.rendered_lines().len();
     // Note: For now, width doesn't affect rendering (deferred to bead 14.6)
@@ -374,7 +374,7 @@ fn recompute_lines_respects_global_wrap_mode() {
     );
 
     // Recompute with Global NoWrap mode
-    view.recompute_lines(WrapMode::NoWrap, 40);
+    view.recompute_lines(WrapMode::NoWrap, 40, false);
 
     let nowrap_lines = view.rendered_lines().len();
     // NoWrap: 1 content line + 1 separator = 2
@@ -396,7 +396,7 @@ fn recompute_lines_respects_per_entry_wrap_override() {
     view.set_wrap_override(Some(WrapMode::NoWrap));
 
     // Recompute with GLOBAL Wrap mode (but entry override should take precedence)
-    view.recompute_lines(WrapMode::Wrap, 40);
+    view.recompute_lines(WrapMode::Wrap, 40, false);
 
     let lines = view.rendered_lines().len();
     // Entry override is NoWrap, so should NOT wrap: 1 content + 1 separator = 2
@@ -422,7 +422,7 @@ fn recompute_lines_override_none_uses_global() {
     );
 
     // Recompute with global Wrap mode
-    view.recompute_lines(WrapMode::Wrap, 40);
+    view.recompute_lines(WrapMode::Wrap, 40, false);
 
     let lines = view.rendered_lines().len();
     // No override, so global Wrap mode applies: should wrap
