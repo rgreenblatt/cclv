@@ -69,8 +69,6 @@ where
     input_source: InputSource,
     line_counter: usize,
     key_bindings: KeyBindings,
-    /// Last time a frame was rendered (for 60fps batching)
-    last_render: std::time::Instant,
     /// Pending entries accumulated between renders
     pending_entries: Vec<crate::model::ConversationEntry>,
     /// Receiver for log entries from tracing subscriber
@@ -129,7 +127,6 @@ impl TuiApp<CrosstermBackend<Stdout>> {
             input_source,
             line_counter,
             key_bindings,
-            last_render: std::time::Instant::now(),
             pending_entries: Vec::new(),
             log_receiver,
             last_tab_area: None,
@@ -141,46 +138,46 @@ impl TuiApp<CrosstermBackend<Stdout>> {
     /// Run the main event loop
     ///
     /// Returns when user quits (q or Ctrl+C)
-    /// Target: 60fps (16ms frame budget) with batched rendering
+    /// Event-driven: redraws only on stdin data, user input, or timer events (FR-028)
     pub fn run(&mut self) -> Result<(), TuiError> {
-        const FRAME_DURATION: Duration = Duration::from_millis(16); // ~60fps
+        // Timer interval for LIVE indicator blink (500ms)
+        const TIMER_INTERVAL: Duration = Duration::from_millis(500);
 
         loop {
-            // Poll for new log entries (accumulates to pending buffer)
+            // Poll for new stdin data
             self.poll_input()?;
 
             // Poll for log pane entries from tracing subscriber
             self.poll_log_entries();
 
-            // Poll for events (non-blocking with timeout)
-            let should_force_render = if event::poll(FRAME_DURATION)? {
+            // Check if we have new data to render
+            let has_new_data = !self.pending_entries.is_empty();
+
+            // Poll for events with timer timeout (event-driven)
+            let event_occurred = if event::poll(TIMER_INTERVAL)? {
                 match event::read()? {
                     Event::Key(key) => {
                         if self.handle_key(key) {
-                            break;
+                            return Ok(()); // User quit
                         }
-                        true // Keyboard event occurred - force render
+                        true // Keyboard event - trigger render
                     }
                     Event::Mouse(mouse) => {
                         self.handle_mouse(mouse);
-                        true // Mouse event occurred - force render
+                        true // Mouse event - trigger render
                     }
                     _ => false,
                 }
             } else {
-                false
+                // Timer elapsed (500ms) - trigger render for LIVE indicator blink
+                true
             };
 
-            // Check if frame budget elapsed AFTER poll (not before)
-            let should_render = self.should_render_frame();
-
-            // Render frame if budget elapsed or event occurred
-            if should_render || should_force_render {
+            // Render only if: event occurred, timer elapsed, or new data arrived
+            if event_occurred || has_new_data {
                 self.draw()?;
             }
         }
-
-        Ok(())
     }
 }
 
@@ -209,7 +206,6 @@ where
             input_source,
             line_counter,
             key_bindings,
-            last_render: std::time::Instant::now(),
             pending_entries: Vec::new(),
             log_receiver,
             last_tab_area: None,
@@ -629,9 +625,6 @@ where
             layout::render_layout(frame, &self.app_state);
         })?;
 
-        // Update last render time
-        self.last_render = std::time::Instant::now();
-
         Ok(())
     }
 
@@ -659,17 +652,6 @@ where
         self.app_state.add_entries(entries);
     }
 
-    /// Check if enough time has elapsed to render a new frame (16ms for 60fps)
-    fn should_render_frame(&self) -> bool {
-        const FRAME_DURATION: std::time::Duration = std::time::Duration::from_millis(16);
-        self.last_render.elapsed() >= FRAME_DURATION
-    }
-
-    /// Set the last render time (for testing)
-    #[cfg(test)]
-    fn set_last_render_time(&mut self, time: std::time::Instant) {
-        self.last_render = time;
-    }
 }
 
 /// CLI arguments for TUI initialization
@@ -826,7 +808,6 @@ mod tests {
             input_source,
             line_counter: 0,
             key_bindings,
-            last_render: std::time::Instant::now(),
             pending_entries: Vec::new(),
             log_receiver: log_rx,
             last_tab_area: None,
@@ -1326,98 +1307,6 @@ mod tests {
             50,
             "All entries should be in session after flush"
         );
-    }
-
-    #[test]
-    fn should_render_returns_false_before_frame_duration() {
-        use std::time::{Duration, Instant};
-
-        let mut app = create_test_app();
-
-        // Set last render to just now
-        app.set_last_render_time(Instant::now());
-
-        // Immediately check - should not render yet
-        assert!(
-            !app.should_render_frame(),
-            "Should not render immediately after last render"
-        );
-
-        // Check after 10ms (less than 16ms frame budget)
-        std::thread::sleep(Duration::from_millis(10));
-        assert!(
-            !app.should_render_frame(),
-            "Should not render after only 10ms"
-        );
-    }
-
-    #[test]
-    fn should_render_returns_true_after_frame_duration() {
-        use std::time::{Duration, Instant};
-
-        let mut app = create_test_app();
-
-        // Set last render to 20ms ago (past the 16ms frame budget)
-        let past = Instant::now() - Duration::from_millis(20);
-        app.set_last_render_time(past);
-
-        assert!(
-            app.should_render_frame(),
-            "Should render after 16ms frame duration has elapsed"
-        );
-    }
-
-    #[test]
-    fn should_render_returns_true_when_pending_entries_and_frame_elapsed() {
-        use std::time::{Duration, Instant};
-
-        let mut app = create_test_app();
-
-        // Set last render to 20ms ago
-        let past = Instant::now() - Duration::from_millis(20);
-        app.set_last_render_time(past);
-
-        // Add pending entries
-        app.accumulate_pending_entries(vec![create_test_entry("msg1")]);
-
-        assert!(
-            app.should_render_frame(),
-            "Should render when frame elapsed and entries pending"
-        );
-    }
-
-    #[test]
-    fn batching_prevents_rendering_on_every_entry() {
-        // This test verifies the core requirement:
-        // When many entries arrive rapidly (< 16ms apart),
-        // we should NOT render after each one.
-
-        let mut app = create_test_app();
-
-        // Set last render time to now so timing checks are valid
-        app.set_last_render_time(std::time::Instant::now());
-
-        // Simulate 10 entries arriving in quick succession
-        for i in 0..10 {
-            let entry = create_test_entry(&format!("rapid msg {}", i));
-            app.accumulate_pending_entries(vec![entry]);
-
-            // Check if we should render (simulating the event loop decision)
-            let should_render = app.should_render_frame();
-
-            if i == 0 {
-                // First entry after enough time should trigger render
-                continue;
-            }
-
-            // Subsequent rapid entries should NOT trigger render
-            // (assuming they arrive within 16ms)
-            assert!(
-                !should_render,
-                "Rapid entry {} should not trigger immediate render",
-                i
-            );
-        }
     }
 
     // ===== US4: Tab Navigation Dispatch Tests =====
