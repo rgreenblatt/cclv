@@ -578,29 +578,141 @@ impl ConversationViewState {
     /// This replaces `recompute_layout` with a simpler API that doesn't require
     /// an external height_calculator function. Heights are computed from
     /// entry.rendered_lines after recomputing them.
-    pub fn relayout(&mut self, _width: u16, _wrap: WrapMode) {
-        todo!("relayout: Implement full relayout with HeightIndex update")
+    pub fn relayout(&mut self, width: u16, wrap: WrapMode) {
+        self.viewport_width = width;
+        self.global_wrap = wrap;
+        self.height_index.clear();
+
+        let mut cumulative_y = 0usize;
+
+        for entry_view in &mut self.entries {
+            let effective_wrap = entry_view.effective_wrap(wrap);
+            entry_view.recompute_lines(effective_wrap, width);
+
+            let height = entry_view.height().get() as usize;
+            self.height_index.push(height);
+
+            // Update layout shim for backward compatibility
+            use super::layout::EntryLayout;
+            use super::types::LineOffset;
+            entry_view.set_layout(EntryLayout::new(entry_view.height(), LineOffset::new(cumulative_y)));
+            cumulative_y += height;
+        }
+
+        self.total_height = self.height_index.total();
+        self.last_layout_params = Some(LayoutParams::new(width, wrap));
     }
 
     /// Toggle expanded state for entry. O(log n).
     ///
     /// Atomically updates both the entry state and HeightIndex to maintain invariant.
-    pub fn toggle_entry_expanded(&mut self, _index: usize) {
-        todo!("toggle_entry_expanded: Implement with HeightIndex update")
+    pub fn toggle_entry_expanded(&mut self, index: usize) {
+        if index >= self.entries.len() {
+            return;
+        }
+
+        let entry = &mut self.entries[index];
+
+        // Toggle expanded state
+        entry.toggle_expanded();
+
+        // Recompute lines with new expand state
+        let effective_wrap = entry.effective_wrap(self.global_wrap);
+        entry.recompute_lines(effective_wrap, self.viewport_width);
+
+        let new_height = entry.height().get() as usize;
+
+        // Update HeightIndex atomically
+        self.height_index.set(index, new_height);
+
+        // Update total_height
+        self.total_height = self.height_index.total();
+
+        // Update layout shim for backward compatibility (relayout from this index)
+        self.relayout_shim_from(index);
     }
 
     /// Set wrap override for entry. O(log n).
     ///
     /// Atomically updates both the entry state and HeightIndex to maintain invariant.
-    pub fn set_entry_wrap_override(&mut self, _index: usize, _mode: Option<WrapMode>) {
-        todo!("set_entry_wrap_override: Implement with HeightIndex update")
+    pub fn set_entry_wrap_override(&mut self, index: usize, mode: Option<WrapMode>) {
+        if index >= self.entries.len() {
+            return;
+        }
+
+        let entry = &mut self.entries[index];
+
+        // Set wrap override
+        entry.set_wrap_override(mode);
+
+        // Recompute lines with new wrap mode
+        let effective_wrap = entry.effective_wrap(self.global_wrap);
+        entry.recompute_lines(effective_wrap, self.viewport_width);
+
+        let new_height = entry.height().get() as usize;
+
+        // Update HeightIndex atomically
+        self.height_index.set(index, new_height);
+
+        // Update total_height
+        self.total_height = self.height_index.total();
+
+        // Update layout shim for backward compatibility (relayout from this index)
+        self.relayout_shim_from(index);
     }
 
     /// Append new entries (streaming mode). O(n log n) where n is new entries.
     ///
     /// Updates HeightIndex for all new entries.
-    pub fn append_entries(&mut self, _entries: Vec<ConversationEntry>) {
-        todo!("append_entries: Implement with HeightIndex update")
+    pub fn append_entries(&mut self, entries: Vec<ConversationEntry>) {
+        let start_idx = self.entries.len();
+
+        for (offset, entry) in entries.into_iter().enumerate() {
+            let index = EntryIndex::new(start_idx + offset);
+            let mut entry_view = EntryView::new(entry, index);
+
+            // Compute rendered lines
+            let effective_wrap = entry_view.effective_wrap(self.global_wrap);
+            entry_view.recompute_lines(effective_wrap, self.viewport_width);
+
+            let height = entry_view.height().get() as usize;
+
+            // Update HeightIndex
+            self.height_index.push(height);
+
+            // Compute cumulative_y for layout shim
+            let cumulative_y = if start_idx + offset == 0 {
+                0
+            } else {
+                self.height_index.prefix_sum(start_idx + offset - 1)
+            };
+
+            // Set layout shim for backward compatibility
+            use super::layout::EntryLayout;
+            use super::types::LineOffset;
+            entry_view.set_layout(EntryLayout::new(entry_view.height(), LineOffset::new(cumulative_y)));
+
+            self.entries.push(entry_view);
+        }
+
+        self.total_height = self.height_index.total();
+    }
+
+    /// Helper to update layout shims from a given index onward (for backward compatibility).
+    /// This maintains cumulative_y for the EntryView::layout() shim.
+    fn relayout_shim_from(&mut self, from_index: usize) {
+        use super::layout::EntryLayout;
+        use super::types::LineOffset;
+
+        for i in from_index..self.entries.len() {
+            let cumulative_y = if i == 0 {
+                0
+            } else {
+                self.height_index.prefix_sum(i - 1)
+            };
+            let entry = &mut self.entries[i];
+            entry.set_layout(EntryLayout::new(entry.height(), LineOffset::new(cumulative_y)));
+        }
     }
 }
 
