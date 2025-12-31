@@ -41,10 +41,6 @@ pub struct ConfigFile {
     #[serde(default)]
     pub theme: Option<String>,
 
-    /// Default follow mode (live tailing).
-    #[serde(default)]
-    pub follow: Option<bool>,
-
     /// Show stats panel on startup.
     #[serde(default)]
     pub show_stats: Option<bool>,
@@ -128,8 +124,6 @@ pub struct PricingEntry {
 pub struct ResolvedConfig {
     /// Theme name.
     pub theme: String,
-    /// Follow mode.
-    pub follow: bool,
     /// Show stats on startup.
     pub show_stats: bool,
     /// Collapse threshold.
@@ -151,7 +145,6 @@ impl Default for ResolvedConfig {
     fn default() -> Self {
         Self {
             theme: "base16-ocean".to_string(),
-            follow: true,
             show_stats: false,
             collapse_threshold: 10,
             summary_lines: 3,
@@ -301,7 +294,6 @@ pub fn merge_config(config_file: Option<ConfigFile>) -> ResolvedConfig {
 
     ResolvedConfig {
         theme: config.theme.unwrap_or(defaults.theme),
-        follow: config.follow.unwrap_or(defaults.follow),
         show_stats: config.show_stats.unwrap_or(defaults.show_stats),
         collapse_threshold: config
             .collapse_threshold
@@ -329,7 +321,6 @@ pub fn merge_config(config_file: Option<ConfigFile>) -> ResolvedConfig {
 ///
 /// * `config` - Base resolved config (already merged with defaults, file, and env vars)
 /// * `theme_override` - Optional theme from `--theme` flag
-/// * `follow_override` - Optional follow mode from `--follow` flag
 /// * `stats_override` - Optional stats visibility from `--stats` flag
 ///
 /// # Returns
@@ -338,17 +329,11 @@ pub fn merge_config(config_file: Option<ConfigFile>) -> ResolvedConfig {
 pub fn apply_cli_overrides(
     mut config: ResolvedConfig,
     theme_override: Option<String>,
-    follow_override: Option<bool>,
     stats_override: Option<bool>,
 ) -> ResolvedConfig {
     // Apply theme override if provided
     if let Some(theme) = theme_override {
         config.theme = theme;
-    }
-
-    // Apply follow override if provided
-    if let Some(follow) = follow_override {
-        config.follow = follow;
     }
 
     // Apply stats override if provided
@@ -409,7 +394,6 @@ mod log_path_tests {
         let custom_path = PathBuf::from("/custom/path/to/app.log");
         let config_file = ConfigFile {
             theme: None,
-            follow: None,
             show_stats: None,
             collapse_threshold: None,
             summary_lines: None,
@@ -432,7 +416,6 @@ mod log_path_tests {
     fn missing_config_file_log_path_uses_default() {
         let config_file = ConfigFile {
             theme: None,
-            follow: None,
             show_stats: None,
             collapse_threshold: None,
             summary_lines: None,

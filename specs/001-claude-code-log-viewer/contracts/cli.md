@@ -40,14 +40,6 @@ Path to the JSONL log file to view.
 
 ## Options
 
-### `-f, --follow`
-
-Follow the file for new content (like `tail -f`).
-
-- **Type**: Flag
-- **Default**: Auto-detect (enabled if file is still being written)
-- **Conflicts**: Cannot be used with stdin input
-
 ### `-l, --line <N>`
 
 Start at specific line number.
@@ -180,7 +172,6 @@ Print version information.
 
 | Key | Action |
 |-----|--------|
-| `f` | Toggle follow/live mode |
 | `a` | Toggle auto-scroll |
 
 ### Application
@@ -226,9 +217,6 @@ Optional TOML configuration at `~/.config/cclv/config.toml`:
 # Default theme
 theme = "solarized-dark"
 
-# Default follow mode
-follow = true
-
 # Show stats on startup
 show_stats = false
 
@@ -256,10 +244,10 @@ quit = "q"
 cclv ~/.claude/projects/-home-user-myproject/abc123.jsonl
 ```
 
-### Follow a live session
+### Tail a live session
 
 ```bash
-cclv -f ~/.claude/projects/-home-user-myproject/abc123.jsonl
+tail -f ~/.claude/projects/-home-user-myproject/abc123.jsonl | cclv
 ```
 
 ### Pipe from another command
@@ -290,13 +278,21 @@ To view logs for the current Claude Code session:
 ```bash
 # Find most recent log file
 LATEST=$(ls -t ~/.claude/projects/$(pwd | tr '/' '-')/*.jsonl 2>/dev/null | head -1)
-cclv -f "$LATEST"
+cclv "$LATEST"
+```
+
+For live tailing of an active session:
+
+```bash
+# Tail the log file and pipe to cclv
+LATEST=$(ls -t ~/.claude/projects/$(pwd | tr '/' '-')/*.jsonl 2>/dev/null | head -1)
+tail -f "$LATEST" | cclv
 ```
 
 Add to shell alias:
 
 ```bash
-alias cclog='cclv -f "$(ls -t ~/.claude/projects/$(pwd | tr "/" "-")/*.jsonl 2>/dev/null | head -1)"'
+alias cclog='tail -f "$(ls -t ~/.claude/projects/$(pwd | tr "/" "-")/*.jsonl 2>/dev/null | head -1)" | cclv'
 ```
 
 ---

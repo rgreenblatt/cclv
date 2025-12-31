@@ -221,12 +221,8 @@ fn build_help_content() -> Vec<Line<'static>> {
             Span::styled("Filter: Current subagent", desc_style),
         ]),
         Line::from(""),
-        // Live Mode (cli.md lines 179-184)
+        // Live Mode
         Line::from(vec![Span::styled("Live Mode", category_style)]),
-        Line::from(vec![
-            Span::styled("  f           ", key_style),
-            Span::styled("Toggle follow/live mode", desc_style),
-        ]),
         Line::from(vec![
             Span::styled("  a           ", key_style),
             Span::styled("Toggle auto-scroll", desc_style),

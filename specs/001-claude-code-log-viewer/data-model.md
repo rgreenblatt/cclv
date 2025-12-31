@@ -1034,7 +1034,6 @@ use serde::Deserialize;
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub theme: String,
-    pub follow: bool,
     pub show_stats: bool,
     pub collapse_threshold: usize,
     pub summary_lines: usize,
@@ -1047,7 +1046,6 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             theme: "base16-ocean".to_string(),
-            follow: true,
             show_stats: false,
             collapse_threshold: 10,
             summary_lines: 3,
@@ -1084,9 +1082,6 @@ impl AppConfig {
     fn merge(&mut self, file: AppConfigFile) {
         if let Some(theme) = file.theme {
             self.theme = theme;
-        }
-        if let Some(follow) = file.follow {
-            self.follow = follow;
         }
         if let Some(show_stats) = file.show_stats {
             self.show_stats = show_stats;
@@ -1189,7 +1184,6 @@ impl PricingConfig {
 #[derive(Debug, Deserialize)]
 struct AppConfigFile {
     theme: Option<String>,
-    follow: Option<bool>,
     show_stats: Option<bool>,
     collapse_threshold: Option<usize>,
     summary_lines: Option<usize>,
@@ -1237,7 +1231,6 @@ Location: `~/.config/cclv/config.toml` (optional - all settings have hardcoded d
 
 # Display settings
 theme = "solarized-dark"
-follow = true
 show_stats = false
 collapse_threshold = 10
 summary_lines = 3

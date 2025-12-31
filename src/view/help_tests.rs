@@ -410,7 +410,7 @@ fn stats_shortcuts_match_cli_contract() {
         "Must describe current subagent filter"
     );
 
-    // MUST NOT show f (Cycle stats filter) - that's for follow mode
+    // MUST NOT show f (Cycle stats filter) - that's for stats filtering
     assert!(
         !text.contains("Cycle stats"),
         "Must NOT show 'Cycle stats' - not in cli.md contract"
@@ -422,17 +422,9 @@ fn live_mode_shortcuts_match_cli_contract() {
     let lines = build_help_content();
     let text = help_lines_to_text(&lines);
 
-    // cli.md lines 179-184: Live Mode
-    assert!(
-        text.contains("f"),
-        "Must show f for toggle follow/live mode"
-    );
+    // Live Mode: only auto-scroll toggle remains (follow mode removed)
     assert!(text.contains("a"), "Must show a for toggle auto-scroll");
 
-    assert!(
-        text.contains("Toggle follow") || text.contains("follow/live mode"),
-        "Must describe toggle follow/live mode"
-    );
     assert!(
         text.contains("Toggle auto-scroll") || text.contains("auto-scroll"),
         "Must describe toggle auto-scroll"

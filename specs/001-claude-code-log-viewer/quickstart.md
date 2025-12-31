@@ -46,17 +46,18 @@ nix profile install .
 cclogview ~/.claude/projects/-home-user-myproject/abc123.jsonl
 ```
 
-### Follow a live session
+### Tail a live session
 
 ```bash
-cclogview -f ~/.claude/projects/-home-user-myproject/abc123.jsonl
+tail -f ~/.claude/projects/-home-user-myproject/abc123.jsonl | cclogview
 ```
 
 ### View current Claude Code session
 
 ```bash
 # Find the most recent log for current directory
-cclogview -f "$(ls -t ~/.claude/projects/$(pwd | tr '/' '-')/*.jsonl 2>/dev/null | head -1)"
+LATEST="$(ls -t ~/.claude/projects/$(pwd | tr '/' '-')/*.jsonl 2>/dev/null | head -1)"
+tail -f "$LATEST" | cclogview
 ```
 
 ---
@@ -303,7 +304,7 @@ Press `s` to toggle the statistics panel:
 
 ## Live Mode
 
-When following a live session (`-f` flag):
+When tailing a live session (via stdin piping with `tail -f`):
 
 1. **Auto-scroll enabled** - New messages automatically scroll into view
 2. **New message indicator** - Shows count of new messages when scrolled away
@@ -347,11 +348,11 @@ When auto-scroll is paused (you've scrolled up):
 Add to `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-# View current session logs
-alias cclog='cclogview -f "$(ls -t ~/.claude/projects/$(pwd | tr "/" "-")/*.jsonl 2>/dev/null | head -1)"'
+# Tail current session logs
+alias cclog='tail -f "$(ls -t ~/.claude/projects/$(pwd | tr "/" "-")/*.jsonl 2>/dev/null | head -1)" | cclogview'
 
-# View with stats
-alias cclogs='cclogview -f --stats "$(ls -t ~/.claude/projects/$(pwd | tr "/" "-")/*.jsonl 2>/dev/null | head -1)"'
+# Tail with stats
+alias cclogs='tail -f "$(ls -t ~/.claude/projects/$(pwd | tr "/" "-")/*.jsonl 2>/dev/null | head -1)" | cclogview --stats'
 ```
 
 ### Pipe from Another Source
@@ -401,7 +402,7 @@ cclogview --no-color file.jsonl
 
 1. Ensure Claude Code is actually writing to the file
 2. Check file permissions
-3. Try explicit follow flag: `cclogview -f file.jsonl`
+3. Use `tail -f` to stream the file: `tail -f file.jsonl | cclogview`
 
 ---
 

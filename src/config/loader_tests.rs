@@ -43,7 +43,6 @@ fn load_config_file_parses_valid_toml() {
 
     let toml_content = r#"
 theme = "solarized-dark"
-follow = false
 show_stats = true
 collapse_threshold = 20
 summary_lines = 5
@@ -64,7 +63,6 @@ log_buffer_capacity = 500
 
     let config = config.unwrap();
     assert_eq!(config.theme, Some("solarized-dark".to_string()));
-    assert_eq!(config.follow, Some(false));
     assert_eq!(config.show_stats, Some(true));
     assert_eq!(config.collapse_threshold, Some(20));
     assert_eq!(config.summary_lines, Some(5));
@@ -117,7 +115,6 @@ theme = "monokai"
 
     let config = result.unwrap().unwrap();
     assert_eq!(config.theme, Some("monokai".to_string()));
-    assert_eq!(config.follow, None);
     assert_eq!(config.show_stats, None);
 
     // Cleanup
@@ -130,7 +127,6 @@ fn merge_config_uses_defaults_when_none() {
     let defaults = ResolvedConfig::default();
 
     assert_eq!(resolved.theme, defaults.theme);
-    assert_eq!(resolved.follow, defaults.follow);
     assert_eq!(resolved.show_stats, defaults.show_stats);
     assert_eq!(resolved.collapse_threshold, defaults.collapse_threshold);
     assert_eq!(resolved.summary_lines, defaults.summary_lines);
@@ -142,7 +138,6 @@ fn merge_config_uses_defaults_when_none() {
 fn merge_config_overrides_with_config_file_values() {
     let config_file = ConfigFile {
         theme: Some("solarized-light".to_string()),
-        follow: Some(false),
         show_stats: Some(true),
         collapse_threshold: Some(15),
         summary_lines: Some(2),
@@ -157,7 +152,6 @@ fn merge_config_overrides_with_config_file_values() {
     let resolved = merge_config(Some(config_file));
 
     assert_eq!(resolved.theme, "solarized-light");
-    assert!(!resolved.follow);
     assert!(resolved.show_stats);
     assert_eq!(resolved.collapse_threshold, 15);
     assert_eq!(resolved.summary_lines, 2);
@@ -169,7 +163,6 @@ fn merge_config_overrides_with_config_file_values() {
 fn merge_config_uses_defaults_for_none_fields() {
     let config_file = ConfigFile {
         theme: Some("custom".to_string()),
-        follow: None,
         show_stats: None,
         collapse_threshold: None,
         summary_lines: None,
@@ -185,7 +178,6 @@ fn merge_config_uses_defaults_for_none_fields() {
     let defaults = ResolvedConfig::default();
 
     assert_eq!(resolved.theme, "custom");
-    assert_eq!(resolved.follow, defaults.follow);
     assert_eq!(resolved.show_stats, defaults.show_stats);
     assert_eq!(resolved.collapse_threshold, defaults.collapse_threshold);
     assert_eq!(resolved.summary_lines, defaults.summary_lines);
@@ -235,7 +227,6 @@ fn apply_env_overrides_leaves_other_fields_unchanged() {
 
     let base = ResolvedConfig {
         theme: "original".to_string(),
-        follow: false,
         show_stats: true,
         collapse_threshold: 99,
         summary_lines: 7,
@@ -251,7 +242,6 @@ fn apply_env_overrides_leaves_other_fields_unchanged() {
     let result = apply_env_overrides(base.clone());
 
     assert_eq!(result.theme, "override");
-    assert_eq!(result.follow, base.follow);
     assert_eq!(result.show_stats, base.show_stats);
     assert_eq!(result.collapse_threshold, base.collapse_threshold);
     assert_eq!(result.summary_lines, base.summary_lines);
@@ -368,7 +358,6 @@ fn resolved_config_default_has_expected_values() {
     let config = ResolvedConfig::default();
 
     assert_eq!(config.theme, "base16-ocean");
-    assert!(config.follow);
     assert!(!config.show_stats);
     assert_eq!(config.collapse_threshold, 10);
     assert_eq!(config.summary_lines, 3);
@@ -558,7 +547,6 @@ fn full_config_with_pricing_parses_correctly() {
 
     let toml_content = r#"
 theme = "solarized-dark"
-follow = false
 show_stats = true
 
 [pricing.models.opus]
@@ -578,7 +566,6 @@ output = 15.0
 
     let config = result.unwrap().expect("Should have config");
     assert_eq!(config.theme, Some("solarized-dark".to_string()));
-    assert_eq!(config.follow, Some(false));
 
     let pricing = config.pricing.expect("Should have pricing section");
     assert_eq!(pricing.models.len(), 2);
@@ -595,7 +582,6 @@ output = 15.0
 fn apply_cli_overrides_theme_override() {
     let base = ResolvedConfig {
         theme: "base16-ocean".to_string(),
-        follow: true,
         show_stats: false,
         collapse_threshold: 10,
         summary_lines: 3,
@@ -605,28 +591,17 @@ fn apply_cli_overrides_theme_override() {
         max_context_tokens: 200_000,
     };
 
-    let result = apply_cli_overrides(base.clone(), Some("monokai".to_string()), None, None);
+    let result = apply_cli_overrides(base.clone(), Some("monokai".to_string()), None);
 
     assert_eq!(result.theme, "monokai", "CLI theme should override");
-    assert_eq!(result.follow, base.follow, "Other fields unchanged");
     assert_eq!(result.show_stats, base.show_stats, "Other fields unchanged");
-}
-
-#[test]
-fn apply_cli_overrides_follow_override() {
-    let base = ResolvedConfig::default();
-
-    let result = apply_cli_overrides(base.clone(), None, Some(false), None);
-
-    assert!(!result.follow, "CLI follow should override");
-    assert_eq!(result.theme, base.theme, "Other fields unchanged");
 }
 
 #[test]
 fn apply_cli_overrides_stats_override() {
     let base = ResolvedConfig::default();
 
-    let result = apply_cli_overrides(base.clone(), None, None, Some(true));
+    let result = apply_cli_overrides(base.clone(), None, Some(true));
 
     assert!(result.show_stats, "CLI stats should override");
     assert_eq!(result.theme, base.theme, "Other fields unchanged");
@@ -636,7 +611,6 @@ fn apply_cli_overrides_stats_override() {
 fn apply_cli_overrides_multiple_overrides() {
     let base = ResolvedConfig {
         theme: "base16-ocean".to_string(),
-        follow: true,
         show_stats: false,
         collapse_threshold: 10,
         summary_lines: 3,
@@ -649,12 +623,10 @@ fn apply_cli_overrides_multiple_overrides() {
     let result = apply_cli_overrides(
         base.clone(),
         Some("solarized-dark".to_string()),
-        Some(false),
         Some(true),
     );
 
     assert_eq!(result.theme, "solarized-dark");
-    assert!(!result.follow);
     assert!(result.show_stats);
     assert_eq!(
         result.collapse_threshold, base.collapse_threshold,
@@ -666,7 +638,7 @@ fn apply_cli_overrides_multiple_overrides() {
 fn apply_cli_overrides_no_overrides() {
     let base = ResolvedConfig::default();
 
-    let result = apply_cli_overrides(base.clone(), None, None, None);
+    let result = apply_cli_overrides(base.clone(), None, None);
 
     assert_eq!(result, base, "No overrides should leave config unchanged");
 }
@@ -676,7 +648,6 @@ fn precedence_chain_defaults_to_config_file() {
     // Test: Defaults → Config File
     let config_file = ConfigFile {
         theme: Some("custom-theme".to_string()),
-        follow: Some(false),
         show_stats: None,
         collapse_threshold: None,
         summary_lines: None,
@@ -694,7 +665,6 @@ fn precedence_chain_defaults_to_config_file() {
         resolved.theme, "custom-theme",
         "Config file overrides default"
     );
-    assert!(!resolved.follow, "Config file overrides default");
     assert_eq!(
         resolved.show_stats,
         ResolvedConfig::default().show_stats,
@@ -711,7 +681,6 @@ fn precedence_chain_config_file_to_env_vars() {
     // Test: Config File → Env Vars
     let config_file = ConfigFile {
         theme: Some("config-theme".to_string()),
-        follow: None,
         show_stats: None,
         collapse_threshold: None,
         summary_lines: None,
@@ -748,7 +717,6 @@ fn precedence_chain_env_vars_to_cli_args() {
     // Test: Env Vars → CLI Args
     let base = ResolvedConfig {
         theme: "base".to_string(),
-        follow: true,
         show_stats: false,
         collapse_threshold: 10,
         summary_lines: 3,
@@ -764,7 +732,7 @@ fn precedence_chain_env_vars_to_cli_args() {
     assert_eq!(with_env.theme, "env-theme");
 
     // Apply CLI override
-    let with_cli = apply_cli_overrides(with_env, Some("cli-theme".to_string()), None, None);
+    let with_cli = apply_cli_overrides(with_env, Some("cli-theme".to_string()), None);
     assert_eq!(with_cli.theme, "cli-theme", "CLI should override env var");
 
     // Cleanup
@@ -780,7 +748,6 @@ fn precedence_chain_full_defaults_to_cli() {
     // Test full precedence chain: Defaults → Config File → Env Vars → CLI Args
     let config_file = ConfigFile {
         theme: Some("config-theme".to_string()),
-        follow: Some(false),
         show_stats: None,
         collapse_threshold: None,
         summary_lines: None,
@@ -795,23 +762,19 @@ fn precedence_chain_full_defaults_to_cli() {
     // Step 1: Defaults → Config File
     let merged = merge_config(Some(config_file));
     assert_eq!(merged.theme, "config-theme");
-    assert!(!merged.follow);
 
     // Step 2: → Env Vars
     env::set_var("CCLV_THEME", "env-theme");
     let with_env = apply_env_overrides(merged);
     assert_eq!(with_env.theme, "env-theme", "Env overrides config file");
-    assert!(!with_env.follow, "Follow unchanged by env");
 
     // Step 3: → CLI Args
     let with_cli = apply_cli_overrides(
         with_env,
         Some("cli-theme".to_string()),
         Some(true),
-        Some(true),
     );
     assert_eq!(with_cli.theme, "cli-theme", "CLI overrides env");
-    assert!(with_cli.follow, "CLI overrides config file");
     assert!(with_cli.show_stats, "CLI overrides default");
 
     // Cleanup
@@ -865,7 +828,6 @@ fn resolved_config_default_max_context_tokens_is_200k() {
 fn merge_config_uses_config_file_max_context_tokens() {
     let config_file = ConfigFile {
         theme: None,
-        follow: None,
         show_stats: None,
         collapse_threshold: None,
         summary_lines: None,
@@ -889,7 +851,6 @@ fn merge_config_uses_config_file_max_context_tokens() {
 fn merge_config_uses_default_when_max_context_tokens_none() {
     let config_file = ConfigFile {
         theme: None,
-        follow: None,
         show_stats: None,
         collapse_threshold: None,
         summary_lines: None,

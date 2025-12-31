@@ -910,7 +910,6 @@ where
 /// let args = CliArgs::new(
 ///     "base16-ocean".to_string(),  // Theme name
 ///     true,                         // Show stats panel on startup
-///     true,                         // Enable live-follow mode
 ///     200_000,                      // Max context tokens
 ///     PricingConfig::default(),     // Pricing config
 /// );
@@ -932,16 +931,6 @@ pub struct CliArgs {
     /// is visible immediately; when false, user can toggle with 's' key.
     pub stats: bool,
 
-    /// Whether to enable live-follow mode (tail -f behavior)
-    ///
-    /// Maps to `--follow` CLI flag. When true:
-    /// - Auto-scroll is enabled by default (FR-035)
-    /// - New entries trigger scroll to bottom (FR-036)
-    /// - Input source continues polling for new data
-    ///
-    /// When false, the log is treated as static/completed.
-    pub follow: bool,
-
     /// Maximum context window size in tokens.
     ///
     /// Used for token divider percentage calculation (cclv-5ur.32).
@@ -959,14 +948,12 @@ impl CliArgs {
     pub fn new(
         theme: String,
         stats: bool,
-        follow: bool,
         max_context_tokens: u64,
         pricing: crate::model::PricingConfig,
     ) -> Self {
         Self {
             theme,
             stats,
-            follow,
             max_context_tokens,
             pricing,
         }
@@ -981,11 +968,13 @@ impl CliArgs {
 /// Note: Logging must be initialized by caller before calling this function.
 pub fn run_with_source(input_source: InputSource, args: CliArgs) -> Result<(), TuiError> {
     // Sessions are automatically created from entry session_ids in the log
+    // Live mode is enabled when reading from stdin (live streaming)
+    let live_mode = matches!(input_source, InputSource::Stdin(_));
     let mut app = TuiApp::new(input_source)?;
 
     // Apply initial args (stats visible, search query, etc.)
     app.app_state.stats_visible = args.stats;
-    app.app_state.live_mode = args.follow;
+    app.app_state.live_mode = live_mode;
     app.app_state.max_context_tokens = args.max_context_tokens;
     app.app_state.pricing = args.pricing;
 
@@ -2477,7 +2466,6 @@ mod tests {
         let args = CliArgs::new(
             "monokai".to_string(),
             false,
-            false,
             200_000,
             crate::model::PricingConfig::default(),
         );
@@ -2489,13 +2477,11 @@ mod tests {
         let args = CliArgs::new(
             "solarized-dark".to_string(),
             true,
-            true,
             200_000,
             crate::model::PricingConfig::default(),
         );
         assert_eq!(args.theme, "solarized-dark", "Theme should be stored");
         assert!(args.stats, "Stats flag should be stored");
-        assert!(args.follow, "Follow flag should be stored");
     }
 
     #[test]
@@ -2511,7 +2497,6 @@ mod tests {
         for theme in valid_themes {
             let args = CliArgs::new(
                 theme.to_string(),
-                false,
                 false,
                 200_000,
                 crate::model::PricingConfig::default(),

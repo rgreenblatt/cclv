@@ -13,10 +13,6 @@ pub struct Args {
     /// Path to JSONL log file (reads from stdin if not provided)
     pub file: Option<PathBuf>,
 
-    /// Follow the file for new content (like tail -f)
-    #[arg(short, long)]
-    pub follow: bool,
-
     /// Start at specific line number (must be positive)
     #[arg(short, long, default_value = "1", value_parser = clap::value_parser!(u32).range(1..))]
     pub line: u32,
@@ -72,15 +68,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // 4. Apply CLI argument overrides
         // For theme: always use CLI value (has default)
-        // For follow/stats: only override if flag was explicitly set (true)
+        // For stats: only override if flag was explicitly set (true)
         let theme_override = Some(args.theme.clone());
-        let follow_override = if args.follow { Some(true) } else { None };
         let stats_override = if args.stats { Some(true) } else { None };
 
         let config = cclv::config::apply_cli_overrides(
             with_env,
             theme_override,
-            follow_override,
             stats_override,
         );
 
@@ -102,7 +96,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli_args = cclv::view::CliArgs::new(
         config.theme,
         config.show_stats,
-        config.follow,
         config.max_context_tokens,
         pricing,
     );
@@ -140,7 +133,6 @@ mod tests {
     fn test_no_args_defaults() {
         let args = Args::parse_from(["cclv"]);
         assert_eq!(args.file, None);
-        assert!(!args.follow);
         assert_eq!(args.line, 1);
         assert_eq!(args.search, None);
         assert!(!args.stats);
@@ -153,18 +145,6 @@ mod tests {
     fn test_file_path_populates_file_field() {
         let args = Args::parse_from(["cclv", "test.jsonl"]);
         assert_eq!(args.file, Some(PathBuf::from("test.jsonl")));
-    }
-
-    #[test]
-    fn test_follow_flag_short() {
-        let args = Args::parse_from(["cclv", "-f"]);
-        assert!(args.follow);
-    }
-
-    #[test]
-    fn test_follow_flag_long() {
-        let args = Args::parse_from(["cclv", "--follow"]);
-        assert!(args.follow);
     }
 
     #[test]
@@ -266,7 +246,6 @@ mod tests {
         let args = Args::parse_from([
             "cclv",
             "session.jsonl",
-            "-f",
             "-l",
             "42",
             "-s",
@@ -276,7 +255,6 @@ mod tests {
             "monokai",
         ]);
         assert_eq!(args.file, Some(PathBuf::from("session.jsonl")));
-        assert!(args.follow);
         assert_eq!(args.line, 42);
         assert_eq!(args.search, Some("error".to_string()));
         assert!(args.stats);
@@ -290,7 +268,6 @@ mod tests {
         // Simulate full precedence chain: Defaults → Config File → Env Vars → CLI Args
         let config_file = ConfigFile {
             theme: Some("solarized-dark".to_string()),
-            follow: None,
             show_stats: None,
             collapse_threshold: None,
             summary_lines: None,
@@ -315,7 +292,7 @@ mod tests {
         assert_eq!(with_env.theme, "solarized-dark");
 
         // Step 3: Apply CLI override
-        let with_cli = apply_cli_overrides(with_env, Some("monokai".to_string()), None, None);
+        let with_cli = apply_cli_overrides(with_env, Some("monokai".to_string()), None);
         assert_eq!(
             with_cli.theme, "monokai",
             "CLI theme should override all other sources"
