@@ -107,7 +107,7 @@ fn smoke_loads_valid_file() {
 
     // Send quit command (q)
     session
-        .send(ControlCode::try_from('q').unwrap())
+        .send("q")
         .expect("Failed to send quit command");
 
     // Should exit cleanly
@@ -137,7 +137,7 @@ fn smoke_app_starts_and_quits() {
 
     // Send quit command (q)
     session
-        .send(ControlCode::try_from('q').unwrap())
+        .send("q")
         .expect("Failed to send quit command");
 
     // Should exit cleanly
@@ -172,7 +172,7 @@ fn smoke_scroll_does_not_crash() {
     // Send scroll down key ('j') multiple times
     for _ in 0..10 {
         session
-            .send(ControlCode::try_from('j').unwrap())
+            .send("j")
             .expect("Failed to send scroll down");
         std::thread::sleep(Duration::from_millis(50));
     }
@@ -184,7 +184,7 @@ fn smoke_scroll_does_not_crash() {
     // Send scroll up key ('k') multiple times
     for _ in 0..10 {
         session
-            .send(ControlCode::try_from('k').unwrap())
+            .send("k")
             .expect("Failed to send scroll up");
         std::thread::sleep(Duration::from_millis(50));
     }
@@ -195,7 +195,7 @@ fn smoke_scroll_does_not_crash() {
 
     // Send quit command (q)
     session
-        .send(ControlCode::try_from('q').unwrap())
+        .send("q")
         .expect("Failed to send quit command");
 
     // Should exit cleanly
@@ -226,17 +226,15 @@ fn smoke_search_works() {
 
     // Send '/' to open search
     session
-        .send(ControlCode::try_from('/').unwrap())
+        .send("/")
         .expect("Failed to send search command");
 
     std::thread::sleep(Duration::from_millis(100));
 
     // Type a search term
-    for c in "test".chars() {
-        session
-            .send(ControlCode::try_from(c).unwrap())
-            .expect("Failed to send character");
-    }
+    session
+        .send("test")
+        .expect("Failed to send search term");
 
     std::thread::sleep(Duration::from_millis(100));
 
@@ -264,7 +262,7 @@ fn smoke_search_works() {
 
     // Send quit command (q)
     session
-        .send(ControlCode::try_from('q').unwrap())
+        .send("q")
         .expect("Failed to send quit command");
 
     // Should exit cleanly
