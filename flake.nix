@@ -21,7 +21,7 @@
   };
 
   outputs =
-    inputs@{ self, flake-parts, ... }:
+    inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -36,9 +36,7 @@
 
       perSystem =
         {
-          config,
           self',
-          inputs',
           system,
           pkgs,
           lib,
@@ -83,7 +81,6 @@
           };
 
           rustToolchain = pkgs'.myRustToolchain;
-          rustPlatform = pkgs'.myRustPlatform;
 
           # Determine static build target based on platform
           isLinux = pkgs'.stdenv.isLinux;
@@ -125,7 +122,7 @@
               version = "0.1.0";
               src = ./.;
               inherit cargoHash;
-              doCheck = false; # FIXME
+              doCheck = true;
               meta = packageMeta;
             }
             // lib.optionalAttrs isLinux {

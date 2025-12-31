@@ -9,15 +9,14 @@ Built for those who run Claude Code with `--output-format stream-json` and want 
 ## Run
 
 ```bash
-nix run github:albertov/cclv#static  # static binary, no glibc
+nix run github:albertov/cclv  # static binary, no glibc
 ```
 
 Or download a [release](https://link.to/github/releases)
 
 ## Build
 ```
-nix build github:albertov/cclv        # dynamic binary
-nix build github:albertov/cclv#static # static binary, no glibc
+nix build github:albertov/cclv
 
 # From source
 cargo build --release

@@ -21,7 +21,7 @@
     # Additional helpful tools
     rust-analyzer # LSP server (also in toolchain extensions)
     cargo-flamegraph
-    linuxPackages.perf
+    perf
     asciinema
     asciinema-agg
     jetbrains-mono # Font for agg gif rendering

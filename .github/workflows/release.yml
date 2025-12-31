@@ -22,7 +22,7 @@ jobs:
     - name: Build and test
       run: nix flake check --accept-flake-config
     - name: Build static binary
-      run: nix build .#static --accept-flake-config
+      run: nix build --accept-flake-config
     - name: Create release tarball
       run: |
         VERSION="${GITHUB_REF_NAME#v}"
