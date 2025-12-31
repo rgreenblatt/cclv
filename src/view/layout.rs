@@ -148,7 +148,50 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
 /// - [LIVE] indicator when live_mode && auto_scroll are both true
 /// - Agent identifier based on focused pane (Main Agent vs subagent ID)
 fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
-    todo!("render_header: not implemented")
+    // Determine which conversation to show (main or selected subagent)
+    let (agent_label, conversation) = match state.focus {
+        FocusPane::Subagent => {
+            // Get selected subagent conversation
+            let agent_ids = state.session().subagent_ids_ordered();
+            let selected_idx = state.selected_tab.unwrap_or(0);
+
+            if let Some(agent_id) = agent_ids.get(selected_idx) {
+                if let Some(conv) = state.session().subagents().get(agent_id) {
+                    (format!("Subagent {}", agent_id.as_str()), conv)
+                } else {
+                    ("Main Agent".to_string(), state.session().main_agent())
+                }
+            } else {
+                ("Main Agent".to_string(), state.session().main_agent())
+            }
+        }
+        _ => ("Main Agent".to_string(), state.session().main_agent()),
+    };
+
+    // Get model name from conversation
+    let model_name = conversation
+        .model()
+        .map(|m| m.display_name())
+        .unwrap_or("Unknown");
+
+    // Show [LIVE] indicator only when both live_mode and auto_scroll are true
+    let live_indicator = if state.live_mode && state.auto_scroll {
+        " [LIVE]"
+    } else {
+        ""
+    };
+
+    // Format: "Model: Sonnet | Main Agent [LIVE]"
+    let header_text = format!("Model: {} | {}{}", model_name, agent_label, live_indicator);
+
+    let style = if state.live_mode && state.auto_scroll {
+        Style::default().fg(Color::Green)
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
+    let paragraph = Paragraph::new(Line::from(header_text)).style(style);
+    frame.render_widget(paragraph, area);
 }
 
 // ===== Tests =====
