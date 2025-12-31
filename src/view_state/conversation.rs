@@ -592,10 +592,8 @@ impl ConversationViewState {
             let height = entry_view.height().get() as usize;
             self.height_index.push(height);
 
-            // Update layout shim for backward compatibility
-            use super::layout::EntryLayout;
-            use super::types::LineOffset;
-            entry_view.set_layout(EntryLayout::new(entry_view.height(), LineOffset::new(cumulative_y)));
+            // Store cumulative_y for layout() compatibility (without overwriting rendered_lines)
+            entry_view.set_cumulative_y(cumulative_y);
             cumulative_y += height;
         }
 

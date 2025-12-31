@@ -254,6 +254,12 @@ impl EntryView {
         self.rendered_lines = vec![Line::default(); height];
         self.cumulative_y = layout.cumulative_y().get();
     }
+
+    /// Set cumulative_y position without overwriting rendered_lines.
+    /// Used by relayout() after recompute_lines() to maintain layout compatibility.
+    pub(crate) fn set_cumulative_y(&mut self, cumulative_y: usize) {
+        self.cumulative_y = cumulative_y;
+    }
 }
 
 // Include refactor tests

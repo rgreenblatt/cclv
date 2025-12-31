@@ -1107,6 +1107,15 @@ fn render_layout_uses_search_highlighting_when_search_active() {
     let mut state = AppState::new();
     state.add_entries(entries);
 
+    // Populate rendered_lines in view-state (FR-002: view-state owns rendering)
+    let wrap_mode = state.global_wrap;
+    state
+        .log_view_mut()
+        .current_session_mut()
+        .unwrap()
+        .main_mut()
+        .relayout(78, wrap_mode);
+
     // Activate search for "world"
     use crate::state::search::{execute_search, SearchQuery};
     let query = SearchQuery::new("world").unwrap();
@@ -1172,6 +1181,15 @@ fn render_layout_no_search_highlighting_when_search_inactive() {
     let mut state = AppState::new();
     state.add_entries(entries);
     // search remains SearchState::Inactive (default)
+
+    // Populate rendered_lines in view-state (FR-002: view-state owns rendering)
+    let wrap_mode = state.global_wrap;
+    state
+        .log_view_mut()
+        .current_session_mut()
+        .unwrap()
+        .main_mut()
+        .relayout(78, wrap_mode);
 
     terminal
         .draw(|frame| {

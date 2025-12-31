@@ -356,7 +356,7 @@ pub fn parse_entry_sections(content: &str) -> Vec<ContentSection> {
 /// Shared by both main agent and subagent panes.
 pub struct ConversationView<'a> {
     view_state: &'a ConversationViewState,
-    styles: &'a MessageStyles,
+    _styles: &'a MessageStyles,
     focused: bool,
     is_subagent_view: bool,
     collapse_threshold: usize,
@@ -379,7 +379,7 @@ impl<'a> ConversationView<'a> {
     ) -> Self {
         Self {
             view_state,
-            styles,
+            _styles: styles,
             focused,
             is_subagent_view: false, // Default to false (main agent view)
             collapse_threshold: 10,
@@ -423,87 +423,6 @@ impl<'a> ConversationView<'a> {
     pub fn global_wrap(mut self, wrap: WrapMode) -> Self {
         self.global_wrap = wrap;
         self
-    }
-
-    /// Render an entry without using cache.
-    ///
-    /// This is the actual rendering logic extracted from the Widget::render loop.
-    /// Called on cache miss or for malformed entries.
-    fn render_entry_uncached(
-        &self,
-        entry: &ConversationEntry,
-        actual_index: usize,
-        is_expanded: bool,
-    ) -> Vec<Line<'static>> {
-        let mut entry_lines = Vec::new();
-
-        match entry {
-            ConversationEntry::Valid(log_entry) => {
-                let role = log_entry.message().role();
-                let role_style = self.styles.style_for_role(role);
-
-                // Add "Initial Prompt" label for first message in subagent view
-                if self.is_subagent_view && actual_index == 0 {
-                    entry_lines.push(Line::from(vec![ratatui::text::Span::styled(
-                        "🔷 Initial Prompt",
-                        Style::default()
-                            .fg(Color::Magenta)
-                            .add_modifier(Modifier::BOLD),
-                    )]));
-                }
-
-                match log_entry.message().content() {
-                    MessageContent::Text(text) => {
-                        // Simple text message - render each line with role-based styling
-                        for line in text.lines() {
-                            entry_lines.push(Line::from(vec![ratatui::text::Span::styled(
-                                line.to_string(),
-                                role_style,
-                            )]));
-                        }
-                    }
-                    MessageContent::Blocks(blocks) => {
-                        // Structured content - render each block
-                        for block in blocks {
-                            let block_lines = render_content_block(
-                                block,
-                                log_entry.uuid(),
-                                is_expanded,
-                                self.styles,
-                                role_style,
-                                self.collapse_threshold,
-                                self.summary_lines,
-                            );
-                            entry_lines.extend(block_lines);
-                        }
-                    }
-                }
-            }
-            ConversationEntry::Malformed(malformed) => {
-                // Render malformed entry with error styling
-                // Header: "⚠ Parse Error (line N)"
-                entry_lines.push(Line::from(vec![ratatui::text::Span::styled(
-                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-                    Style::default().fg(Color::Red),
-                )]));
-                entry_lines.push(Line::from(vec![ratatui::text::Span::styled(
-                    format!("⚠ Parse Error (line {})", malformed.line_number()),
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-                )]));
-                // Error message
-                for error_line in malformed.error_message().lines() {
-                    entry_lines.push(Line::from(vec![ratatui::text::Span::styled(
-                        error_line.to_string(),
-                        Style::default().fg(Color::Red),
-                    )]));
-                }
-            }
-        }
-
-        // Add spacing between entries
-        entry_lines.push(Line::from(""));
-
-        entry_lines
     }
 }
 
@@ -572,7 +491,6 @@ impl<'a> Widget for ConversationView<'a> {
                 };
 
                 let entry = entry_view.entry();
-                let actual_index = entry_index.get();
                 let cumulative_y = entry_view.layout().cumulative_y().get();
 
                 // FR-074: Detect session boundary and render separator
@@ -597,45 +515,8 @@ impl<'a> Widget for ConversationView<'a> {
                     0
                 };
 
-                let is_expanded = entry_view.is_expanded();
-                let effective_wrap = entry_view.effective_wrap(self.global_wrap);
-
-                // Try to get cached render (FR-050: cache rendered output)
-                let entry_lines = if let Some(uuid) = entry.uuid() {
-                    use crate::view_state::cache::RenderCacheKey;
-
-                    let cache_key = RenderCacheKey::new(
-                        uuid.clone(),
-                        viewport_width,
-                        is_expanded,
-                        effective_wrap,
-                    );
-
-                    // Check cache first
-                    let mut cache = self.view_state.render_cache().borrow_mut();
-                    if let Some(cached_render) = cache.get(&cache_key) {
-                        // Cache HIT - use cached lines
-                        cached_render.lines.clone()
-                    } else {
-                        // Cache MISS - render and cache
-                        drop(cache); // Release cache borrow before rendering
-
-                        let rendered = self.render_entry_uncached(entry, actual_index, is_expanded);
-
-                        // Cache the result
-                        let mut cache = self.view_state.render_cache().borrow_mut();
-                        cache.put(
-                            cache_key,
-                            crate::view_state::cache::CachedRender {
-                                lines: rendered.clone(),
-                            },
-                        );
-                        rendered
-                    }
-                } else {
-                    // Malformed entry (no UUID) - render without caching
-                    self.render_entry_uncached(entry, actual_index, is_expanded)
-                };
+                // Use pre-computed rendered lines from EntryView
+                let entry_lines = entry_view.rendered_lines().to_vec();
 
                 // Skip lines that are scrolled off the top, then add to final lines
                 lines.extend(entry_lines.into_iter().skip(lines_to_skip));
