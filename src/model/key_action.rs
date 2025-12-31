@@ -54,3 +54,106 @@ pub enum KeyAction {
     Help,
     Refresh,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ===== ToggleWrap Tests =====
+
+    #[test]
+    fn toggle_wrap_pattern_match_discriminates_correctly() {
+        let action = KeyAction::ToggleWrap;
+        match action {
+            KeyAction::ToggleWrap => {
+                // Correct variant matched
+            }
+            _ => panic!("ToggleWrap should match ToggleWrap variant"),
+        }
+    }
+
+    #[test]
+    fn toggle_wrap_equals_itself() {
+        let action1 = KeyAction::ToggleWrap;
+        let action2 = KeyAction::ToggleWrap;
+        assert_eq!(
+            action1, action2,
+            "ToggleWrap should equal another ToggleWrap"
+        );
+    }
+
+    #[test]
+    fn toggle_wrap_not_equals_other_variant() {
+        let toggle_wrap = KeyAction::ToggleWrap;
+        let scroll_up = KeyAction::ScrollUp;
+        assert_ne!(
+            toggle_wrap, scroll_up,
+            "ToggleWrap should not equal ScrollUp"
+        );
+    }
+
+    #[test]
+    fn toggle_wrap_clone_equals_original() {
+        let action = KeyAction::ToggleWrap;
+        let cloned = action.clone();
+        assert_eq!(
+            action, cloned,
+            "Cloned ToggleWrap should equal original"
+        );
+    }
+
+    // ===== ToggleGlobalWrap Tests =====
+
+    #[test]
+    fn toggle_global_wrap_pattern_match_discriminates_correctly() {
+        let action = KeyAction::ToggleGlobalWrap;
+        match action {
+            KeyAction::ToggleGlobalWrap => {
+                // Correct variant matched
+            }
+            _ => panic!("ToggleGlobalWrap should match ToggleGlobalWrap variant"),
+        }
+    }
+
+    #[test]
+    fn toggle_global_wrap_equals_itself() {
+        let action1 = KeyAction::ToggleGlobalWrap;
+        let action2 = KeyAction::ToggleGlobalWrap;
+        assert_eq!(
+            action1, action2,
+            "ToggleGlobalWrap should equal another ToggleGlobalWrap"
+        );
+    }
+
+    #[test]
+    fn toggle_global_wrap_not_equals_other_variant() {
+        let toggle_global = KeyAction::ToggleGlobalWrap;
+        let scroll_down = KeyAction::ScrollDown;
+        assert_ne!(
+            toggle_global, scroll_down,
+            "ToggleGlobalWrap should not equal ScrollDown"
+        );
+    }
+
+    #[test]
+    fn toggle_global_wrap_clone_equals_original() {
+        let action = KeyAction::ToggleGlobalWrap;
+        let cloned = action.clone();
+        assert_eq!(
+            action, cloned,
+            "Cloned ToggleGlobalWrap should equal original"
+        );
+    }
+
+    // ===== Discriminate Between ToggleWrap and ToggleGlobalWrap =====
+
+    #[test]
+    fn toggle_wrap_not_equals_toggle_global_wrap() {
+        let toggle_wrap = KeyAction::ToggleWrap;
+        let toggle_global = KeyAction::ToggleGlobalWrap;
+        assert_ne!(
+            toggle_wrap, toggle_global,
+            "ToggleWrap should not equal ToggleGlobalWrap"
+        );
+    }
+}
