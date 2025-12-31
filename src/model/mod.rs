@@ -4,6 +4,7 @@
 
 pub mod identifiers;
 pub mod message;
+pub mod usage;
 
 // Re-export for convenience
 pub use identifiers::{
@@ -11,3 +12,4 @@ pub use identifiers::{
     SessionId, ToolUseId,
 };
 pub use message::{ContentBlock, Message, MessageContent, Role, ToolCall, ToolName};
+pub use usage::{ModelInfo, TokenUsage};
