@@ -931,4 +931,76 @@ mod tests {
             _ => panic!("Expected Blocks content"),
         }
     }
+
+    // ===== Bug Fix: cclv-07v.9.16 - Optional sessionId =====
+
+    #[test]
+    fn parse_entry_missing_session_id_uses_unknown() {
+        // Entry with no sessionId field should parse successfully
+        // using SessionId::unknown() ("unknown-session")
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","timestamp":"2025-01-01T00:00:00Z"}"#;
+
+        let result = parse_entry(raw, 1);
+        assert!(
+            result.is_ok(),
+            "Should parse successfully when sessionId is missing"
+        );
+        let entry = result.unwrap();
+        assert_eq!(
+            entry.session_id().as_str(),
+            "unknown-session",
+            "Should use SessionId::unknown() when sessionId is missing"
+        );
+    }
+
+    #[test]
+    fn parse_entry_empty_session_id_uses_unknown() {
+        // Entry with empty sessionId field should use unknown
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","sessionId":"","timestamp":"2025-01-01T00:00:00Z"}"#;
+
+        let result = parse_entry(raw, 1);
+        assert!(
+            result.is_ok(),
+            "Should parse successfully when sessionId is empty"
+        );
+        let entry = result.unwrap();
+        assert_eq!(
+            entry.session_id().as_str(),
+            "unknown-session",
+            "Should use SessionId::unknown() when sessionId is empty"
+        );
+    }
+
+    #[test]
+    fn parse_entry_null_session_id_uses_unknown() {
+        // Entry with null sessionId field should use unknown
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","sessionId":null,"timestamp":"2025-01-01T00:00:00Z"}"#;
+
+        let result = parse_entry(raw, 1);
+        assert!(
+            result.is_ok(),
+            "Should parse successfully when sessionId is null"
+        );
+        let entry = result.unwrap();
+        assert_eq!(
+            entry.session_id().as_str(),
+            "unknown-session",
+            "Should use SessionId::unknown() when sessionId is null"
+        );
+    }
+
+    #[test]
+    fn parse_entry_valid_session_id_preserved() {
+        // Entry with valid sessionId should still work
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","sessionId":"my-session","timestamp":"2025-01-01T00:00:00Z"}"#;
+
+        let result = parse_entry(raw, 1);
+        assert!(result.is_ok(), "Should parse with valid sessionId");
+        let entry = result.unwrap();
+        assert_eq!(
+            entry.session_id().as_str(),
+            "my-session",
+            "Should preserve valid sessionId"
+        );
+    }
 }
