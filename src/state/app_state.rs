@@ -448,12 +448,14 @@ pub enum WrapMode {
 
 /// Scroll state for a conversation pane.
 ///
-/// Tracks the viewport position, message expansion state, and per-message wrap overrides
+/// Tracks message expansion state and per-message wrap overrides
 /// for a single conversation pane (either main agent or a subagent).
+///
+/// NOTE: Scroll position is now managed by ConversationViewState via ScrollPosition.
+/// This struct only tracks per-entry presentation state (expanded, wrap overrides).
 ///
 /// # Invariants
 ///
-/// - `vertical_offset ≤ max_entries` (enforced by `scroll_down`)
 /// - `horizontal_offset ≥ 0` (enforced by `scroll_left` saturation)
 /// - `expanded_messages` contains only valid `EntryUuid`s from the conversation
 /// - `focused_message < conversation.entries().len()` when `Some`
@@ -478,8 +480,10 @@ pub enum WrapMode {
 /// - Global=NoWrap, Override present → Wrap for this message
 #[derive(Debug, Clone, Default)]
 pub struct ScrollState {
-    /// Vertical scroll offset (number of lines scrolled down from top).
-    /// 0 means viewing from the first line. Clamped to conversation length.
+    /// DEPRECATED: Vertical scrolling now managed by ConversationViewState.
+    /// This field is a compatibility stub and always returns 0.
+    /// Will be removed by subsequent migration beads.
+    #[deprecated(note = "Use ConversationViewState.scroll() instead")]
     pub vertical_offset: usize,
 
     /// Horizontal scroll offset (number of characters scrolled right from left edge).
@@ -505,15 +509,38 @@ pub struct ScrollState {
 }
 
 impl ScrollState {
-    /// Scroll up by amount, saturating at 0.
-    pub fn scroll_up(&mut self, amount: usize) {
-        self.vertical_offset = self.vertical_offset.saturating_sub(amount);
+    // ===== DEPRECATED: Stubs for backwards compatibility during migration =====
+    // These will be removed by subsequent beads (cclv-5ur.6.2, cclv-5ur.6.3, cclv-5ur.6.11)
+
+    /// DEPRECATED: Scroll position now managed by ConversationViewState.
+    /// This is a no-op stub for compatibility during migration.
+    #[deprecated(note = "Use ConversationViewState.set_scroll() instead")]
+    pub fn scroll_up(&mut self, _amount: usize) {
+        // No-op: vertical scrolling now handled by ConversationViewState
     }
 
-    /// Scroll down by amount, clamped to max.
-    pub fn scroll_down(&mut self, amount: usize, max: usize) {
-        self.vertical_offset = (self.vertical_offset + amount).min(max);
+    /// DEPRECATED: Scroll position now managed by ConversationViewState.
+    /// This is a no-op stub for compatibility during migration.
+    #[deprecated(note = "Use ConversationViewState.set_scroll() instead")]
+    pub fn scroll_down(&mut self, _amount: usize, _max: usize) {
+        // No-op: vertical scrolling now handled by ConversationViewState
     }
+
+    /// DEPRECATED: Scroll position now managed by ConversationViewState.
+    /// This is a no-op stub for compatibility during migration.
+    #[deprecated(note = "Use ConversationViewState.set_scroll() instead")]
+    pub fn at_bottom(&self, _max_entries: usize) -> bool {
+        false // Stub return
+    }
+
+    /// DEPRECATED: Scroll position now managed by ConversationViewState.
+    /// This is a no-op stub for compatibility during migration.
+    #[deprecated(note = "Use ConversationViewState.set_scroll() instead")]
+    pub fn scroll_to_bottom(&mut self, _max_entries: usize) {
+        // No-op: vertical scrolling now handled by ConversationViewState
+    }
+
+    // ===== Active methods (horizontal scrolling) =====
 
     /// Scroll left by amount, saturating at 0.
     pub fn scroll_left(&mut self, amount: usize) {
@@ -537,18 +564,6 @@ impl ScrollState {
     /// Check if a message is expanded.
     pub fn is_expanded(&self, uuid: &EntryUuid) -> bool {
         self.expanded_messages.contains(uuid)
-    }
-
-    /// Check if currently at bottom of scroll range.
-    /// Returns true when vertical_offset equals max_entries.
-    pub fn at_bottom(&self, max_entries: usize) -> bool {
-        self.vertical_offset == max_entries
-    }
-
-    /// Scroll to the bottom of the content.
-    /// Sets vertical_offset to max_entries.
-    pub fn scroll_to_bottom(&mut self, max_entries: usize) {
-        self.vertical_offset = max_entries;
     }
 
     /// Expand all messages by adding all UUIDs to expanded_messages.

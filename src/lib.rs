@@ -5,6 +5,10 @@
 //! This is the library root. Implementation modules will be added
 //! in later phases following the Pure Core / Impure Shell architecture.
 
+// Allow deprecated during migration phase (cclv-5ur.6.x)
+// Deprecated stubs will be removed by subsequent beads
+#![allow(deprecated)]
+
 pub mod config;
 pub mod logging;
 pub mod model;
