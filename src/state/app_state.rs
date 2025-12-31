@@ -280,13 +280,24 @@ impl ScrollState {
 
     /// Toggle wrap override for a specific message (FR-050: w key)
     pub fn toggle_wrap(&mut self, uuid: &EntryUuid) {
-        todo!("toggle_wrap")
+        if self.wrap_overrides.contains(uuid) {
+            self.wrap_overrides.remove(uuid);
+        } else {
+            self.wrap_overrides.insert(uuid.clone());
+        }
     }
 
     /// Get effective wrap mode for a message (FR-048)
     /// Per-item override inverts the global setting
     pub fn effective_wrap(&self, uuid: &EntryUuid, global: WrapMode) -> WrapMode {
-        todo!("effective_wrap")
+        if self.wrap_overrides.contains(uuid) {
+            match global {
+                WrapMode::Wrap => WrapMode::NoWrap,
+                WrapMode::NoWrap => WrapMode::Wrap,
+            }
+        } else {
+            global
+        }
     }
 }
 
