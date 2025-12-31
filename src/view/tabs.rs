@@ -22,8 +22,9 @@ use ratatui::{
 ///
 /// # Behavior
 /// - Shows one tab per subagent with agent ID as label
-/// - Highlights the selected tab if Some(index)
-/// - Supports deselection via None
+/// - Highlights the selected tab if Some(index) and index is in bounds
+/// - Supports deselection via None (no highlight)
+/// - Out-of-bounds indices are treated as None
 /// - Agent IDs may be truncated if they exceed available space
 pub fn render_tab_bar(
     frame: &mut Frame,
@@ -37,16 +38,27 @@ pub fn render_tab_bar(
         .map(|id| Line::from(id.as_str()))
         .collect();
 
+    // Validate bounds: treat out-of-bounds as None
+    let validated_selection = selected_tab.filter(|&idx| idx < agent_ids.len());
+
     // Create Tabs widget with block
-    let tabs = Tabs::new(titles)
+    let mut tabs = Tabs::new(titles)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .title("Subagents"),
         )
-        .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().fg(Color::Yellow))
-        .select(selected_tab.unwrap_or(0)); // Default to 0 if None, Tabs doesn't have true "no selection"
+        .style(Style::default().fg(Color::White));
+
+    // Apply highlight only if we have a valid selection
+    // ratatui's Tabs widget doesn't support "no selection", so we work around it:
+    // - With selection: set highlight_style and select
+    // - Without selection: omit highlight_style (tabs render without highlight)
+    if let Some(idx) = validated_selection {
+        tabs = tabs
+            .highlight_style(Style::default().fg(Color::Yellow))
+            .select(idx);
+    }
 
     // Render the tabs widget
     frame.render_widget(tabs, area);

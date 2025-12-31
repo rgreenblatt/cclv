@@ -4,7 +4,7 @@
 //! placeholder widgets for main agent, subagent tabs, and status bar.
 
 use crate::state::{AppState, FocusPane};
-use crate::view::message;
+use crate::view::{message, tabs};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -73,16 +73,43 @@ fn render_main_pane(frame: &mut Frame, area: Rect, state: &AppState) {
     );
 }
 
-/// Render the subagent tabs pane using shared ConversationView widget.
+/// Render the subagent tabs pane with tab bar and selected conversation.
 ///
-/// For now, shows the first subagent as a placeholder. Full tab selection
-/// will be implemented in a later bead.
+/// Layout: Tab bar (top 3 lines) + conversation content (remainder).
+/// Uses state.selected_tab to determine which subagent conversation to display.
 fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState) {
-    // Get first subagent as placeholder (tab selection not yet implemented)
-    if let Some((_agent_id, conversation)) = state.session().subagents().iter().next() {
+    // Split area vertically: tab bar + conversation content
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Tab bar (border + title + content)
+            Constraint::Min(0),     // Conversation content
+        ])
+        .split(area);
+
+    let tab_area = chunks[0];
+    let content_area = chunks[1];
+
+    // Get ordered subagent IDs and render tab bar
+    let agent_ids = state.session().subagent_ids_ordered();
+    tabs::render_tab_bar(frame, tab_area, &agent_ids, state.selected_tab);
+
+    // Determine which conversation to display based on selected_tab
+    let selected_conversation = if let Some(idx) = state.selected_tab {
+        // Get the conversation at the selected index
+        agent_ids
+            .get(idx)
+            .and_then(|agent_id| state.session().subagents().get(agent_id))
+    } else {
+        // No selection - show first subagent as default
+        state.session().subagents().values().next()
+    };
+
+    // Render the selected conversation
+    if let Some(conversation) = selected_conversation {
         message::render_conversation_view(
             frame,
-            area,
+            content_area,
             conversation,
             &state.subagent_scroll,
             state.focus == FocusPane::Subagent,
