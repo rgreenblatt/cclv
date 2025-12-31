@@ -1770,3 +1770,178 @@ fn test_focused_entry_has_cyan_index() {
         "Unfocused entry should have DarkGray-colored index prefix"
     );
 }
+
+// ============================================================================
+// ENTRY NUMBER INDICATOR TESTS (cclv-5ur.29)
+// Entry number should appear only on first line, continuation lines blank
+// ============================================================================
+
+#[test]
+fn test_entry_index_appears_only_on_first_line() {
+    // RED TEST: Entry number "│ 571 " should appear only on first line
+    // Continuation lines should show blank space instead
+
+    // Create entry with 5 lines of text
+    let text = (0..5)
+        .map(|i| format!("Line {}", i))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let entry = create_entry_with_text(&text);
+
+    let styles = default_styles();
+    let lines = compute_entry_lines(
+        &entry,
+        true, // expanded (show all lines)
+        WrapContext::from_global(WrapMode::Wrap),
+        80,
+        10,
+        3,
+        &styles,
+        Some(570), // Entry index 570 should display as "│ 571 " on first line only
+        false,     // Not a subagent view
+        &crate::state::SearchState::Inactive,
+        false,     // Not focused
+    );
+
+    // ASSERTION 1: First content line should have entry number "│ 571 " (with space, no separator after)
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect();
+
+    assert!(
+        first_line_text.starts_with("│ 571 "),
+        "First line should start with '│ 571 ' (space after number, no │ separator), got: '{}'",
+        first_line_text
+    );
+
+    // ASSERTION 2: Continuation lines (lines 1-4) should have blank indent matching width "│     "
+    // They should NOT have the entry number or any │ separator after the leading │
+    for i in 1..5 {
+        let line_text: String = lines[i]
+            .spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect();
+
+        assert!(
+            line_text.starts_with("│     "),
+            "Continuation line {} should start with '│     ' (6 chars total: │ + 5 spaces), got: '{}'",
+            i,
+            line_text
+        );
+
+        // Verify it does NOT contain the number "571"
+        let prefix = &line_text[..6.min(line_text.len())]; // First 6 chars
+        assert!(
+            !prefix.contains("571"),
+            "Continuation line {} should NOT contain entry number in prefix, got: '{}'",
+            i,
+            prefix
+        );
+    }
+}
+
+#[test]
+fn test_entry_index_format_no_separator_after_number() {
+    // RED TEST: Entry index should format as "│ 571 " (no │ separator after number)
+
+    let text = "Single line";
+    let entry = create_entry_with_text(text);
+
+    let styles = default_styles();
+    let lines = compute_entry_lines(
+        &entry,
+        false, // collapsed
+        WrapContext::from_global(WrapMode::Wrap),
+        80,
+        10,
+        3,
+        &styles,
+        Some(570), // Entry index 570 -> display as "│ 571 "
+        false,
+        &crate::state::SearchState::Inactive,
+        false,
+    );
+
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect();
+
+    // Should be "│ 571 Single line" NOT "│ 571│Single line"
+    assert!(
+        first_line_text.starts_with("│ 571 "),
+        "Entry index should be '│ 571 ' (space not separator), got: '{}'",
+        first_line_text
+    );
+
+    // Should NOT have "│571│" pattern
+    assert!(
+        !first_line_text.contains("│571│"),
+        "Entry index should NOT have separator after number, got: '{}'",
+        first_line_text
+    );
+}
+
+#[test]
+fn test_tool_use_multiline_entry_index_on_first_line_only() {
+    // RED TEST: Multi-line ToolUse block should show entry number only on first line
+
+    let long_value = "test".repeat(50); // Long enough to wrap
+    let input = serde_json::json!({
+        "param": long_value
+    });
+    let entry = create_entry_with_tool_use("TestTool", input);
+
+    let styles = default_styles();
+    let lines = compute_entry_lines(
+        &entry,
+        true, // expanded
+        WrapContext::from_global(WrapMode::Wrap),
+        40, // Narrow to force wrapping
+        10,
+        3,
+        &styles,
+        Some(99), // Entry index 99 -> display as "│ 100 "
+        false,
+        &crate::state::SearchState::Inactive,
+        false,
+    );
+
+    // First line should be the header with entry number
+    let first_line_text: String = lines[0]
+        .spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect();
+
+    assert!(
+        first_line_text.starts_with("│ 100 "),
+        "First line (header) should start with '│ 100 ', got: '{}'",
+        first_line_text
+    );
+
+    // Subsequent lines should have continuation indent (│     + content indent from ToolUse)
+    // ToolUse adds "  " indent, so continuation should be "│       " (6 + 2 = 8 total)
+    for i in 1..lines.len().min(5) {
+        let line_text: String = lines[i]
+            .spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect();
+
+        if line_text.trim().is_empty() {
+            continue; // Skip separator line
+        }
+
+        assert!(
+            line_text.starts_with("│     "),
+            "Continuation line {} should start with '│     ' (no number), got: '{}'",
+            i,
+            line_text
+        );
+    }
+}
