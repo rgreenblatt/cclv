@@ -255,11 +255,162 @@ fn parse_raw_sections(content: &str) -> Vec<(SectionType, String)> {
 /// Sections with search highlighting applied to matching text
 #[allow(dead_code)] // Will be used when refactoring search highlighting
 fn apply_search_to_sections(
-    _sections: Vec<RenderedSection>,
-    _entry_uuid: &crate::model::EntryUuid,
-    _search: &crate::state::SearchState,
+    sections: Vec<RenderedSection>,
+    entry_uuid: &crate::model::EntryUuid,
+    search: &crate::state::SearchState,
 ) -> Vec<RenderedSection> {
-    todo!("apply_search_to_sections")
+    // Extract match information if search is active
+    let match_info = match search {
+        crate::state::SearchState::Active {
+            matches,
+            current_match,
+            ..
+        } => {
+            // Filter matches for this entry (block_index 0 for text content)
+            let entry_matches: Vec<_> = matches
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, m)| {
+                    if m.entry_uuid == *entry_uuid && m.block_index == 0 {
+                        Some((m.char_offset, m.length, idx == *current_match))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            if entry_matches.is_empty() {
+                None
+            } else {
+                Some(entry_matches)
+            }
+        }
+        _ => None,
+    };
+
+    // If no matches, return sections unchanged
+    let Some(entry_matches) = match_info else {
+        return sections;
+    };
+
+    // Apply highlighting to each section while tracking cumulative char offset
+    let mut cumulative_offset = 0_usize;
+    let mut result_sections = Vec::new();
+
+    for section in sections {
+        // Calculate section text to determine its character range
+        let section_text: String = section
+            .lines
+            .iter()
+            .map(|line| {
+                line.spans
+                    .iter()
+                    .map(|span| span.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let section_start = cumulative_offset;
+        let section_end = section_start + section_text.len();
+
+        // Find matches that overlap this section
+        let section_matches: Vec<(usize, usize, bool)> = entry_matches
+            .iter()
+            .filter_map(|(offset, length, is_current)| {
+                let match_start = *offset;
+                let match_end = match_start + *length;
+
+                // Check if match overlaps this section
+                if match_start < section_end && match_end > section_start {
+                    // Convert to section-relative offset
+                    let section_relative_start = match_start.saturating_sub(section_start);
+                    let section_relative_end = (match_end - section_start).min(section_text.len());
+                    let section_relative_length =
+                        section_relative_end.saturating_sub(section_relative_start);
+
+                    if section_relative_length > 0 {
+                        Some((section_relative_start, section_relative_length, *is_current))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // If no matches in this section, keep it unchanged
+        if section_matches.is_empty() {
+            result_sections.push(section);
+            cumulative_offset = section_end + 1; // +1 for newline between sections
+            continue;
+        }
+
+        // Apply highlighting to each line in the section
+        let mut highlighted_lines = Vec::new();
+        let mut line_offset = 0_usize;
+
+        for line in &section.lines {
+            // Extract line text and base style
+            let line_text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+            let base_style = line
+                .spans
+                .first()
+                .map(|s| s.style)
+                .unwrap_or_default();
+
+            let line_start = line_offset;
+            let line_end = line_start + line_text.len();
+
+            // Find matches that overlap this line
+            let line_matches: Vec<(usize, usize, bool)> = section_matches
+                .iter()
+                .filter_map(|(offset, length, is_current)| {
+                    let match_start = *offset;
+                    let match_end = match_start + *length;
+
+                    // Check if match overlaps this line
+                    if match_start < line_end && match_end > line_start {
+                        // Convert to line-relative offset
+                        let line_relative_start = match_start.saturating_sub(line_start);
+                        let line_relative_end = (match_end - line_start).min(line_text.len());
+                        let line_relative_length =
+                            line_relative_end.saturating_sub(line_relative_start);
+
+                        if line_relative_length > 0 {
+                            Some((line_relative_start, line_relative_length, *is_current))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // Apply highlighting to the line
+            let highlighted_line = if line_matches.is_empty() {
+                // No matches in this line - preserve original
+                line.clone()
+            } else {
+                // Apply highlighting
+                apply_highlights_to_text(&line_text, &line_matches, base_style)
+            };
+
+            highlighted_lines.push(highlighted_line);
+            line_offset = line_end + 1; // +1 for newline
+        }
+
+        result_sections.push(RenderedSection {
+            section_type: section.section_type,
+            lines: highlighted_lines,
+        });
+
+        cumulative_offset = section_end + 1; // +1 for newline between sections
+    }
+
+    result_sections
 }
 
 /// Parse markdown content into sections (prose and code blocks).
