@@ -667,6 +667,7 @@ pub enum FocusPane {
     Subagent,
     Stats,
     Search,
+    LogPane,
 }
 
 /// Scroll state for a pane.

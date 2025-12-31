@@ -18,7 +18,7 @@ use std::collections::HashSet;
 ///
 /// The UI operates as a state machine with these primary states:
 ///
-/// - **Focus**: Which pane has keyboard focus (Main, Subagent, Stats, Search)
+/// - **Focus**: Which pane has keyboard focus (Main, Subagent, Stats, Search, LogPane)
 /// - **Live Mode**: Following a log file in real-time vs viewing static content
 /// - **Auto-Scroll**: Automatically scrolling to new content vs manual navigation
 /// - **Search**: Inactive, typing query, or displaying active results
@@ -27,7 +27,7 @@ use std::collections::HashSet;
 ///
 /// Valid state transitions (see methods for details):
 ///
-/// - Focus: Main ⇄ Subagent ⇄ Stats (via `cycle_focus`, `focus_*` methods)
+/// - Focus: Main ⇄ Subagent ⇄ Stats ⇄ LogPane (when visible) (via `cycle_focus`, `focus_*` methods)
 /// - Search: Inactive → Typing → Active → Inactive (via SearchState transitions)
 /// - Auto-scroll: On → Off (when user scrolls up in live mode, FR-036)
 /// - Auto-scroll: Off → On (when user returns to bottom, FR-038)
@@ -273,18 +273,20 @@ impl AppState {
 ///
 /// # State Transitions
 ///
-/// - Main ⇄ Subagent ⇄ Stats (via Tab or explicit focus commands, FR-025)
+/// - Main ⇄ Subagent ⇄ Stats ⇄ LogPane (when visible) (via Tab or explicit focus commands, FR-025)
 /// - Any → Search (when user activates search with `/` or Ctrl+F, FR-004)
 /// - Search → (previous pane) (when search is cancelled or submitted)
 ///
 /// # Keyboard Navigation (FR-025)
 ///
-/// - Tab: cycle through Main → Subagent → Stats → Main
+/// - Tab (LogPane visible): cycle through Main → Subagent → Stats → LogPane → Main
+/// - Tab (LogPane hidden): cycle through Main → Subagent → Stats → Main
 /// - Explicit focus keys: focus specific panes directly
 /// - Search activation: temporarily moves to Search pane
 ///
 /// Note: Search pane is skipped in the normal focus cycle and is only entered
-/// when the user explicitly activates search mode.
+/// when the user explicitly activates search mode. LogPane is conditionally included
+/// in the focus cycle when visible (controlled by `LogPaneState::is_visible()`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FocusPane {
     /// Main agent conversation pane has focus.
