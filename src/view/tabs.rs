@@ -454,4 +454,135 @@ mod tests {
             .any(|cell| cell.fg == ratatui::style::Color::Yellow);
         assert!(has_yellow, "Selected tab should be highlighted in yellow");
     }
+
+    // ===== FR-083/084/088: Main Agent Tab Tests =====
+
+    #[test]
+    fn render_tab_bar_shows_main_agent_at_position_zero() {
+        let mut terminal = create_test_terminal();
+        let agent1 = agent_id("subagent-1");
+        let agent2 = agent_id("subagent-2");
+
+        // Build tab list: Main Agent + subagents
+        let tabs = vec![
+            ConversationTab::Main,
+            ConversationTab::Subagent(&agent1),
+            ConversationTab::Subagent(&agent2),
+        ];
+
+        terminal
+            .draw(|frame| {
+                render_tab_bar(frame, frame.area(), &tabs, Some(0), &no_matches());
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let buffer_str = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+
+        // FR-086: Main Agent should appear in tab bar
+        assert!(
+            buffer_str.contains("Main Agent"),
+            "Tab bar should display 'Main Agent' at position 0"
+        );
+    }
+
+    #[test]
+    fn render_tab_bar_shows_main_agent_even_without_subagents() {
+        let mut terminal = create_test_terminal();
+
+        // Only main agent, no subagents (FR-084/088)
+        let tabs = vec![ConversationTab::Main];
+
+        terminal
+            .draw(|frame| {
+                render_tab_bar(frame, frame.area(), &tabs, Some(0), &no_matches());
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let buffer_str = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+
+        // FR-084/088: Tab bar should NOT be empty when only main agent exists
+        assert!(
+            buffer_str.contains("Main Agent"),
+            "Tab bar should show 'Main Agent' even with no subagents"
+        );
+    }
+
+    #[test]
+    fn render_tab_bar_title_says_conversations_not_subagents() {
+        let mut terminal = create_test_terminal();
+        let tabs = vec![ConversationTab::Main];
+
+        terminal
+            .draw(|frame| {
+                render_tab_bar(frame, frame.area(), &tabs, Some(0), &no_matches());
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let buffer_str = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+
+        // Title should say "Conversations" not "Subagents"
+        assert!(
+            buffer_str.contains("Conversations"),
+            "Tab bar title should say 'Conversations' not 'Subagents'"
+        );
+        assert!(
+            !buffer_str.contains("Subagents"),
+            "Tab bar title should NOT say 'Subagents'"
+        );
+    }
+
+    #[test]
+    fn render_tab_bar_main_agent_and_subagents_in_correct_order() {
+        let mut terminal = create_test_terminal();
+        let agent1 = agent_id("subagent-alpha");
+        let agent2 = agent_id("subagent-beta");
+
+        // FR-086: Main at position 0, subagents follow
+        let tabs = vec![
+            ConversationTab::Main,
+            ConversationTab::Subagent(&agent1),
+            ConversationTab::Subagent(&agent2),
+        ];
+
+        terminal
+            .draw(|frame| {
+                render_tab_bar(frame, frame.area(), &tabs, None, &no_matches());
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let buffer_str = buffer
+            .content()
+            .iter()
+            .map(|c| c.symbol())
+            .collect::<String>();
+
+        // All tabs should be present
+        assert!(buffer_str.contains("Main Agent"), "Should contain Main Agent");
+        assert!(buffer_str.contains("subagent-alpha"), "Should contain subagent-alpha");
+        assert!(buffer_str.contains("subagent-beta"), "Should contain subagent-beta");
+
+        // Main Agent should appear before subagents in buffer
+        let main_pos = buffer_str.find("Main Agent").unwrap();
+        let alpha_pos = buffer_str.find("subagent-alpha").unwrap();
+        assert!(
+            main_pos < alpha_pos,
+            "Main Agent should appear before subagents in tab order"
+        );
+    }
 }
