@@ -104,7 +104,7 @@ fn us5_scenario2_tab_indicators() {
 
     // IF YES: Session loaded with subagents
     let initial_state = harness.state();
-    let num_subagents = initial_state.session_view().subagents().len();
+    let num_subagents = initial_state.session_view().subagent_ids().count();
     assert!(
         num_subagents > 0,
         "search_with_subagents.jsonl should contain subagents"
@@ -150,9 +150,8 @@ fn us5_scenario2_tab_indicators() {
                 assert!(
                     state_after_search
                         .session_view()
-                        .subagents()
-                        .iter()
-                        .any(|(id, _)| id == agent_id),
+                        .subagent_ids()
+                        .any(|id| id == agent_id),
                     "Agent ID {:?} should be a valid subagent in the session",
                     agent_id
                 );
@@ -244,11 +243,11 @@ fn us5_scenario3_navigate_to_match() {
                         );
 
                         // Verify the correct tab is selected
-                        let expected_tab_index = state_after_n
-                            .session_view()
-                            .subagents()
+                        let subagent_ids_list: Vec<_> =
+                            state_after_n.session_view().subagent_ids().collect();
+                        let expected_tab_index = subagent_ids_list
                             .iter()
-                            .position(|(id, _)| id == agent_id)
+                            .position(|id| *id == agent_id)
                             .expect("Match agent_id should be a valid subagent");
 
                         assert_eq!(
