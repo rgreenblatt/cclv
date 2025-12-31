@@ -18,9 +18,10 @@
 //! - Collapse decision made once at entry level, not per-block
 //! - Rendered line count matches height calculation
 
-use crate::model::{ContentBlock, ConversationEntry, MessageContent};
+use crate::model::{stats::PricingConfig, ContentBlock, ConversationEntry, MessageContent};
 use crate::state::{WrapContext, WrapMode};
 use crate::view::MessageStyles;
+use crate::view_state::token_divider::{render_token_divider, ContextWindowTokens};
 use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
@@ -225,8 +226,30 @@ pub fn compute_entry_lines(
                 }
             }
 
-            // Add separator line at end
-            lines.push(Line::from(""));
+            // Add token divider separator at end
+            // TODO(cclv-5ur.32): Get accumulated tokens from conversation state
+            // TODO(cclv-5ur.32): Get max_context_tokens from config
+            // TODO(cclv-5ur.32): Get pricing from config
+            if let Some(usage) = message.usage() {
+                let accumulated_tokens = 0; // Placeholder - will be computed properly later
+                let max_context = ContextWindowTokens::default(); // 200k default
+                let pricing = PricingConfig::default();
+                let model_id = valid_entry
+                    .system_metadata()
+                    .and_then(|m| m.model.as_deref());
+
+                let divider = render_token_divider(
+                    usage,
+                    accumulated_tokens,
+                    max_context,
+                    &pricing,
+                    model_id,
+                );
+                lines.push(divider);
+            } else {
+                // No usage data - fall back to blank separator
+                lines.push(Line::from(""));
+            }
         }
         MessageContent::Blocks(blocks) => {
             // Render each content block with role-based styling
@@ -244,8 +267,30 @@ pub fn compute_entry_lines(
                 lines.extend(block_lines);
             }
 
-            // Add separator line at end
-            lines.push(Line::from(""));
+            // Add token divider separator at end
+            // TODO(cclv-5ur.32): Get accumulated tokens from conversation state
+            // TODO(cclv-5ur.32): Get max_context_tokens from config
+            // TODO(cclv-5ur.32): Get pricing from config
+            if let Some(usage) = message.usage() {
+                let accumulated_tokens = 0; // Placeholder - will be computed properly later
+                let max_context = ContextWindowTokens::default(); // 200k default
+                let pricing = PricingConfig::default();
+                let model_id = valid_entry
+                    .system_metadata()
+                    .and_then(|m| m.model.as_deref());
+
+                let divider = render_token_divider(
+                    usage,
+                    accumulated_tokens,
+                    max_context,
+                    &pricing,
+                    model_id,
+                );
+                lines.push(divider);
+            } else {
+                // No usage data - fall back to blank separator
+                lines.push(Line::from(""));
+            }
         }
     }
 
