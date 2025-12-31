@@ -5,7 +5,7 @@
 
 use crate::model::PricingConfig;
 use crate::state::{AppState, FocusPane, SearchState};
-use crate::view::{message, stats::StatsPanel, tabs, MessageStyles};
+use crate::view::{message, stats::StatsPanel, tabs, MessageStyles, SearchInput};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -24,19 +24,38 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
     // Create message styles for consistent coloring across panes
     let styles = MessageStyles::new();
 
-    // Split screen vertically: header + main content area + status bar
-    let vertical_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1), // Header bar (1 line)
-            Constraint::Min(0),    // Main content area
-            Constraint::Length(1), // Status bar (1 line)
-        ])
-        .split(frame.area());
+    // Determine if search input should be shown
+    let search_visible = matches!(state.search, SearchState::Typing { .. } | SearchState::Active { .. });
+
+    // Split screen vertically: header + main content area + optional search + status bar
+    let vertical_chunks = if search_visible {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1), // Header bar (1 line)
+                Constraint::Min(0),    // Main content area
+                Constraint::Length(3), // Search input (3 lines for border + text)
+                Constraint::Length(1), // Status bar (1 line)
+            ])
+            .split(frame.area())
+    } else {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1), // Header bar (1 line)
+                Constraint::Min(0),    // Main content area
+                Constraint::Length(1), // Status bar (1 line)
+            ])
+            .split(frame.area())
+    };
 
     let header_area = vertical_chunks[0];
     let content_area = vertical_chunks[1];
-    let status_area = vertical_chunks[2];
+    let (search_area, status_area) = if search_visible {
+        (Some(vertical_chunks[2]), vertical_chunks[3])
+    } else {
+        (None, vertical_chunks[2])
+    };
 
     render_header(frame, header_area, state);
 
@@ -71,6 +90,12 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
     // Render stats panel if visible
     if let Some(stats_area_rect) = stats_area {
         render_stats_panel(frame, stats_area_rect, state);
+    }
+
+    // Render search input if visible
+    if let Some(search_area_rect) = search_area {
+        let search_widget = SearchInput::new(&state.search);
+        frame.render_widget(search_widget, search_area_rect);
     }
 
     render_status_bar(frame, status_area, state);

@@ -18,7 +18,7 @@ use crate::config::keybindings::KeyBindings;
 use crate::integration;
 use crate::model::{AppError, KeyAction, SessionId};
 use crate::source::InputSource;
-use crate::state::{scroll_handler, AppState};
+use crate::state::{scroll_handler, search_input_handler, AppState, FocusPane};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -194,6 +194,48 @@ where
             return true;
         }
 
+        // Handle character input when in Search Typing mode (before key binding dispatch)
+        if self.app_state.focus == FocusPane::Search {
+            if let crate::state::SearchState::Typing { .. } = &self.app_state.search {
+                match key.code {
+                    KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        self.app_state.search = search_input_handler::handle_char_input(
+                            self.app_state.search.clone(),
+                            ch
+                        );
+                        return false;
+                    }
+                    KeyCode::Backspace => {
+                        self.app_state.search = search_input_handler::handle_backspace(
+                            self.app_state.search.clone()
+                        );
+                        return false;
+                    }
+                    KeyCode::Left => {
+                        self.app_state.search = search_input_handler::handle_cursor_left(
+                            self.app_state.search.clone()
+                        );
+                        return false;
+                    }
+                    KeyCode::Right => {
+                        self.app_state.search = search_input_handler::handle_cursor_right(
+                            self.app_state.search.clone()
+                        );
+                        return false;
+                    }
+                    KeyCode::Enter => {
+                        // Submit search on Enter when typing
+                        self.app_state.search = search_input_handler::submit_search(
+                            self.app_state.search.clone()
+                        );
+                        // Keep focus on Search pane after submit (stays active)
+                        return false;
+                    }
+                    _ => {} // Fall through to key binding dispatch
+                }
+            }
+        }
+
         // Look up action in key bindings
         let action = match self.key_bindings.get(key) {
             Some(action) => action,
@@ -278,6 +320,27 @@ where
                     viewport_height,
                 );
                 self.app_state = new_state;
+            }
+
+            // Search actions - delegate to pure search input handler
+            KeyAction::StartSearch => {
+                self.app_state.search = search_input_handler::activate_search_input(
+                    self.app_state.search.clone()
+                );
+                self.app_state.focus = FocusPane::Search;
+            }
+            KeyAction::SubmitSearch => {
+                self.app_state.search = search_input_handler::submit_search(
+                    self.app_state.search.clone()
+                );
+                // Keep focus on Search pane after submit (stays active)
+            }
+            KeyAction::CancelSearch => {
+                self.app_state.search = search_input_handler::cancel_search(
+                    self.app_state.search.clone()
+                );
+                // Return focus to Main pane after cancel
+                self.app_state.focus = FocusPane::Main;
             }
 
             // Not yet implemented
