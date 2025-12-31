@@ -87,15 +87,15 @@ fn us4_scenario1_tab_cycles_focus() {
 // ===== US4 Scenario 2: Arrow Keys Switch Tabs =====
 
 #[test]
-#[ignore = "Subagent tab switching needs subagent support - Session.subagents() required"]
+#[ignore = "Keyboard integration pending - NextTab/PrevTab actions not yet wired"]
 fn us4_scenario2_arrow_keys_switch_tabs() {
     // GIVEN: Focus is on subagent pane
-    // WHEN: User presses left/right arrow or number keys
+    // WHEN: User presses ] or [ keys
     // THEN: They switch between subagent tabs
 
     // DOING: Load session with subagents, focus subagent pane, test tab switching
-    // EXPECT: Arrow keys and number keys switch between subagent tabs
-    let mut harness = AcceptanceTestHarness::from_fixture(TOOL_CALLS_FIXTURE)
+    // EXPECT: ] and [ keys switch between subagent tabs
+    let mut harness = AcceptanceTestHarness::from_fixture(SUBAGENTS_FIXTURE)
         .expect("Should load session for tab switching test");
 
     // IF YES: Session loaded
@@ -116,49 +116,27 @@ fn us4_scenario2_arrow_keys_switch_tabs() {
         "Should have a subagent tab selected when focused"
     );
 
-    // WHEN: User presses Right arrow
-    harness.send_key(KeyCode::Right);
+    // WHEN: User presses ] to switch to next tab
+    harness.send_key(KeyCode::Char(']'));
 
     // VERIFY: Tab selection changed
-    let state_after_right = harness.state();
+    let state_after_next = harness.state();
     assert_ne!(
-        state_after_right.selected_tab, initial_tab,
-        "Right arrow should switch to next subagent tab"
+        state_after_next.selected_tab, initial_tab,
+        "] key should switch to next subagent tab"
     );
 
-    // WHEN: User presses Left arrow
-    harness.send_key(KeyCode::Left);
+    // WHEN: User presses [ to switch to previous tab
+    harness.send_key(KeyCode::Char('['));
 
     // VERIFY: Tab switched back
-    let state_after_left = harness.state();
+    let state_after_prev = harness.state();
     assert_eq!(
-        state_after_left.selected_tab, initial_tab,
-        "Left arrow should switch back to previous tab"
+        state_after_prev.selected_tab, initial_tab,
+        "[ key should switch back to previous tab"
     );
 
-    // WHEN: User presses number key '1'
-    harness.send_key(KeyCode::Char('1'));
-
-    // VERIFY: First tab selected
-    let state_after_number = harness.state();
-    assert_eq!(
-        state_after_number.selected_tab,
-        Some(0),
-        "Number key '1' should select first tab (index 0)"
-    );
-
-    // WHEN: User presses number key '2'
-    harness.send_key(KeyCode::Char('2'));
-
-    // VERIFY: Second tab selected
-    let state_after_two = harness.state();
-    assert_eq!(
-        state_after_two.selected_tab,
-        Some(1),
-        "Number key '2' should select second tab (index 1)"
-    );
-
-    // RESULT: Arrow keys and number keys switch tabs
+    // RESULT: ] and [ keys switch tabs
     // MATCHES: Yes - tab selection changes with keyboard input
     // THEREFORE: US4 Scenario 2 verified
 }
@@ -166,7 +144,6 @@ fn us4_scenario2_arrow_keys_switch_tabs() {
 // ===== US4 Scenario 3: J/K Scroll Messages =====
 
 #[test]
-#[ignore = "j/k scrolling not yet wired to vertical offset - keys don't change scroll state"]
 fn us4_scenario3_jk_scroll_messages() {
     // GIVEN: Focus is on a conversation pane
     // WHEN: User presses j/k or up/down arrows
