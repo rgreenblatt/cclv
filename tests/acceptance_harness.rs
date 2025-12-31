@@ -4,9 +4,7 @@
 //! TuiApp<TestBackend> with convenient methods for simulating user interactions.
 
 use cclv::config::keybindings::KeyBindings;
-use cclv::integration;
-use cclv::model::SessionId;
-use cclv::source::{FileTailer, InputSource};
+use cclv::source::{FileSource, StdinSource};
 use cclv::state::AppState;
 use cclv::view::{TuiApp, TuiError};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -79,21 +77,9 @@ impl AcceptanceTestHarness {
         let backend = TestBackend::new(width, height);
         let terminal = Terminal::new(backend)?;
 
-        // Load fixture file
-        let mut tailer = FileTailer::new(PathBuf::from(path))?;
-        let lines = tailer.read_new_lines()?;
-
-        // Parse entries
-        let entries = integration::process_lines(lines, 1);
-
-        // Create session and add entries
-        let session_id = SessionId::new("test-session")
-            .map_err(|e| TuiError::Io(std::io::Error::new(std::io::ErrorKind::InvalidInput, e)))?;
-        let mut session = cclv::model::Session::new(session_id);
-
-        for entry in &entries {
-            session.add_conversation_entry(entry.clone());
-        }
+        // Load fixture file using FileSource
+        let mut file_source = FileSource::new(PathBuf::from(path))?;
+        let session = file_source.initial_load()?;
 
         // Create app state
         let app_state = AppState::new(session);
@@ -102,15 +88,18 @@ impl AcceptanceTestHarness {
         // Create dummy log receiver
         let (_log_tx, log_rx) = std::sync::mpsc::channel();
 
-        // Wrap tailer in InputSource (won't be used for testing, but required by TuiApp)
-        let input_source = InputSource::File(tailer);
+        // Create dummy stdin source (won't be used for testing, but required by TuiApp)
+        // Use empty buffer for stdin
+        let data = b"";
+        let stdin_source = StdinSource::from_reader(&data[..]);
+        let input_source = cclv::source::InputSource::Stdin(stdin_source);
 
         // Create TuiApp using test constructor
         let app = TuiApp::new_for_test(
             terminal,
             app_state,
             input_source,
-            entries.len(),
+            file_source.line_count(),
             key_bindings,
             log_rx,
         );

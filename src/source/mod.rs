@@ -1,8 +1,8 @@
 //! Log input sources.
 //!
 //! This module provides input sources for JSONL log data:
-//! - File tailing for live log following
-//! - Stdin for piped input
+//! - File loading for read-once file input
+//! - Stdin for piped input (live streaming)
 //! - Unified InputSource enum for both
 
 use crate::model::error::InputError;
@@ -11,17 +11,15 @@ use std::path::PathBuf;
 pub mod file;
 pub mod stdin;
 
-pub use file::FileTailer;
+pub use file::FileSource;
 pub use stdin::StdinSource;
 
 /// Unified input source for JSONL log data.
 ///
-/// Abstracts over file tailing and stdin sources with a common interface.
+/// Abstracts over file loading and stdin sources with a common interface.
 #[derive(Debug)]
 pub enum InputSource {
-    /// File tailing source - can read incrementally from a file
-    File(FileTailer),
-    /// Stdin source - reads from piped stdin
+    /// Stdin source - reads from piped stdin (live streaming)
     Stdin(StdinSource),
 }
 
@@ -30,16 +28,14 @@ impl InputSource {
     ///
     /// Non-blocking - returns immediately with available lines.
     ///
-    /// # Behavior by variant:
-    /// - File: checks for file changes, reads new lines if available
+    /// # Behavior:
     /// - Stdin: drains all available lines from the channel
     ///
     /// # Errors
     ///
-    /// Returns `InputError` for I/O errors or file deletion.
+    /// Returns `InputError` for I/O errors.
     pub fn poll(&mut self) -> Result<Vec<String>, InputError> {
         match self {
-            InputSource::File(tailer) => tailer.read_new_lines(),
             InputSource::Stdin(stdin) => {
                 // Drain all available lines from channel
                 let mut lines = Vec::new();
@@ -53,12 +49,10 @@ impl InputSource {
 
     /// Check if the source is still live (can receive more data).
     ///
-    /// # Behavior by variant:
-    /// - File: always true (can tail indefinitely)
+    /// # Behavior:
     /// - Stdin: true until EOF is reached
     pub fn is_live(&self) -> bool {
         match self {
-            InputSource::File(_) => true, // File sources can always receive more data
             InputSource::Stdin(stdin) => !stdin.is_complete(), // Live until EOF
         }
     }
@@ -67,25 +61,27 @@ impl InputSource {
 /// Detect and create appropriate input source.
 ///
 /// # Logic:
-/// 1. If file path is provided: open with FileTailer
-/// 2. Else if stdin is piped: use StdinSource
+/// 1. If file path is provided: return error (use FileSource::new() directly for files)
+/// 2. If stdin is piped: use StdinSource
 /// 3. Else: return InputError::NoInput
+///
+/// Note: For file input, use `FileSource::new(path)?.initial_load()` directly.
+/// This function is only for detecting stdin sources.
 ///
 /// # Arguments
 ///
-/// * `file` - Optional file path to tail
+/// * `file` - Optional file path (should be None for stdin detection)
 ///
 /// # Errors
 ///
 /// Returns `InputError::NoInput` if no file is provided and stdin is not piped.
-/// Returns `InputError::FileNotFound` if file path is provided but doesn't exist.
-/// Returns `InputError::Io` for other I/O errors.
+/// Returns `InputError::FileNotFound` if file path is provided (unsupported - use FileSource directly).
 pub fn detect_input_source(file: Option<PathBuf>) -> Result<InputSource, InputError> {
     match file {
         Some(path) => {
-            // File path provided - open with FileTailer
-            let tailer = FileTailer::new(path)?;
-            Ok(InputSource::File(tailer))
+            // File paths are no longer supported through InputSource
+            // Use FileSource::new(path)?.initial_load() instead
+            Err(InputError::FileNotFound { path })
         }
         None => {
             // No file - try stdin
@@ -98,96 +94,9 @@ pub fn detect_input_source(file: Option<PathBuf>) -> Result<InputSource, InputEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::io::{IsTerminal, Write};
+    use std::io::IsTerminal;
     use std::thread;
     use std::time::Duration;
-
-    // ========================================================================
-    // InputSource::poll() tests - File variant
-    // ========================================================================
-
-    #[test]
-    fn poll_returns_empty_vec_when_file_has_no_new_data() {
-        let temp_dir = std::env::temp_dir();
-        let test_file = temp_dir.join("test_poll_file_no_new_data.jsonl");
-
-        // Create file with initial content
-        fs::write(&test_file, "{\"line\": 1}\n").unwrap();
-
-        let tailer = FileTailer::new(&test_file).unwrap();
-        let mut source = InputSource::File(tailer);
-
-        // Read initial content
-        let initial = source.poll().unwrap();
-        assert_eq!(initial.len(), 1);
-
-        // Poll again without changes
-        let result = source.poll().unwrap();
-
-        // Cleanup
-        let _ = fs::remove_file(&test_file);
-
-        assert_eq!(result.len(), 0, "Should return empty vec when no new data");
-    }
-
-    #[test]
-    fn poll_returns_new_lines_when_file_is_modified() {
-        let temp_dir = std::env::temp_dir();
-        let test_file = temp_dir.join("test_poll_file_modified.jsonl");
-
-        // Create file with initial content
-        fs::write(&test_file, "{\"line\": 1}\n").unwrap();
-
-        let tailer = FileTailer::new(&test_file).unwrap();
-        let mut source = InputSource::File(tailer);
-
-        // Read initial content
-        source.poll().unwrap();
-
-        // Append more content
-        let mut file = fs::OpenOptions::new()
-            .append(true)
-            .open(&test_file)
-            .unwrap();
-        writeln!(file, "{{\"line\": 2}}").unwrap();
-        writeln!(file, "{{\"line\": 3}}").unwrap();
-        drop(file);
-
-        // Wait for file system event
-        thread::sleep(Duration::from_millis(200));
-
-        // Poll should return new lines
-        let result = source.poll().unwrap();
-
-        // Cleanup
-        let _ = fs::remove_file(&test_file);
-
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0], "{\"line\": 2}");
-        assert_eq!(result[1], "{\"line\": 3}");
-    }
-
-    #[test]
-    fn poll_returns_initial_file_content_on_first_call() {
-        let temp_dir = std::env::temp_dir();
-        let test_file = temp_dir.join("test_poll_file_initial.jsonl");
-
-        // Create file with content
-        fs::write(&test_file, "{\"line\": 1}\n{\"line\": 2}\n").unwrap();
-
-        let tailer = FileTailer::new(&test_file).unwrap();
-        let mut source = InputSource::File(tailer);
-
-        let result = source.poll().unwrap();
-
-        // Cleanup
-        let _ = fs::remove_file(&test_file);
-
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0], "{\"line\": 1}");
-        assert_eq!(result[1], "{\"line\": 2}");
-    }
 
     // ========================================================================
     // InputSource::poll() tests - Stdin variant
@@ -244,24 +153,6 @@ mod tests {
     // ========================================================================
 
     #[test]
-    fn is_live_returns_true_for_file_source() {
-        let temp_dir = std::env::temp_dir();
-        let test_file = temp_dir.join("test_is_live_file.jsonl");
-
-        fs::write(&test_file, "{\"line\": 1}\n").unwrap();
-
-        let tailer = FileTailer::new(&test_file).unwrap();
-        let source = InputSource::File(tailer);
-
-        let is_live = source.is_live();
-
-        // Cleanup
-        let _ = fs::remove_file(&test_file);
-
-        assert!(is_live, "File source should always be live");
-    }
-
-    #[test]
     fn is_live_returns_true_for_stdin_before_eof() {
         let data = b"{\"line\": 1}\n";
         let stdin_source = StdinSource::from_reader(&data[..]);
@@ -296,23 +187,9 @@ mod tests {
     // ========================================================================
 
     #[test]
-    fn detect_creates_file_source_when_path_provided() {
-        let temp_dir = std::env::temp_dir();
-        let test_file = temp_dir.join("test_detect_file.jsonl");
-
-        fs::write(&test_file, "{\"test\": \"data\"}\n").unwrap();
-
-        let result = detect_input_source(Some(test_file.clone()));
-
-        // Cleanup
-        let _ = fs::remove_file(&test_file);
-
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), InputSource::File(_)));
-    }
-
-    #[test]
     fn detect_returns_file_not_found_for_missing_file() {
+        // Files are no longer supported through detect_input_source
+        // Use FileSource::new() directly for file input
         let temp_dir = std::env::temp_dir();
         let missing_file = temp_dir.join("nonexistent_detect_test_12345.jsonl");
 

@@ -139,21 +139,22 @@ pub enum InputError {
         path: PathBuf,
     },
 
-    /// The log file was deleted while being actively viewed in live-follow mode.
+    /// The log file was deleted or became inaccessible during reading.
     ///
-    /// This occurs during FR-007 live tailing when the file being followed is removed from
-    /// the filesystem (e.g., user runs `rm` on the log file, or Claude Code cleans up old
-    /// sessions). Per FR-139, this should show an error notification and stop following.
+    /// This occurs when I/O operations fail with `ErrorKind::NotFound` after the file
+    /// was successfully opened. This can happen if the file is deleted, moved, or becomes
+    /// inaccessible while being read.
     ///
-    /// **When this occurs**: During file watching (notify crate) when the watched file is
-    /// removed or moved.
+    /// **When this occurs**: During read operations when the underlying file descriptor
+    /// becomes invalid (more common on Windows; on Unix, open file descriptors remain
+    /// valid after unlink).
     ///
-    /// **Recovery**: Display error notification in status bar or logging pane. Stop file
-    /// watching. Optionally offer retry mechanism if file reappears.
+    /// **Recovery**: Display error notification. In streaming scenarios (stdin pipes),
+    /// this typically indicates end of input.
     ///
-    /// **Design note**: This is distinct from `FileNotFound` - deletion during viewing is
-    /// a different user experience than initial file not found, warranting separate handling.
-    #[error("File deleted during viewing")]
+    /// **Design note**: This is distinct from `FileNotFound` - deletion after opening is
+    /// a different scenario than initial file not found, warranting separate handling.
+    #[error("File deleted or became inaccessible")]
     FileDeleted,
 
     /// No input source was provided - user must supply a file path or pipe stdin.
@@ -388,7 +389,7 @@ mod tests {
     fn input_error_file_deleted_display() {
         let err = InputError::FileDeleted;
         let msg = err.to_string();
-        assert_eq!(msg, "File deleted during viewing");
+        assert_eq!(msg, "File deleted or became inaccessible");
     }
 
     #[test]

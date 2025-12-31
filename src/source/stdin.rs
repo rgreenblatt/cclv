@@ -4,12 +4,9 @@
 //! both streaming (live) and complete (EOF reached) modes.
 
 use crate::model::error::InputError;
-use std::io::{BufRead, BufReader, IsTerminal};
+use std::io::{BufRead, BufReader, IsTerminal, Read};
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::thread::{self, JoinHandle};
-
-#[cfg(test)]
-use std::io::Read;
 
 /// Message sent from background reader thread to main thread.
 enum ReaderMessage {
@@ -107,9 +104,11 @@ impl StdinSource {
     /// Create StdinSource from any reader (for testing).
     ///
     /// Spawns a background thread to read from the provided reader.
-    /// Internal constructor - bypasses TTY check for testing.
-    #[cfg(test)]
-    pub(crate) fn from_reader<R: Read + Send + 'static>(reader: R) -> Self {
+    /// Test-only constructor - bypasses TTY check for testing.
+    ///
+    /// This is public to support integration tests in the `tests/` directory.
+    /// Should not be used in production code.
+    pub fn from_reader<R: Read + Send + 'static>(reader: R) -> Self {
         let (tx, rx) = channel();
         let reader_thread = thread::spawn(move || {
             let mut reader = BufReader::new(reader);
