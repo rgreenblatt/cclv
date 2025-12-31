@@ -99,8 +99,31 @@ pub fn compute_entry_lines(
 
     // Handle message content
     match message.content() {
-        MessageContent::Text(_text) => {
-            // For now, minimal implementation - just add separator
+        MessageContent::Text(text) => {
+            // Render plain text with collapse support
+            let text_lines: Vec<_> = text.lines().collect();
+            let total_lines = text_lines.len();
+            let should_collapse = total_lines > collapse_threshold && !expanded;
+
+            if should_collapse {
+                // Show summary lines
+                for line in text_lines.iter().take(summary_lines) {
+                    lines.push(Line::from(line.to_string()));
+                }
+                // Add collapse indicator
+                let remaining = total_lines - summary_lines;
+                lines.push(Line::from(Span::styled(
+                    format!("(+{} more lines)", remaining),
+                    Style::default().add_modifier(Modifier::DIM),
+                )));
+            } else {
+                // Show all lines
+                for line in text_lines {
+                    lines.push(Line::from(line.to_string()));
+                }
+            }
+
+            // Add separator line at end
             lines.push(Line::from(""));
         }
         MessageContent::Blocks(blocks) => {
