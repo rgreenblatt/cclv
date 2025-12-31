@@ -1,6 +1,7 @@
 //! TUI rendering and terminal management (impure shell)
 
 mod layout;
+mod message;
 
 use crate::integration;
 use crate::model::{AppError, SessionId};

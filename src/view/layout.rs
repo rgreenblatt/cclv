@@ -3,12 +3,13 @@
 //! Pure layout logic - calculates layout constraints and renders
 //! placeholder widgets for main agent, subagent tabs, and status bar.
 
-use crate::state::AppState;
+use crate::state::{AppState, FocusPane};
+use crate::view::message;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
-    widgets::{Block, Borders, Paragraph},
+    widgets::Paragraph,
     Frame,
 };
 
@@ -61,48 +62,32 @@ fn calculate_horizontal_constraints(has_subagents: bool) -> (Constraint, Constra
     }
 }
 
-/// Render the main agent pane with placeholder content.
+/// Render the main agent pane using shared ConversationView widget.
 fn render_main_pane(frame: &mut Frame, area: Rect, state: &AppState) {
-    let main_agent = state.session().main_agent();
-    let entry_count = main_agent.entries().len();
-
-    let model_info = main_agent
-        .model()
-        .map(|m| format!(" [{}]", m.display_name()))
-        .unwrap_or_default();
-
-    let title = format!("Main Agent{} ({} entries)", model_info, entry_count);
-
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(title)
-        .style(Style::default().fg(Color::Cyan));
-
-    let placeholder_text = if entry_count == 0 {
-        "No messages yet...".to_string()
-    } else {
-        format!("Conversation with {} messages", entry_count)
-    };
-
-    let paragraph = Paragraph::new(placeholder_text).block(block);
-    frame.render_widget(paragraph, area);
+    message::render_conversation_view(
+        frame,
+        area,
+        state.session().main_agent(),
+        &state.main_scroll,
+        state.focus == FocusPane::Main,
+    );
 }
 
-/// Render the subagent tabs pane with placeholder content.
+/// Render the subagent tabs pane using shared ConversationView widget.
+///
+/// For now, shows the first subagent as a placeholder. Full tab selection
+/// will be implemented in a later bead.
 fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState) {
-    let subagent_count = state.session().subagents().len();
-
-    let title = format!("Subagents ({} total)", subagent_count);
-
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(title)
-        .style(Style::default().fg(Color::Yellow));
-
-    let placeholder_text = format!("{} subagent conversations", subagent_count);
-
-    let paragraph = Paragraph::new(placeholder_text).block(block);
-    frame.render_widget(paragraph, area);
+    // Get first subagent as placeholder (tab selection not yet implemented)
+    if let Some((_agent_id, conversation)) = state.session().subagents().iter().next() {
+        message::render_conversation_view(
+            frame,
+            area,
+            conversation,
+            &state.subagent_scroll,
+            state.focus == FocusPane::Subagent,
+        );
+    }
 }
 
 /// Render the status bar with hints and live mode indicator.
