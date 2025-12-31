@@ -4,7 +4,7 @@
 //! AgentConversation to store both successfully parsed LogEntry instances
 //! and malformed entries in a single ordered sequence.
 
-use crate::model::{LogEntry, MalformedEntry, SessionId};
+use crate::model::{EntryUuid, LogEntry, MalformedEntry, SessionId};
 use crate::parser::ParseResult;
 use chrono::{DateTime, Utc};
 
@@ -39,6 +39,17 @@ impl ConversationEntry {
     pub fn timestamp(&self) -> Option<DateTime<Utc>> {
         match self {
             ConversationEntry::Valid(entry) => Some(entry.timestamp()),
+            ConversationEntry::Malformed(_) => None,
+        }
+    }
+
+    /// Get the entry UUID if available.
+    ///
+    /// Returns Some for Valid entries (always has uuid),
+    /// None for Malformed entries (no UUID - failed to parse).
+    pub fn uuid(&self) -> Option<&EntryUuid> {
+        match self {
+            ConversationEntry::Valid(entry) => Some(entry.uuid()),
             ConversationEntry::Malformed(_) => None,
         }
     }
