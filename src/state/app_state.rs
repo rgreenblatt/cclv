@@ -146,7 +146,21 @@ impl AppState {
     /// Order when log visible: Main -> Subagent -> Stats -> LogPane -> Main
     /// Order when log hidden: Main -> Subagent -> Stats -> Main
     pub fn cycle_focus(&mut self) {
-        todo!("cycle_focus: implement conditional LogPane cycling based on log_pane.visible")
+        let log_pane_visible = self.log_pane.is_visible();
+
+        self.focus = match self.focus {
+            FocusPane::Main => FocusPane::Subagent,
+            FocusPane::Subagent => FocusPane::Stats,
+            FocusPane::Stats => {
+                if log_pane_visible {
+                    FocusPane::LogPane
+                } else {
+                    FocusPane::Main
+                }
+            }
+            FocusPane::LogPane => FocusPane::Main,
+            FocusPane::Search => FocusPane::Main,
+        };
     }
 
     /// Set focus to Main pane.
