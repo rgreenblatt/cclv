@@ -169,7 +169,8 @@ impl AppState {
     /// # Returns
     /// The new blink state after toggle.
     pub fn toggle_blink(&mut self) -> bool {
-        todo!("toggle_blink")
+        self.blink_on = !self.blink_on;
+        self.blink_on
     }
 
     /// Add multiple conversation entries (valid or malformed) to the session.

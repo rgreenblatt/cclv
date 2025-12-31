@@ -1823,7 +1823,7 @@ fn status_bar_shows_green_live_indicator_when_streaming_mode_blink_on() {
     // Note: blink_on is hardcoded to false in layout.rs line 525
     // So Streaming mode will show empty string (hidden) until timer is implemented
     // This test documents current behavior
-    insta::assert_snapshot!(status_bar, @"Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes");
+    insta::assert_snapshot!(status_bar, @"[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes");
 }
 
 /// Helper to extract the status bar line from the terminal buffer.

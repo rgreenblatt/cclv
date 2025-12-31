@@ -183,9 +183,17 @@ impl TuiApp<CrosstermBackend<Stdout>> {
                 // Check if we have new data to render
                 let has_new_data = !self.pending_entries.is_empty();
 
-                // Render if: new data arrived OR timer elapsed (for LIVE blink)
-                // Timer always triggers render when live_mode for LIVE indicator animation
-                if has_new_data || self.app_state.live_mode {
+                // Toggle blink state on timer event when in Streaming mode
+                // This creates the blinking animation for the LIVE indicator
+                let should_blink =
+                    self.app_state.input_mode == crate::state::InputMode::Streaming;
+                if should_blink {
+                    self.app_state.toggle_blink();
+                }
+
+                // Render if: new data arrived OR timer elapsed with blink update
+                // Timer triggers render when Streaming (for LIVE blink) or when new data arrived
+                if has_new_data || should_blink {
                     self.draw()?;
                 }
             }

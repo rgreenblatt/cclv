@@ -521,8 +521,7 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
     let mut spans = Vec::new();
 
     // LIVE indicator using LiveIndicator widget (FR-042b)
-    // Note: blink_on is hardcoded to false until timer is added to event loop
-    let live_indicator = crate::view::LiveIndicator::new(state.input_mode, false);
+    let live_indicator = crate::view::LiveIndicator::new(state.input_mode, state.blink_on);
     spans.push(live_indicator.render());
 
     // Unread badge (color-coded by severity - FR-057)
