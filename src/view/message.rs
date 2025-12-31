@@ -50,6 +50,29 @@ fn calculate_lines_to_skip(cumulative_y: usize, scroll_offset: usize) -> usize {
     scroll_offset.saturating_sub(cumulative_y)
 }
 
+// ===== Content Section =====
+
+/// A section of content within a conversation entry.
+///
+/// Markdown content is split into sections to enable independent wrap behavior:
+/// - Prose sections follow the configured wrap setting
+/// - Code blocks never wrap (always horizontal scroll)
+///
+/// This enables FR-053: code blocks never wrap while prose wraps within the same entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)] // Used in future implementation
+pub enum ContentSection {
+    /// Prose text (paragraphs, headings, lists, etc.)
+    ///
+    /// Follows the effective wrap mode for the entry.
+    Prose(Vec<Line<'static>>),
+
+    /// Code block (fenced or indented)
+    ///
+    /// Never wraps regardless of wrap settings; always uses horizontal scrolling.
+    CodeBlock(Vec<Line<'static>>),
+}
+
 // ===== ConversationView Widget =====
 
 /// Virtualized conversation view widget.
@@ -7093,6 +7116,155 @@ fn test() { println!("Code blocks always NoWrap"); }
         assert!(
             !text.contains("Message number 0"),
             "Early entries should be clipped after scroll"
+        );
+    }
+
+    // ===== ContentSection Tests =====
+
+    #[test]
+    fn content_section_prose_can_be_constructed() {
+        // Create sample lines for prose content
+        let lines = vec![
+            Line::from("This is a paragraph."),
+            Line::from("With multiple lines."),
+        ];
+
+        let section = ContentSection::Prose(lines.clone());
+
+        // Verify it's the Prose variant and contains the right data
+        match section {
+            ContentSection::Prose(inner_lines) => {
+                assert_eq!(inner_lines.len(), 2, "Prose section should contain 2 lines");
+                assert_eq!(
+                    inner_lines[0].to_string(),
+                    "This is a paragraph.",
+                    "First line should match"
+                );
+                assert_eq!(
+                    inner_lines[1].to_string(),
+                    "With multiple lines.",
+                    "Second line should match"
+                );
+            }
+            ContentSection::CodeBlock(_) => {
+                panic!("Expected Prose variant, got CodeBlock");
+            }
+        }
+    }
+
+    #[test]
+    fn content_section_code_block_can_be_constructed() {
+        // Create sample lines for code content
+        let lines = vec![
+            Line::from("fn main() {"),
+            Line::from("    println!(\"Hello\");"),
+            Line::from("}"),
+        ];
+
+        let section = ContentSection::CodeBlock(lines.clone());
+
+        // Verify it's the CodeBlock variant and contains the right data
+        match section {
+            ContentSection::CodeBlock(inner_lines) => {
+                assert_eq!(
+                    inner_lines.len(),
+                    3,
+                    "CodeBlock section should contain 3 lines"
+                );
+                assert_eq!(
+                    inner_lines[0].to_string(),
+                    "fn main() {",
+                    "First line should match"
+                );
+                assert_eq!(
+                    inner_lines[1].to_string(),
+                    "    println!(\"Hello\");",
+                    "Second line should match"
+                );
+                assert_eq!(inner_lines[2].to_string(), "}", "Third line should match");
+            }
+            ContentSection::Prose(_) => {
+                panic!("Expected CodeBlock variant, got Prose");
+            }
+        }
+    }
+
+    #[test]
+    fn content_section_prose_and_code_block_are_different_variants() {
+        let prose_lines = vec![Line::from("Prose text")];
+        let code_lines = vec![Line::from("code();")];
+
+        let prose = ContentSection::Prose(prose_lines);
+        let code = ContentSection::CodeBlock(code_lines);
+
+        // Verify they're different variants by pattern matching
+        let prose_is_prose = matches!(prose, ContentSection::Prose(_));
+        let code_is_code = matches!(code, ContentSection::CodeBlock(_));
+        let prose_is_not_code = !matches!(prose, ContentSection::CodeBlock(_));
+        let code_is_not_prose = !matches!(code, ContentSection::Prose(_));
+
+        assert!(prose_is_prose, "Prose should match Prose variant");
+        assert!(code_is_code, "CodeBlock should match CodeBlock variant");
+        assert!(
+            prose_is_not_code,
+            "Prose should not match CodeBlock variant"
+        );
+        assert!(
+            code_is_not_prose,
+            "CodeBlock should not match Prose variant"
+        );
+    }
+
+    #[test]
+    fn content_section_empty_lines_allowed() {
+        // Empty sections should be constructible (edge case)
+        let empty_prose = ContentSection::Prose(vec![]);
+        let empty_code = ContentSection::CodeBlock(vec![]);
+
+        match empty_prose {
+            ContentSection::Prose(lines) => {
+                assert_eq!(lines.len(), 0, "Empty prose should have 0 lines");
+            }
+            ContentSection::CodeBlock(_) => {
+                panic!("Expected Prose variant");
+            }
+        }
+
+        match empty_code {
+            ContentSection::CodeBlock(lines) => {
+                assert_eq!(lines.len(), 0, "Empty code block should have 0 lines");
+            }
+            ContentSection::Prose(_) => {
+                panic!("Expected CodeBlock variant");
+            }
+        }
+    }
+
+    #[test]
+    fn content_section_clone_works() {
+        let lines = vec![Line::from("Test line")];
+        let section = ContentSection::Prose(lines);
+
+        // Clone should work (derives Clone)
+        let cloned = section.clone();
+
+        // Both should be equal (derives PartialEq, Eq)
+        assert_eq!(section, cloned, "Cloned section should equal original");
+    }
+
+    #[test]
+    fn content_section_debug_works() {
+        let lines = vec![Line::from("Debug test")];
+        let section = ContentSection::Prose(lines);
+
+        // Debug should work (derives Debug)
+        let debug_output = format!("{:?}", section);
+
+        // Should contain the variant name
+        assert!(
+            debug_output.contains("Prose"),
+            "Debug output should contain variant name: {}",
+            debug_output
         );
     }
 }
