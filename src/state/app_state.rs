@@ -101,9 +101,7 @@ pub struct AppState {
 
 impl AppState {
     /// Create new AppState with default UI state.
-    #[allow(unreachable_code, unused_variables)]
     pub fn new(session: Session) -> Self {
-        todo!("AppState::new with log_pane field");
         Self {
             session,
             focus: FocusPane::Main,
