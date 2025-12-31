@@ -1491,3 +1491,62 @@ fn toggle_log_pane_visibility_affects_focus_cycle() {
         "Stats -> LogPane when log pane visible"
     );
 }
+
+// ===== AppState::toggle_blink Tests =====
+
+#[test]
+fn app_state_new_defaults_blink_on_to_true() {
+    // FR-028: Start with indicator visible
+    let session = make_test_session();
+    let state = AppState::new(session);
+
+    assert_eq!(state.blink_on, true);
+}
+
+#[test]
+fn toggle_blink_switches_from_true_to_false() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.blink_on = true;
+
+    let result = state.toggle_blink();
+
+    assert_eq!(state.blink_on, false);
+    assert_eq!(result, false);
+}
+
+#[test]
+fn toggle_blink_switches_from_false_to_true() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.blink_on = false;
+
+    let result = state.toggle_blink();
+
+    assert_eq!(state.blink_on, true);
+    assert_eq!(result, true);
+}
+
+#[test]
+fn toggle_blink_twice_returns_to_original() {
+    // Property: double toggle is identity
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    let original = state.blink_on;
+
+    state.toggle_blink();
+    state.toggle_blink();
+
+    assert_eq!(state.blink_on, original);
+}
+
+#[test]
+fn toggle_blink_returns_new_state() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.blink_on = true;
+
+    let new_state = state.toggle_blink();
+
+    assert_eq!(new_state, state.blink_on);
+}

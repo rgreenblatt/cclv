@@ -132,6 +132,11 @@ pub struct AppState {
     /// Input mode for LIVE indicator display (FR-042b).
     /// Indicates whether reading from static file, actively streaming, or EOF.
     pub input_mode: InputMode,
+
+    /// Blink state for LIVE indicator animation (FR-028).
+    /// Toggles on 500ms timer events when `input_mode` is Streaming.
+    /// `true` means indicator is visible (green), `false` means hidden.
+    pub blink_on: bool,
 }
 
 impl AppState {
@@ -152,7 +157,19 @@ impl AppState {
             global_wrap: WrapMode::default(),
             log_pane: LogPaneState::new(1000),
             input_mode: InputMode::default(),
+            blink_on: true, // Start with indicator visible
         }
+    }
+
+    /// Toggle the LIVE indicator blink state (FR-028).
+    ///
+    /// Should be called on timer events (every 500ms) when `input_mode` is Streaming.
+    /// When not Streaming, blink state doesn't affect rendering.
+    ///
+    /// # Returns
+    /// The new blink state after toggle.
+    pub fn toggle_blink(&mut self) -> bool {
+        todo!("toggle_blink")
     }
 
     /// Add multiple conversation entries (valid or malformed) to the session.
