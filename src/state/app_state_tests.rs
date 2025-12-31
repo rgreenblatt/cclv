@@ -298,3 +298,167 @@ fn focus_pane_equality() {
     assert_eq!(FocusPane::Stats, FocusPane::Stats);
     assert_eq!(FocusPane::Search, FocusPane::Search);
 }
+
+// ===== ScrollState::at_bottom Tests =====
+
+#[test]
+fn at_bottom_returns_true_when_at_max() {
+    let scroll = ScrollState {
+        vertical_offset: 100,
+        horizontal_offset: 0,
+        expanded_messages: HashSet::new(),
+    };
+
+    assert!(scroll.at_bottom(100));
+}
+
+#[test]
+fn at_bottom_returns_false_when_below_max() {
+    let scroll = ScrollState {
+        vertical_offset: 50,
+        horizontal_offset: 0,
+        expanded_messages: HashSet::new(),
+    };
+
+    assert!(!scroll.at_bottom(100));
+}
+
+#[test]
+fn at_bottom_returns_true_when_zero_and_max_is_zero() {
+    let scroll = ScrollState::default();
+
+    assert!(scroll.at_bottom(0));
+}
+
+#[test]
+fn at_bottom_returns_false_when_one_below_max() {
+    let scroll = ScrollState {
+        vertical_offset: 99,
+        horizontal_offset: 0,
+        expanded_messages: HashSet::new(),
+    };
+
+    assert!(!scroll.at_bottom(100));
+}
+
+// ===== ScrollState::scroll_to_bottom Tests =====
+
+#[test]
+fn scroll_to_bottom_sets_offset_to_max() {
+    let mut scroll = ScrollState::default();
+
+    scroll.scroll_to_bottom(100);
+
+    assert_eq!(scroll.vertical_offset, 100);
+}
+
+#[test]
+fn scroll_to_bottom_from_middle_position() {
+    let mut scroll = ScrollState {
+        vertical_offset: 50,
+        horizontal_offset: 0,
+        expanded_messages: HashSet::new(),
+    };
+
+    scroll.scroll_to_bottom(100);
+
+    assert_eq!(scroll.vertical_offset, 100);
+}
+
+#[test]
+fn scroll_to_bottom_when_already_at_bottom() {
+    let mut scroll = ScrollState {
+        vertical_offset: 100,
+        horizontal_offset: 0,
+        expanded_messages: HashSet::new(),
+    };
+
+    scroll.scroll_to_bottom(100);
+
+    assert_eq!(scroll.vertical_offset, 100);
+}
+
+#[test]
+fn scroll_to_bottom_with_zero_max() {
+    let mut scroll = ScrollState {
+        vertical_offset: 0,
+        horizontal_offset: 0,
+        expanded_messages: HashSet::new(),
+    };
+
+    scroll.scroll_to_bottom(0);
+
+    assert_eq!(scroll.vertical_offset, 0);
+}
+
+#[test]
+fn scroll_to_bottom_does_not_affect_horizontal_offset() {
+    let mut scroll = ScrollState {
+        vertical_offset: 10,
+        horizontal_offset: 25,
+        expanded_messages: HashSet::new(),
+    };
+
+    scroll.scroll_to_bottom(100);
+
+    assert_eq!(scroll.horizontal_offset, 25);
+}
+
+#[test]
+fn scroll_to_bottom_does_not_affect_expanded_messages() {
+    let uuid = make_entry_uuid("msg-1");
+    let mut scroll = ScrollState {
+        vertical_offset: 10,
+        horizontal_offset: 0,
+        expanded_messages: {
+            let mut set = HashSet::new();
+            set.insert(uuid.clone());
+            set
+        },
+    };
+
+    scroll.scroll_to_bottom(100);
+
+    assert!(scroll.expanded_messages.contains(&uuid));
+}
+
+// ===== AppState::has_new_messages_indicator Tests =====
+
+#[test]
+fn has_new_messages_indicator_returns_true_when_live_mode_and_auto_scroll_paused() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.live_mode = true;
+    state.auto_scroll = false;
+
+    assert!(state.has_new_messages_indicator());
+}
+
+#[test]
+fn has_new_messages_indicator_returns_false_when_not_live_mode() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.live_mode = false;
+    state.auto_scroll = false;
+
+    assert!(!state.has_new_messages_indicator());
+}
+
+#[test]
+fn has_new_messages_indicator_returns_false_when_auto_scroll_active() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.live_mode = true;
+    state.auto_scroll = true;
+
+    assert!(!state.has_new_messages_indicator());
+}
+
+#[test]
+fn has_new_messages_indicator_returns_false_when_neither_live_nor_paused() {
+    let session = make_test_session();
+    let state = AppState::new(session);
+    // Defaults: live_mode = false, auto_scroll = true
+
+    assert!(!state.has_new_messages_indicator());
+}

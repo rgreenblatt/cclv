@@ -56,6 +56,13 @@ impl AppState {
     pub fn session(&self) -> &Session {
         &self.session
     }
+
+    /// Check if new messages indicator should be shown.
+    /// Returns true when live_mode is active but auto_scroll is paused.
+    /// This signals to the UI that new content has arrived below the current view.
+    pub fn has_new_messages_indicator(&self) -> bool {
+        todo!("has_new_messages_indicator")
+    }
 }
 
 // ===== FocusPane =====
@@ -113,6 +120,18 @@ impl ScrollState {
     /// Check if a message is expanded.
     pub fn is_expanded(&self, uuid: &EntryUuid) -> bool {
         self.expanded_messages.contains(uuid)
+    }
+
+    /// Check if currently at bottom of scroll range.
+    /// Returns true when vertical_offset equals max_entries.
+    pub fn at_bottom(&self, max_entries: usize) -> bool {
+        todo!("at_bottom")
+    }
+
+    /// Scroll to the bottom of the content.
+    /// Sets vertical_offset to max_entries.
+    pub fn scroll_to_bottom(&mut self, max_entries: usize) {
+        todo!("scroll_to_bottom")
     }
 }
 
