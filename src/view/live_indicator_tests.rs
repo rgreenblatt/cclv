@@ -10,7 +10,10 @@ fn static_mode_renders_gray_text() {
     let indicator = LiveIndicator::new(InputMode::Static, false);
     let span = indicator.render();
 
-    assert_eq!(span.content, "[LIVE] ", "Static mode should show '[LIVE] ' text");
+    assert_eq!(
+        span.content, "[LIVE] ",
+        "Static mode should show '[LIVE] ' text"
+    );
     assert_eq!(
         span.style,
         Style::default().fg(Color::Gray),
@@ -38,7 +41,10 @@ fn eof_mode_renders_gray_text() {
     let indicator = LiveIndicator::new(InputMode::Eof, false);
     let span = indicator.render();
 
-    assert_eq!(span.content, "[LIVE] ", "EOF mode should show '[LIVE] ' text");
+    assert_eq!(
+        span.content, "[LIVE] ",
+        "EOF mode should show '[LIVE] ' text"
+    );
     assert_eq!(
         span.style,
         Style::default().fg(Color::Gray),
@@ -116,11 +122,11 @@ fn streaming_mode_blink_toggles_visibility() {
 fn new_creates_indicator_with_correct_state() {
     let indicator = LiveIndicator::new(InputMode::Streaming, true);
     assert_eq!(indicator.mode, InputMode::Streaming);
-    assert_eq!(indicator.blink_on, true);
+    assert!(indicator.blink_on);
 
     let indicator2 = LiveIndicator::new(InputMode::Static, false);
     assert_eq!(indicator2.mode, InputMode::Static);
-    assert_eq!(indicator2.blink_on, false);
+    assert!(!indicator2.blink_on);
 }
 
 // ===== Edge Cases =====
