@@ -123,11 +123,10 @@ pub fn parse_entry_sections(content: &str) -> Vec<ContentSection> {
                         current_prose.clear();
                     }
                     // Strip leading indentation (4 spaces or 1 tab)
-                    let stripped = if line.starts_with('\t') {
-                        &line[1..]
-                    } else {
-                        &line[4..]
-                    };
+                    let stripped = line
+                        .strip_prefix('\t')
+                        .or_else(|| line.strip_prefix("    "))
+                        .unwrap_or(line);
                     current_code.push(Line::from(stripped.to_string()));
                     state = State::IndentedCode;
                 } else {
@@ -149,11 +148,10 @@ pub fn parse_entry_sections(content: &str) -> Vec<ContentSection> {
             State::IndentedCode => {
                 if is_indented && !is_blank {
                     // Continue indented code block
-                    let stripped = if line.starts_with('\t') {
-                        &line[1..]
-                    } else {
-                        &line[4..]
-                    };
+                    let stripped = line
+                        .strip_prefix('\t')
+                        .or_else(|| line.strip_prefix("    "))
+                        .unwrap_or(line);
                     current_code.push(Line::from(stripped.to_string()));
                 } else {
                     // End of indented code block
