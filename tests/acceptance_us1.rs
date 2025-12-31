@@ -150,12 +150,17 @@ fn us1_scenario4_tool_calls_display() {
     let mut harness = AcceptanceTestHarness::from_fixture(TOOL_CALLS_FIXTURE)
         .expect("Should load session with tool calls");
 
-    // IF YES: Session has tool call entries
+    // IF YES: Session has tool call entries (in main or subagent tabs)
     let state = harness.state();
-    let entries = state.session_view().main().entries();
+    let main_entries = state.session_view().main().entries();
+    let has_subagents = state.session_view().has_subagents();
 
-    // Verify we have some entries (fixture has tool calls)
-    assert!(!entries.is_empty(), "Should have entries with tool calls");
+    // Fixture has both main agent and subagent entries
+    // After parser fix, subagent entries are correctly routed to subagent tabs
+    assert!(
+        !main_entries.is_empty() || has_subagents,
+        "Should have entries with tool calls (in main or subagent tabs)"
+    );
 
     // VERIFY: Rendering includes tool call information
     let output = harness.render_to_string();

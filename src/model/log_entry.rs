@@ -910,7 +910,9 @@ mod tests {
         assert!(result.is_ok(), "Should parse entry with all fields");
         let entry = result.unwrap();
         assert_eq!(entry.parent_uuid().unwrap().as_str(), "u1");
-        assert_eq!(entry.agent_id().unwrap().as_str(), "agent-1");
+        // When both parent_tool_use_id and agentId are present,
+        // parent_tool_use_id takes precedence (used as agent_id)
+        assert_eq!(entry.agent_id().unwrap().as_str(), "u1");
         assert_eq!(entry.metadata().git_branch, Some("main".to_string()));
         assert!(entry.metadata().is_sidechain);
     }

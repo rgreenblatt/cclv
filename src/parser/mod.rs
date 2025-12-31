@@ -238,16 +238,25 @@ pub fn parse_entry(raw: &str, line_number: usize) -> Result<LogEntry, ParseError
     };
 
     // Validate and construct agent ID (optional)
-    let agent_id = raw_entry
-        .agent_id
-        .as_ref()
-        .map(|s| {
-            AgentId::new(s.as_str()).map_err(|_| ParseError::MissingField {
+    // Use parent_tool_use_id as the agent identifier (subagent entries)
+    // Fall back to agentId field if present (future compatibility)
+    let agent_id = match (&raw_entry.parent_tool_use_id, &raw_entry.agent_id) {
+        (Some(parent_id), _) if !parent_id.is_empty() => {
+            // Entry has parent_tool_use_id -> this is a subagent entry
+            Some(AgentId::new(parent_id.as_str()).map_err(|_| ParseError::MissingField {
+                line: line_number,
+                field: "parent_tool_use_id (used as agent_id)",
+            })?)
+        }
+        (_, Some(agent_id_str)) if !agent_id_str.is_empty() => {
+            // Entry has explicit agentId field (future compatibility)
+            Some(AgentId::new(agent_id_str.as_str()).map_err(|_| ParseError::MissingField {
                 line: line_number,
                 field: "agentId",
-            })
-        })
-        .transpose()?;
+            })?)
+        }
+        _ => None, // Main agent entry (no parent_tool_use_id, no agentId)
+    };
 
     // Parse timestamp (optional - use epoch if missing)
     let timestamp: DateTime<Utc> = match &raw_entry.timestamp {

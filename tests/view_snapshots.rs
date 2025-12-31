@@ -2058,23 +2058,17 @@ fn snapshot_wrap_mode_per_entry_override() {
 
 // ===== Bug Reproduction Tests =====
 
-/// Bug reproduction: Subagent entries not routed to separate tabs
+/// Regression test for cclv-5ur.34: Verifies subagent entries are routed to separate tabs.
 ///
-/// EXPECTED: Entries with parent_tool_use_id should appear in separate subagent tabs.
-///           Per FR-003: "System MUST display subagent conversations in a tabbed pane"
-///           Per FR-004: "System MUST create a new tab when a subagent spawn event is detected"
+/// This test ensures entries with parent_tool_use_id create subagent tabs and are
+/// correctly routed to those tabs instead of appearing in the Main Agent conversation.
 ///
-/// ACTUAL: All entries appear in the main agent conversation. No subagent tabs are created.
+/// Requirements:
+/// - FR-003: "System MUST display subagent conversations in a tabbed pane"
+/// - FR-004: "System MUST create a new tab when a subagent spawn event is detected"
 ///
-/// ROOT CAUSE: Parser looks for 'agentId' field (which doesn't exist in Claude Code JSONL).
-///             Subagent entries are identified by 'parent_tool_use_id' field, not 'agentId'.
-///
-/// Steps to reproduce manually:
-/// 1. cargo run --release -- tests/fixtures/subagent_tab_repro.jsonl
-/// 2. Observe: All entries are in "Main Agent" - no subagent tabs exist
-/// 3. Entries with parent_tool_use_id should be in a separate tab
+/// Fixture: tests/fixtures/subagent_tab_repro.jsonl
 #[test]
-#[ignore = "cclv-5ur.34: Subagent entries not routed to separate tabs"]
 fn bug_subagent_entries_not_in_separate_tabs() {
     use cclv::config::keybindings::KeyBindings;
     use cclv::source::{FileSource, InputSource, StdinSource};
@@ -2113,16 +2107,18 @@ fn bug_subagent_entries_not_in_separate_tabs() {
     // Snapshot captures buggy state (no subagent tabs)
     insta::assert_snapshot!("bug_subagent_entries_not_in_tabs", output);
 
-    // This assertion FAILS due to the bug:
-    // The fixture contains entries with parent_tool_use_id which should create subagent tabs,
-    // but has_subagents() returns false because parser doesn't recognize them.
+    // This assertion should now PASS after fixing:
+    // 1. Parser to recognize parent_tool_use_id as agent_id
+    // 2. Fixture to have all entries in same session
     let has_subagents = app.app_state().session_view().has_subagents();
     assert!(
         has_subagents,
-        "BUG: Entries with parent_tool_use_id should create subagent tabs.\n\
+        "BUG REGRESSION: Entries with parent_tool_use_id should create subagent tabs.\n\
          Expected: has_subagents() == true (fixture contains 3 entries with parent_tool_use_id)\n\
-         Actual: has_subagents() == false (all entries routed to main conversation)\n\
-         Root cause: Parser looks for 'agentId' field, not 'parent_tool_use_id'\n\
+         Actual: has_subagents() == false\n\
+         This indicates either:\n\
+         1. Parser not extracting parent_tool_use_id as agent_id, OR\n\
+         2. View-state not creating subagent conversations from agent_id\n\
          Output:\n{output}"
     );
 }

@@ -9,13 +9,17 @@
 
 ### Session 2025-12-27
 
-- Q: How are multiple conversations (main + subagents) handled? → A: Each conversation (main + each subagent) has independent view-state, created lazily on first view. Additionally, log files may contain multiple SESSIONS concatenated sequentially (from `claude code --stream-json --verbose` piped in a loop). Each session has its own main conversation + subagent conversations. The view-state layer must support: multiple sequential sessions, each with independent main + subagent view-states.
+- Q: How are multiple conversations (main + subagents) handled? → A: Each conversation (main + each subagent) has independent view-state. Subagent view-states are created eagerly on first entry arrival (see Session 2025-12-29 clarification). Additionally, log files may contain multiple SESSIONS concatenated sequentially (from `claude code --stream-json --verbose` piped in a loop). Each session has its own main conversation + subagent conversations. The view-state layer must support: multiple sequential sessions, each with independent main + subagent view-states.
 - Q: What is explicitly out of scope? → A: Session navigation UI, search highlighting, keyboard shortcut changes, new CLI flags. These are separate features that consume the view-state layer but aren't part of it. The view-state layer is purely the data structure and layout computation layer.
 - Q: Why view-state layer vs simpler fixes? → A: Simpler fixes (e.g., approximating line counts, clamping in render) produce complex, hard-to-understand code. Evidence: multiple view bugs exist (blank viewport, scroll offset mismatch, hit-testing errors) and the app is currently not usable. A proper architectural solution (view-state layer) provides a clean foundation that makes the code understandable and the bugs fixable.
 - Q: How should multi-session display work? → A: View-state is an ordered `Vec<SessionViewState>`. Default rendering is continuous scroll with separators, but structure trivially supports one-at-a-time (session picker) and collapsible groups via view-layer changes only. No view-state restructuring needed to switch display modes.
 - Q: Should view-state reference or own domain data? → A: View-state layer OWNS the domain model (consumes during JSON parsing). EntryView owns ConversationEntry directly rather than indexing into a separate domain Vec. This is simpler, more performant (cache locality), has no lifetime complexity, and is ideal for a read-only viewer.
 - Q: How are session boundaries detected? → A: Via `session_id` field in each JSONL entry. When session_id changes from previous entry, a new session starts. Sessions are always concatenated (never interleaved). This approach works for partial logs without requiring an init marker.
 - Q: Which session's subagents appear in tab bar (continuous scroll mode)? → A: Subagents from the "active" session, determined by main pane scroll position. As user scrolls through sessions, tab bar updates to show subagents from the currently visible session.
+
+### Session 2025-12-29
+
+- Q: Should subagent view-states be created lazily on tab selection or eagerly on first entry arrival? → A: Eagerly on first entry arrival. Lazy initialization on tab selection conflicts with rendering architecture (immutable &AppState during render vs &mut self for init). Eager init has negligible memory impact since entries exist anyway.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -151,7 +155,7 @@ A user scrolls through content and previously viewed entries render instantly fr
 - **FR-070**: System MUST support log files containing multiple sequential sessions (from repeated `claude code --stream-json` invocations)
 - **FR-071**: Each session MUST have independent view-state for its main conversation
 - **FR-072**: Each session MUST have independent view-states for each of its subagent conversations
-- **FR-073**: Subagent view-states MUST be created lazily on first tab selection (not eagerly on load)
+- **FR-073**: Subagent view-states MUST be created eagerly on first entry arrival for that subagent (not deferred to tab selection). This ensures view-state exists before rendering, avoiding mutable access during immutable render pass.
 - **FR-074**: Session boundaries MUST be visually distinguishable when scrolling through multi-session logs
 - **FR-075**: New sessions streaming in MUST be detected and added without rebuilding existing session view-states
 - **FR-078**: Session boundaries MUST be detected via `session_id` field change between consecutive entries (sessions are never interleaved)
@@ -174,7 +178,7 @@ A user scrolls through content and previously viewed entries render instantly fr
 - **EntryLayout**: Height in lines (minimum 1), cumulative Y offset from conversation start
 - **ScrollPosition**: Semantic sum type representing scroll location (Top, AtLine, AtEntry, Bottom, Fraction)
 - **ConversationViewState**: Collection of EntryViews for a single conversation (owns the entries), current scroll position, total content height, layout validity tracking
-- **SessionViewState**: View-state for a single session containing: main conversation view-state (owns main entries), map of subagent ID to subagent conversation view-state (created lazily on first tab view, owns subagent entries)
+- **SessionViewState**: View-state for a single session containing: main conversation view-state (owns main entries), map of subagent ID to subagent conversation view-state (created eagerly on first entry arrival, owns subagent entries)
 - **LogViewState**: Top-level view-state containing: ordered `Vec<SessionViewState>` (one per session in log file). View layer decides display mode: continuous scroll (default), one-at-a-time, or collapsible groups. Display mode switching requires only view-layer changes.
 - **CachedRender**: Stored rendered Lines with metadata for invalidation (viewport width, collapse state)
 - **VisibleRange**: Start/end indices of visible entries plus viewport context
