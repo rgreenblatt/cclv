@@ -113,11 +113,14 @@ impl TuiApp<CrosstermBackend<Stdout>> {
 
         // Recompute layout after adding entries (cclv-5ur.7)
         // Get terminal dimensions for layout params
-        let width = terminal.size().map(|r| r.width).unwrap_or(80);
+        let width = match terminal.size() {
+            Ok(size) if size.width > 0 => size.width,
+            _ => 80, // Fallback for errors OR zero width (cclv-5ur.58)
+        };
         let wrap = app_state.global_wrap;
 
-        // Store viewport dimensions and relayout all conversations
-        app_state.session_view_mut().set_viewport(width, wrap);
+        // Store viewport dimensions and relayout all conversations in all sessions (cclv-5ur.58)
+        app_state.log_view_mut().set_viewport_all(width, wrap);
 
         let key_bindings = KeyBindings::default();
 
@@ -225,11 +228,14 @@ where
     ) -> Self {
         // Recompute layout after test harness has added entries (matches production new())
         // Get terminal dimensions for layout params
-        let width = terminal.size().map(|r| r.width).unwrap_or(80);
+        let width = match terminal.size() {
+            Ok(size) if size.width > 0 => size.width,
+            _ => 80, // Fallback for errors OR zero width (cclv-5ur.58)
+        };
         let wrap = app_state.global_wrap;
 
-        // Store viewport dimensions and relayout all conversations
-        app_state.session_view_mut().set_viewport(width, wrap);
+        // Store viewport dimensions and relayout all conversations in all sessions (cclv-5ur.58)
+        app_state.log_view_mut().set_viewport_all(width, wrap);
 
         Self {
             terminal,
@@ -417,7 +423,7 @@ where
                         }
                     });
                     let viewport = crate::view_state::types::ViewportDimensions::new(
-                        size.width,
+                        size.width.max(1), // Guard against zero width (cclv-5ur.58)
                         size.height.saturating_sub(5),
                     );
                     self.app_state = scroll_handler::handle_scroll_action(
@@ -436,7 +442,7 @@ where
                     }
                 });
                 let viewport = crate::view_state::types::ViewportDimensions::new(
-                    size.width,
+                    size.width.max(1), // Guard against zero width (cclv-5ur.58)
                     size.height.saturating_sub(5),
                 );
                 self.app_state = scroll_handler::handle_scroll_action(
@@ -484,7 +490,7 @@ where
                     }
                 });
                 let viewport = crate::view_state::types::ViewportDimensions::new(
-                    size.width,
+                    size.width.max(1), // Guard against zero width (cclv-5ur.58)
                     size.height.saturating_sub(5), // Reserve space for header/footer
                 );
 
@@ -593,7 +599,10 @@ where
             // Message expand/collapse - delegate to pure expand handler
             KeyAction::ToggleExpand | KeyAction::ExpandMessage | KeyAction::CollapseMessage => {
                 // Get viewport width from terminal
-                let viewport_width = self.terminal.size().map(|rect| rect.width).unwrap_or(80);
+                let viewport_width = match self.terminal.size() {
+                    Ok(size) if size.width > 0 => size.width,
+                    _ => 80, // Fallback for errors OR zero width (cclv-5ur.58)
+                };
                 let new_state = expand_handler::handle_expand_action(
                     self.app_state.clone(),
                     action,
@@ -646,7 +655,10 @@ where
             // Line wrapping - per-item toggle (w key)
             KeyAction::ToggleWrap => {
                 // Get viewport width from terminal
-                let viewport_width = self.terminal.size().map(|rect| rect.width).unwrap_or(80);
+                let viewport_width = match self.terminal.size() {
+                    Ok(size) if size.width > 0 => size.width,
+                    _ => 80, // Fallback for errors OR zero width (cclv-5ur.58)
+                };
                 self.app_state = handle_toggle_wrap(self.app_state.clone(), viewport_width);
             }
 
@@ -655,7 +667,10 @@ where
                 self.app_state.toggle_global_wrap();
 
                 // Trigger relayout of all conversation views with new wrap mode
-                let width = self.terminal.size().map(|r| r.width).unwrap_or(80);
+                let width = match self.terminal.size() {
+                    Ok(size) if size.width > 0 => size.width,
+                    _ => 80, // Fallback for errors OR zero width (cclv-5ur.58)
+                };
                 let wrap = self.app_state.global_wrap;
 
                 // Relayout main conversation
@@ -701,7 +716,7 @@ where
                     }
                 });
                 let viewport = crate::view_state::types::ViewportDimensions::new(
-                    size.width,
+                    size.width.max(1), // Guard against zero width (cclv-5ur.58)
                     size.height.saturating_sub(5), // Reserve space for header/footer
                 );
 
@@ -723,7 +738,7 @@ where
                     }
                 });
                 let viewport = crate::view_state::types::ViewportDimensions::new(
-                    size.width,
+                    size.width.max(1), // Guard against zero width (cclv-5ur.58)
                     size.height.saturating_sub(5), // Reserve space for header/footer
                 );
 
@@ -764,7 +779,10 @@ where
                 &self.app_state,
             );
             // Get viewport width from terminal
-            let viewport_width = self.terminal.size().map(|rect| rect.width).unwrap_or(80);
+            let viewport_width = match self.terminal.size() {
+                Ok(size) if size.width > 0 => size.width,
+                _ => 80, // Fallback for errors OR zero width (cclv-5ur.58)
+            };
             self.app_state = crate::state::mouse_handler::handle_entry_click(
                 self.app_state.clone(),
                 entry_result,
@@ -778,10 +796,12 @@ where
     /// Relayouts all conversation views with the new terminal width
     fn handle_resize(&mut self, width: u16, _height: u16) {
         debug!("Handling resize to {}x{}", width, _height);
+        // Guard against zero width from resize events (cclv-5ur.58)
+        let width = if width > 0 { width } else { 80 };
         let wrap = self.app_state.global_wrap;
 
-        // Store viewport dimensions and relayout all conversations
-        self.app_state.session_view_mut().set_viewport(width, wrap);
+        // Store viewport dimensions and relayout all conversations in all sessions (cclv-5ur.58)
+        self.app_state.log_view_mut().set_viewport_all(width, wrap);
     }
 
     /// Render the current frame
@@ -802,7 +822,7 @@ where
                 }
             });
             let viewport = crate::view_state::types::ViewportDimensions::new(
-                size.width,
+                size.width.max(1), // Guard against zero width (cclv-5ur.58)
                 size.height.saturating_sub(5),
             );
             self.app_state = scroll_handler::handle_scroll_action(
@@ -814,7 +834,12 @@ where
 
         // Calculate areas before rendering (for mouse click detection)
         let size = self.terminal.size()?;
-        let frame_area = ratatui::layout::Rect::new(0, 0, size.width, size.height);
+        let frame_area = ratatui::layout::Rect::new(
+            0,
+            0,
+            size.width.max(1), // Guard against zero width (cclv-5ur.58)
+            size.height,
+        );
         self.last_tab_area = layout::calculate_tab_area(frame_area, &self.app_state);
 
         let main_area = layout::calculate_pane_area(frame_area, &self.app_state);
@@ -852,21 +877,14 @@ where
         self.app_state.add_entries(entries);
 
         // Recompute layout after adding streaming entries (cclv-5ur.7)
-        let width = self.terminal.size().map(|r| r.width).unwrap_or(80);
+        // Set viewport on ALL sessions to ensure subagents in all sessions (not just current)
+        // have proper viewport width. Fixes stdin vertical rendering bug (cclv-5ur.58).
+        let width = match self.terminal.size() {
+            Ok(size) if size.width > 0 => size.width,
+            _ => 80, // Fallback for errors OR zero width (cclv-5ur.58)
+        };
         let wrap = self.app_state.global_wrap;
-
-        // Recompute layout for main conversation
-        if let Some(main_view) = self.app_state.main_conversation_view_mut() {
-            main_view.relayout(width, wrap);
-        }
-
-        // Recompute layout for all subagent conversations
-        let subagent_count = self.app_state.session_view().subagent_ids().count();
-        for idx in 0..subagent_count {
-            if let Some(sub_view) = self.app_state.subagent_conversation_view_mut(idx) {
-                sub_view.relayout(width, wrap);
-            }
-        }
+        self.app_state.log_view_mut().set_viewport_all(width, wrap);
     }
 }
 

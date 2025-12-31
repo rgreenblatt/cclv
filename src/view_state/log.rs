@@ -85,8 +85,22 @@ impl LogViewState {
                 // In continuous scroll mode, sessions are concatenated, so start_line
                 // must account for all content from all previous sessions.
                 let start_line = self.sessions.iter().map(|s| s.total_height()).sum();
+
+                // Copy viewport settings from previous session (cclv-5ur.58)
+                // This ensures subagents in new sessions inherit proper viewport width
+                // when loading asynchronously via stdin.
+                let (viewport_width, global_wrap) = self.sessions.last()
+                    .map(|prev| (prev.viewport_width(), prev.global_wrap()))
+                    .unwrap_or((0, crate::state::WrapMode::default()));
+
                 let mut new_session = SessionViewState::new(new_id);
                 new_session.set_start_line(start_line);
+
+                // Propagate viewport settings if previous session had them
+                if viewport_width > 0 {
+                    new_session.set_viewport(viewport_width, global_wrap);
+                }
+
                 self.sessions.push(new_session);
                 self.current_session_id = session_id;
             }
@@ -109,6 +123,16 @@ impl LogViewState {
     /// Get mutable current session.
     pub fn current_session_mut(&mut self) -> Option<&mut SessionViewState> {
         self.sessions.last_mut()
+    }
+
+    /// Set viewport dimensions on ALL sessions (cclv-5ur.58).
+    ///
+    /// This ensures subagents in all sessions (not just current) have proper
+    /// viewport width, fixing the stdin vertical rendering bug.
+    pub fn set_viewport_all(&mut self, width: u16, wrap: crate::state::WrapMode) {
+        for session in &mut self.sessions {
+            session.set_viewport(width, wrap);
+        }
     }
 
     /// Create an empty session (used when model session has no entries).

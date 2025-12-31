@@ -92,6 +92,12 @@ impl SessionViewState {
     /// by calling relayout() with stored viewport_width and global_wrap.
     pub fn subagent_mut(&mut self, id: &AgentId) -> &mut ConversationViewState {
         if !self.subagents.contains_key(id) {
+            use std::io::Write;
+            let _ = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/cclv_debug.log")
+                .and_then(|mut f| writeln!(f, "DEBUG subagent_mut creating: agent_id={:?}, self.viewport_width={}", id, self.viewport_width));
             // Create empty view-state
             let view_state = ConversationViewState::new(
                 Some(id.clone()),
@@ -212,6 +218,12 @@ impl SessionViewState {
     /// Also relayouts main and all existing subagent conversations with
     /// the new dimensions.
     pub fn set_viewport(&mut self, width: u16, wrap: WrapMode) {
+        use std::io::Write;
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("/tmp/cclv_debug.log")
+            .and_then(|mut f| writeln!(f, "DEBUG set_viewport: width={}", width));
         self.viewport_width = width;
         self.global_wrap = wrap;
 
@@ -222,6 +234,16 @@ impl SessionViewState {
         for subagent in self.subagents.values_mut() {
             subagent.relayout(width, wrap);
         }
+    }
+
+    /// Get current viewport width.
+    pub fn viewport_width(&self) -> u16 {
+        self.viewport_width
+    }
+
+    /// Get current global wrap mode.
+    pub fn global_wrap(&self) -> WrapMode {
+        self.global_wrap
     }
 
     /// Height of main conversation only.
