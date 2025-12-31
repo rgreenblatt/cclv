@@ -322,10 +322,8 @@ pub fn render_conversation_view(
     // Style based on focus
     let border_color = if focused { Color::Cyan } else { Color::Gray };
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(title)
-        .style(Style::default().fg(border_color));
+    // Calculate viewport width (subtract borders)
+    let viewport_width = area.width.saturating_sub(2) as usize;
 
     // Render content: collect all lines from all entries
     let mut lines = Vec::new();
@@ -409,8 +407,111 @@ pub fn render_conversation_view(
         }
     }
 
-    let paragraph = Paragraph::new(lines).block(block);
+    // Determine scroll indicators (FR-040) - check BEFORE applying offset
+    let horizontal_offset = scroll.horizontal_offset;
+    let has_left_indicator = horizontal_offset > 0;
+    let has_right_indicator = has_long_lines(&lines, viewport_width + horizontal_offset);
+
+    // Apply horizontal scrolling offset to all lines (FR-039)
+    if horizontal_offset > 0 {
+        lines = lines.into_iter()
+            .map(|line| apply_horizontal_offset(line, horizontal_offset))
+            .collect();
+    }
+
+    // Update title with scroll indicators
+    let title_with_indicators = add_scroll_indicators_to_title(
+        title,
+        has_left_indicator,
+        has_right_indicator,
+    );
+
+    // Rebuild block with updated title
+    let block_with_indicators = Block::default()
+        .borders(Borders::ALL)
+        .title(title_with_indicators)
+        .style(Style::default().fg(border_color));
+
+    let paragraph = Paragraph::new(lines).block(block_with_indicators);
     frame.render_widget(paragraph, area);
+}
+
+// ===== Horizontal Scrolling Helpers =====
+
+/// Apply horizontal offset to a line, skipping the first `offset` characters.
+///
+/// Returns a new Line with characters starting from `offset` position.
+/// If offset exceeds line length, returns empty line.
+fn apply_horizontal_offset(line: Line<'static>, offset: usize) -> Line<'static> {
+    if offset == 0 {
+        return line;
+    }
+
+    // Calculate total visible width of the line
+    let total_width: usize = line.spans.iter().map(|span| span.content.len()).sum();
+
+    if offset >= total_width {
+        // Offset exceeds line length, return empty
+        return Line::from(vec![]);
+    }
+
+    // Skip characters across spans
+    let mut chars_to_skip = offset;
+    let mut new_spans = Vec::new();
+
+    for span in line.spans {
+        let span_len = span.content.len();
+
+        if chars_to_skip >= span_len {
+            // Skip entire span
+            chars_to_skip -= span_len;
+        } else if chars_to_skip > 0 {
+            // Skip partial span
+            let remaining = span.content[chars_to_skip..].to_string();
+            chars_to_skip = 0;
+            new_spans.push(ratatui::text::Span {
+                content: remaining.into(),
+                style: span.style,
+            });
+        } else {
+            // No more skipping, keep span as-is
+            new_spans.push(span);
+        }
+    }
+
+    Line::from(new_spans)
+}
+
+/// Check if any line in the collection exceeds the viewport width.
+fn has_long_lines(lines: &[Line], viewport_width: usize) -> bool {
+    lines.iter().any(|line| {
+        let width: usize = line.spans.iter().map(|s| s.content.len()).sum();
+        width > viewport_width
+    })
+}
+
+/// Add horizontal scroll indicators to lines if needed.
+///
+/// Prepends ◀ if offset > 0 (can scroll left).
+/// Appends ▶ if content extends beyond viewport (can scroll right).
+///
+/// Returns modified title string with indicators.
+fn add_scroll_indicators_to_title(
+    base_title: String,
+    has_left: bool,
+    has_right: bool,
+) -> String {
+    let mut title = base_title;
+
+    if has_left {
+        title = format!("◀ {}", title);
+    }
+
+    if has_right {
+        title = format!("{} ▶", title);
+    }
+
+    title
 }
 
 // ===== Markdown Rendering =====
@@ -2183,8 +2284,12 @@ mod tests {
 
         let mut conversation = AgentConversation::new(None);
 
-        // Create entry with a very long line (100 chars)
-        let long_line = "0123456789".repeat(10); // 100 chars total
+        // Create entry with a very long line with non-repeating content
+        // Line: "AAAAAAAAAA0123456789012345..." (10 A's, then incrementing digits)
+        let long_line = format!("{}{}",
+            "A".repeat(10),
+            (0..90).map(|i| char::from_digit(i % 10, 10).unwrap()).collect::<String>()
+        );
         let message = Message::new(Role::Assistant, MessageContent::Text(long_line));
 
         let entry = LogEntry::new(
@@ -2231,16 +2336,22 @@ mod tests {
             .map(|cell| cell.symbol())
             .collect();
 
-        // FR-039: With offset=10, first 10 chars (0123456789) should be skipped
-        // Should NOT see the first "0123456789", but SHOULD see chars starting from position 10
+        // FR-039: With offset=10, first 10 chars should be skipped
+        // Original line: "AAAAAAAAAA012345678901234..." (10 A's at start)
+        // After offset=10: "012345678901234..." (A's should be gone)
+
+        // Should NOT show the "AAAA" that would only appear at the start
         assert!(
-            !content.contains("0123456789012"),
-            "Should NOT show first chars when horizontally scrolled"
+            !content.contains("AAA"),
+            "Should NOT show first 10 chars (AAAA...) after horizontal scroll. Content: {:?}",
+            &content[..content.len().min(300)]
         );
-        // After skipping first 10, next visible should start with second repetition
+
+        // Should show content starting from position 10 (digits)
         assert!(
-            content.contains("0123456789") && content.contains("1234567890"),
-            "Should show content starting from offset position 10"
+            content.contains("01234567"),
+            "Should show content starting from position 10 (digits). Content: {:?}",
+            &content[..content.len().min(300)]
         );
     }
 
