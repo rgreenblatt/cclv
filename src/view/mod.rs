@@ -504,6 +504,109 @@ mod tests {
         );
     }
 
+    // ===== Stats filter keyboard shortcut tests =====
+
+    #[test]
+    fn handle_key_exclamation_sets_global_filter() {
+        let mut app = create_test_app();
+
+        // Set to a different filter initially
+        app.app_state.stats_filter = crate::model::StatsFilter::MainAgent;
+
+        // Press '!' to set Global filter
+        let key = KeyEvent::new(KeyCode::Char('!'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'!' should not trigger quit");
+        assert_eq!(
+            app.app_state.stats_filter,
+            crate::model::StatsFilter::Global,
+            "'!' should set stats filter to Global"
+        );
+    }
+
+    #[test]
+    fn handle_key_at_sets_main_agent_filter() {
+        let mut app = create_test_app();
+
+        // Set to Global initially
+        app.app_state.stats_filter = crate::model::StatsFilter::Global;
+
+        // Press '@' to set MainAgent filter
+        let key = KeyEvent::new(KeyCode::Char('@'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'@' should not trigger quit");
+        assert_eq!(
+            app.app_state.stats_filter,
+            crate::model::StatsFilter::MainAgent,
+            "'@' should set stats filter to MainAgent"
+        );
+    }
+
+    #[test]
+    fn handle_key_hash_sets_subagent_filter_when_tab_selected() {
+        use crate::model::{AgentId, ConversationEntry, LogEntry, Message, MessageContent, Role, EntryType, EntryUuid, SessionId, EntryMetadata, TokenUsage};
+        use chrono::Utc;
+
+        let mut app = create_test_app();
+
+        // Add a subagent entry to create a tab
+        let agent_id = AgentId::new("test-agent-1").unwrap();
+        let message = Message::new(Role::Assistant, MessageContent::Text("test".to_string()))
+            .with_usage(TokenUsage::default());
+        let entry = LogEntry::new(
+            EntryUuid::new("test-uuid-1").unwrap(),
+            None,
+            SessionId::new("test-session").unwrap(),
+            Some(agent_id.clone()),
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+        app.app_state.add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
+
+        // Select the subagent tab (index 0)
+        app.app_state.selected_tab = Some(0);
+
+        // Set to Global initially
+        app.app_state.stats_filter = crate::model::StatsFilter::Global;
+
+        // Press '#' to set Subagent filter for the selected tab
+        let key = KeyEvent::new(KeyCode::Char('#'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'#' should not trigger quit");
+        assert_eq!(
+            app.app_state.stats_filter,
+            crate::model::StatsFilter::Subagent(agent_id),
+            "'#' should set stats filter to Subagent with selected tab's agent ID"
+        );
+    }
+
+    #[test]
+    fn handle_key_hash_does_nothing_when_no_tab_selected() {
+        let mut app = create_test_app();
+
+        // No tab selected
+        app.app_state.selected_tab = None;
+
+        // Set to Global initially
+        app.app_state.stats_filter = crate::model::StatsFilter::Global;
+
+        // Press '#' when no tab is selected
+        let key = KeyEvent::new(KeyCode::Char('#'), KeyModifiers::NONE);
+        let should_quit = app.handle_key(key);
+
+        assert!(!should_quit, "'#' should not trigger quit");
+        assert_eq!(
+            app.app_state.stats_filter,
+            crate::model::StatsFilter::Global,
+            "'#' should not change filter when no tab is selected"
+        );
+    }
+
     // Helper function to create a test LogEntry
     fn create_test_entry(content: &str) -> crate::model::ConversationEntry {
         use crate::model::{
