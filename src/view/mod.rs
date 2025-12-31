@@ -18,7 +18,7 @@ use crate::config::keybindings::KeyBindings;
 use crate::integration;
 use crate::model::{AppError, KeyAction, SessionId};
 use crate::source::InputSource;
-use crate::state::{scroll_handler, search_input_handler, AppState, FocusPane};
+use crate::state::{next_match, prev_match, scroll_handler, search_input_handler, AppState, FocusPane};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -333,6 +333,16 @@ where
                 self.app_state.search = search_input_handler::submit_search(
                     self.app_state.search.clone()
                 );
+                // Execute search to populate matches
+                use crate::state::{execute_search, SearchState};
+                if let SearchState::Active { query, .. } = &self.app_state.search {
+                    let matches = execute_search(self.app_state.session(), query);
+                    self.app_state.search = SearchState::Active {
+                        query: query.clone(),
+                        matches,
+                        current_match: 0,
+                    };
+                }
                 // Keep focus on Search pane after submit (stays active)
             }
             KeyAction::CancelSearch => {
@@ -341,6 +351,14 @@ where
                 );
                 // Return focus to Main pane after cancel
                 self.app_state.focus = FocusPane::Main;
+            }
+
+            // Match navigation - delegate to pure match navigation handler
+            KeyAction::NextMatch => {
+                self.app_state = next_match(self.app_state.clone());
+            }
+            KeyAction::PrevMatch => {
+                self.app_state = prev_match(self.app_state.clone());
             }
 
             // Not yet implemented
