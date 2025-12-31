@@ -587,6 +587,7 @@ fn render_entry_lines(
 /// * `styles` - Message styling configuration
 /// * `collapse_threshold` - Number of lines before a message is collapsed
 /// * `summary_lines` - Number of lines shown when collapsed
+///
 /// Detect if markdown content contains code blocks.
 ///
 /// Code blocks are detected as:
@@ -624,6 +625,13 @@ fn has_code_blocks(content: &str) -> bool {
 /// Concatenates all text blocks from the entry's message content.
 /// Used by `should_entry_wrap` to determine if code blocks are present.
 ///
+/// Extracts text from:
+/// - `ContentBlock::Text { text }` - User-visible markdown content
+/// - `ContentBlock::Thinking { thinking }` - Internal reasoning (can contain code blocks)
+/// - `ContentBlock::ToolResult { content, .. }` - Tool output (frequently contains code/commands)
+///
+/// FR-053: Code blocks must never wrap, so we need to detect them in ALL content types.
+///
 /// # Arguments
 /// * `entry` - The conversation entry to extract text from
 ///
@@ -638,9 +646,22 @@ fn extract_entry_text(entry: &ConversationEntry) -> String {
                 MessageContent::Blocks(blocks) => {
                     let mut result = String::new();
                     for block in blocks {
-                        if let ContentBlock::Text { text } = block {
-                            result.push_str(text);
-                            result.push('\n');
+                        match block {
+                            ContentBlock::Text { text } => {
+                                result.push_str(text);
+                                result.push('\n');
+                            }
+                            ContentBlock::Thinking { thinking } => {
+                                result.push_str(thinking);
+                                result.push('\n');
+                            }
+                            ContentBlock::ToolResult { content, .. } => {
+                                result.push_str(content);
+                                result.push('\n');
+                            }
+                            ContentBlock::ToolUse(_) => {
+                                // ToolUse blocks don't contain text content to scan
+                            }
                         }
                     }
                     result
@@ -6219,5 +6240,145 @@ fn test() { println!("Code blocks always NoWrap"); }
 
         // ASSERT
         assert_eq!(result, "");
+    }
+
+    #[test]
+    fn extract_entry_text_includes_thinking_blocks() {
+        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        // ARRANGE: Entry with Thinking block
+        let blocks = vec![
+            ContentBlock::Text {
+                text: "User-visible text".to_string(),
+            },
+            ContentBlock::Thinking {
+                thinking: "Internal reasoning with code:\n```rust\nfn main() {}\n```".to_string(),
+            },
+        ];
+        let message = Message::new(Role::Assistant, MessageContent::Blocks(blocks));
+        let uuid = EntryUuid::new("thinking-entry").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid,
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        // ACT
+        let result = extract_entry_text(&ConversationEntry::Valid(Box::new(entry)));
+
+        // ASSERT - should include both text and thinking content
+        assert!(result.contains("User-visible text"), "Should include text block");
+        assert!(result.contains("Internal reasoning"), "Should include thinking content");
+        assert!(result.contains("```rust"), "Should include code from thinking block");
+    }
+
+    #[test]
+    fn extract_entry_text_includes_tool_result_blocks() {
+        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId, ToolUseId};
+        use chrono::Utc;
+
+        // ARRANGE: Entry with ToolResult block
+        let blocks = vec![
+            ContentBlock::Text {
+                text: "Running command".to_string(),
+            },
+            ContentBlock::ToolResult {
+                tool_use_id: ToolUseId::new("tool-123").expect("valid id"),
+                content: "Command output:\n```bash\n$ ls -la\n```".to_string(),
+                is_error: false,
+            },
+        ];
+        let message = Message::new(Role::Assistant, MessageContent::Blocks(blocks));
+        let uuid = EntryUuid::new("toolresult-entry").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid,
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        // ACT
+        let result = extract_entry_text(&ConversationEntry::Valid(Box::new(entry)));
+
+        // ASSERT - should include both text and tool result content
+        assert!(result.contains("Running command"), "Should include text block");
+        assert!(result.contains("Command output"), "Should include tool result content");
+        assert!(result.contains("```bash"), "Should include code from tool result");
+    }
+
+    #[test]
+    fn entry_with_code_in_thinking_block_forces_nowrap() {
+        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use chrono::Utc;
+
+        // ARRANGE: Entry with code in Thinking block
+        let blocks = vec![
+            ContentBlock::Thinking {
+                thinking: "Considering this code:\n```python\ndef example():\n    pass\n```".to_string(),
+            },
+        ];
+        let message = Message::new(Role::Assistant, MessageContent::Blocks(blocks));
+        let uuid = EntryUuid::new("code-thinking-entry").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid,
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        // ACT: Check if entry content has code blocks
+        let text = extract_entry_text(&ConversationEntry::Valid(Box::new(entry)));
+        let has_code = has_code_blocks(&text);
+
+        // ASSERT: Code in thinking block should be detected
+        assert!(has_code, "Code blocks in Thinking should be detected");
+    }
+
+    #[test]
+    fn entry_with_code_in_tool_result_forces_nowrap() {
+        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId, ToolUseId};
+        use chrono::Utc;
+
+        // ARRANGE: Entry with code in ToolResult block
+        let blocks = vec![
+            ContentBlock::ToolResult {
+                tool_use_id: ToolUseId::new("tool-456").expect("valid id"),
+                content: "Output:\n```json\n{\"status\": \"ok\"}\n```".to_string(),
+                is_error: false,
+            },
+        ];
+        let message = Message::new(Role::Assistant, MessageContent::Blocks(blocks));
+        let uuid = EntryUuid::new("code-toolresult-entry").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid,
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        // ACT: Check if entry content has code blocks
+        let text = extract_entry_text(&ConversationEntry::Valid(Box::new(entry)));
+        let has_code = has_code_blocks(&text);
+
+        // ASSERT: Code in tool result should be detected
+        assert!(has_code, "Code blocks in ToolResult should be detected");
     }
 }
