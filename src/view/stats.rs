@@ -50,7 +50,64 @@ impl<'a> StatsPanel<'a> {
 
 impl<'a> Widget for StatsPanel<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        todo!("StatsPanel::render")
+        // Create the block with title and borders
+        let title = match self.filter {
+            StatsFilter::Global => " Statistics ",
+            StatsFilter::MainAgent => " Statistics (Main Agent) ",
+            StatsFilter::Subagent(_) => " Statistics (Subagent) ",
+        };
+
+        let block = Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White));
+
+        let inner = block.inner(area);
+        block.render(area, buf);
+
+        // Build content lines
+        let mut lines = Vec::new();
+
+        // Token section
+        lines.push(Line::from("Tokens:").style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+        lines.push(Line::from(format!(
+            "  Input:  {}",
+            format_tokens(self.stats.total_usage.total_input())
+        )));
+        lines.push(Line::from(format!(
+            "  Output: {}",
+            format_tokens(self.stats.total_usage.output_tokens)
+        )));
+        lines.push(Line::from(format!(
+            "  Total:  {}",
+            format_tokens(self.stats.total_usage.total())
+        )));
+        lines.push(Line::from(""));
+
+        // Cost section
+        let cost = self.stats.estimated_cost(self.pricing, self.model_id);
+        lines.push(Line::from("Estimated Cost:").style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+        lines.push(Line::from(format!("  {}", format_cost(cost))));
+        lines.push(Line::from(""));
+
+        // Tool usage section
+        if !self.stats.tool_counts.is_empty() {
+            lines.push(Line::from("Tool Usage:").style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+            let mut tool_vec: Vec<_> = self.stats.tool_counts.iter().collect();
+            tool_vec.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count descending
+            for (tool_name, count) in tool_vec {
+                lines.push(Line::from(format!("  {}: {}", tool_name.as_str(), count)));
+            }
+            lines.push(Line::from(""));
+        }
+
+        // Subagents section
+        lines.push(Line::from("Subagents:").style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)));
+        lines.push(Line::from(format!("  Count: {}", self.stats.subagent_count)));
+
+        // Render the paragraph
+        let paragraph = Paragraph::new(lines);
+        paragraph.render(inner, buf);
     }
 }
 
@@ -63,7 +120,18 @@ impl<'a> Widget for StatsPanel<'a> {
 /// - `format_tokens(1234)` → "1,234"
 /// - `format_tokens(1234567)` → "1,234,567"
 fn format_tokens(tokens: u64) -> String {
-    todo!("format_tokens")
+    let s = tokens.to_string();
+    let mut result = String::new();
+    let chars: Vec<char> = s.chars().collect();
+
+    for (i, c) in chars.iter().enumerate() {
+        if i > 0 && (chars.len() - i) % 3 == 0 {
+            result.push(',');
+        }
+        result.push(*c);
+    }
+
+    result
 }
 
 /// Format a cost value in USD.
@@ -73,7 +141,17 @@ fn format_tokens(tokens: u64) -> String {
 /// - `format_cost(2.45)` → "$2.45"
 /// - `format_cost(123.456)` → "$123.46" (rounds to 2 decimals)
 fn format_cost(cost: f64) -> String {
-    todo!("format_cost")
+    // Round to 2 decimal places
+    let rounded = (cost * 100.0).round() / 100.0;
+
+    // Format the integer and fractional parts
+    let dollars = rounded.floor() as u64;
+    let cents = ((rounded - dollars as f64) * 100.0).round() as u64;
+
+    // Format dollars with commas
+    let dollars_str = format_tokens(dollars);
+
+    format!("${}.{:02}", dollars_str, cents)
 }
 
 // ===== Tests =====
