@@ -579,6 +579,141 @@ fn us4_scenario8_horizontal_scroll() {
     // THEREFORE: US4 Scenario 8 verified
 }
 
+// ===== Bug Reproduction: Enter/Space after Scroll (cclv-5ur.75) =====
+
+#[test]
+fn us4_scenario6_enter_expands_collapsed() {
+    // GIVEN: A session with multiple messages, scrolled to message 1 (not entry 0)
+    // WHEN: User presses Enter
+    // THEN: The currently visible message (entry 1) expands, not entry 0
+    //
+    // This test reproduces the bug where Enter/Space always toggle entry 0
+    // instead of the entry that's currently at the top of the viewport.
+
+    // Load fixture with multiple entries
+    let mut harness = AcceptanceTestHarness::from_fixture_with_size(TOOL_CALLS_FIXTURE, 80, 10)
+        .expect("Should load session with multiple entries");
+
+    // VERIFY: We have at least 2 entries to test with
+    let initial_state = harness.state();
+    let entry_count = initial_state.session_view().main().len();
+    assert!(
+        entry_count >= 2,
+        "Need at least 2 entries to test scroll + expand, found {}",
+        entry_count
+    );
+
+    // Get entry 1's UUID (the entry we'll scroll to)
+    let entries = initial_state.session_view().main().entries();
+    let entry_1_uuid = entries[1]
+        .uuid()
+        .expect("Entry 1 should have UUID")
+        .clone();
+
+    // VERIFY: Entry 1 starts collapsed
+    assert!(
+        !initial_state
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&entry_1_uuid),
+        "Entry 1 should start collapsed"
+    );
+
+    // WHEN: User scrolls down with 'j' several times to move entry 1 to viewport
+    // (Scroll enough to make entry 1 the topmost visible entry)
+    harness.send_key(KeyCode::Char('j'));
+    harness.send_key(KeyCode::Char('j'));
+    harness.send_key(KeyCode::Char('j'));
+    harness.send_key(KeyCode::Char('j'));
+    harness.send_key(KeyCode::Char('j'));
+
+    // WHEN: User presses Enter to expand
+    harness.send_key(KeyCode::Enter);
+
+    // VERIFY: Entry 1 (the topmost visible entry) is now expanded
+    let state_after = harness.state();
+    assert!(
+        state_after
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&entry_1_uuid),
+        "Entry 1 should be expanded after scrolling to it and pressing Enter"
+    );
+}
+
+#[test]
+fn us4_scenario7_enter_collapses_expanded() {
+    // GIVEN: A session with entry 1 expanded, scrolled to show entry 1
+    // WHEN: User presses Enter
+    // THEN: Entry 1 (the topmost visible entry) collapses, not entry 0
+    //
+    // This test reproduces the bug where Enter/Space always toggle entry 0
+    // instead of the entry that's currently at the top of the viewport.
+
+    // Load fixture with multiple entries
+    let mut harness = AcceptanceTestHarness::from_fixture_with_size(TOOL_CALLS_FIXTURE, 80, 10)
+        .expect("Should load session with multiple entries");
+
+    // VERIFY: We have at least 2 entries
+    let initial_state = harness.state();
+    let entry_count = initial_state.session_view().main().len();
+    assert!(
+        entry_count >= 2,
+        "Need at least 2 entries to test scroll + collapse, found {}",
+        entry_count
+    );
+
+    // Get entry 1's UUID
+    let entries = initial_state.session_view().main().entries();
+    let entry_1_uuid = entries[1]
+        .uuid()
+        .expect("Entry 1 should have UUID")
+        .clone();
+
+    // WHEN: User scrolls down to entry 1
+    harness.send_key(KeyCode::Char('j'));
+    harness.send_key(KeyCode::Char('j'));
+    harness.send_key(KeyCode::Char('j'));
+    harness.send_key(KeyCode::Char('j'));
+    harness.send_key(KeyCode::Char('j'));
+
+    // WHEN: User presses Enter to expand entry 1
+    harness.send_key(KeyCode::Enter);
+
+    // VERIFY: Entry 1 is now expanded (if auto-focus works)
+    // This assertion will FAIL in the current implementation because
+    // Enter toggles entry 0 (the default) instead of entry 1 (the topmost visible)
+    let state_after_expand = harness.state();
+    assert!(
+        state_after_expand
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&entry_1_uuid),
+        "Entry 1 should be expanded after scrolling to it and pressing Enter"
+    );
+
+    // WHEN: User presses Space to collapse entry 1
+    harness.send_key(KeyCode::Char(' '));
+
+    // VERIFY: Entry 1 (the topmost visible entry) is now collapsed
+    let state_after = harness.state();
+    assert!(
+        !state_after
+            .log_view()
+            .get_session(0)
+            .expect("Session 0 should exist")
+            .main()
+            .is_expanded_by_uuid(&entry_1_uuid),
+        "Entry 1 should be collapsed after scrolling to it and pressing Space"
+    );
+}
+
 // ===== Mouse Click Integration Test =====
 
 /// Fixture with 4 tabs: Main Agent + 3 subagents (alpha, beta, gamma)
