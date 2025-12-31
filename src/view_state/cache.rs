@@ -4,6 +4,7 @@ use crate::model::EntryUuid;
 use crate::state::WrapMode;
 use lru::LruCache;
 use ratatui::text::Line;
+use std::num::NonZeroUsize;
 
 /// Key for render cache lookup.
 ///
@@ -23,8 +24,13 @@ pub struct RenderCacheKey {
 
 impl RenderCacheKey {
     /// Create new render cache key.
-    pub fn new(_uuid: EntryUuid, _width: u16, _expanded: bool, _wrap_mode: WrapMode) -> Self {
-        todo!("RenderCacheKey::new")
+    pub fn new(uuid: EntryUuid, width: u16, expanded: bool, wrap_mode: WrapMode) -> Self {
+        Self {
+            uuid,
+            width,
+            expanded,
+            wrap_mode,
+        }
     }
 }
 
@@ -47,7 +53,7 @@ pub struct RenderCacheConfig {
 
 impl Default for RenderCacheConfig {
     fn default() -> Self {
-        todo!("RenderCacheConfig::default")
+        Self { capacity: 1000 }
     }
 }
 
@@ -57,7 +63,6 @@ impl Default for RenderCacheConfig {
 /// Cache key includes all parameters that affect rendering.
 /// Capacity configurable via config file (FR-054).
 pub struct RenderCache {
-    #[allow(dead_code)]
     cache: LruCache<RenderCacheKey, CachedRender>,
 }
 
@@ -65,48 +70,56 @@ impl RenderCache {
     /// Create new cache with given capacity.
     ///
     /// If capacity is 0, uses default of 1000.
-    pub fn new(_capacity: usize) -> Self {
-        todo!("RenderCache::new")
+    pub fn new(capacity: usize) -> Self {
+        let capacity = if capacity == 0 {
+            1000
+        } else {
+            capacity
+        };
+        let capacity = NonZeroUsize::new(capacity).expect("Capacity must be non-zero");
+        Self {
+            cache: LruCache::new(capacity),
+        }
     }
 
     /// Create from config.
-    pub fn from_config(_config: &RenderCacheConfig) -> Self {
-        todo!("RenderCache::from_config")
+    pub fn from_config(config: &RenderCacheConfig) -> Self {
+        Self::new(config.capacity)
     }
 
     /// Get cached render if present.
     ///
     /// Updates LRU ordering (most recently used).
-    pub fn get(&mut self, _key: &RenderCacheKey) -> Option<&CachedRender> {
-        todo!("RenderCache::get")
+    pub fn get(&mut self, key: &RenderCacheKey) -> Option<&CachedRender> {
+        self.cache.get(key)
     }
 
     /// Insert rendered output into cache.
     ///
     /// If cache is at capacity, evicts least recently used entry.
-    pub fn put(&mut self, _key: RenderCacheKey, _render: CachedRender) {
-        todo!("RenderCache::put")
+    pub fn put(&mut self, key: RenderCacheKey, render: CachedRender) {
+        self.cache.put(key, render);
     }
 
     /// Clear the cache.
     pub fn clear(&mut self) {
-        todo!("RenderCache::clear")
+        self.cache.clear();
     }
 
     /// Number of cached entries.
     pub fn len(&self) -> usize {
-        todo!("RenderCache::len")
+        self.cache.len()
     }
 
     /// Check if cache is empty.
     pub fn is_empty(&self) -> bool {
-        todo!("RenderCache::is_empty")
+        self.cache.is_empty()
     }
 }
 
 impl Default for RenderCache {
     fn default() -> Self {
-        todo!("RenderCache::default")
+        Self::new(1000)
     }
 }
 
