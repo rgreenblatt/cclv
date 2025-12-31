@@ -109,24 +109,34 @@ impl TuiApp<CrosstermBackend<Stdout>> {
     /// Run the main event loop
     ///
     /// Returns when user quits (q or Ctrl+C)
-    /// Target: 60fps (16ms frame budget)
+    /// Target: 60fps (16ms frame budget) with batched rendering
     pub fn run(&mut self) -> Result<(), TuiError> {
         const FRAME_DURATION: Duration = Duration::from_millis(16); // ~60fps
 
         loop {
-            // Poll for new log entries
+            // Poll for new log entries (accumulates to pending buffer)
             self.poll_input()?;
 
-            // Render frame
-            self.draw()?;
+            // Only render if frame budget elapsed OR keyboard event occurred
+            let should_render = self.should_render_frame();
 
             // Poll for keyboard events (non-blocking with timeout)
-            if event::poll(FRAME_DURATION)? {
+            let keyboard_event = if event::poll(FRAME_DURATION)? {
                 if let Event::Key(key) = event::read()? {
                     if self.handle_key(key) {
                         break;
                     }
+                    true // Keyboard event occurred - force render
+                } else {
+                    false
                 }
+            } else {
+                false
+            };
+
+            // Render frame if budget elapsed or keyboard event
+            if should_render || keyboard_event {
+                self.draw()?;
             }
         }
 
@@ -139,6 +149,9 @@ where
     B: ratatui::backend::Backend,
 {
     /// Poll input source for new lines and process them
+    ///
+    /// Accumulates entries to pending buffer instead of adding directly to session.
+    /// Entries are flushed to session during render phase.
     fn poll_input(&mut self) -> Result<(), TuiError> {
         let new_lines = self.input_source.poll()?;
 
@@ -158,19 +171,11 @@ where
                 }
             }
 
-            // Update line counter BEFORE adding entries
+            // Update line counter BEFORE accumulating entries
             self.line_counter += entries.len();
 
-            // Add entries to session via AppState
-            self.app_state.add_entries(entries.clone());
-
-            // FR-035: Auto-scroll to bottom when live_mode && auto_scroll
-            if self.app_state.live_mode && self.app_state.auto_scroll && !entries.is_empty() {
-                let entry_count = self.app_state.session().main_agent().len();
-                self.app_state
-                    .main_scroll
-                    .scroll_to_bottom(entry_count.saturating_sub(1));
-            }
+            // Accumulate entries to pending buffer (batching for 60fps)
+            self.accumulate_pending_entries(entries);
         }
 
         Ok(())
@@ -279,10 +284,29 @@ where
     }
 
     /// Render the current frame
+    ///
+    /// Flushes pending entries to session, applies auto-scroll, then renders.
     fn draw(&mut self) -> Result<(), TuiError> {
+        // Flush accumulated entries before rendering
+        let had_pending = !self.pending_entries.is_empty();
+        self.flush_pending_entries();
+
+        // FR-035: Auto-scroll to bottom when live_mode && auto_scroll && new entries
+        if had_pending && self.app_state.live_mode && self.app_state.auto_scroll {
+            let entry_count = self.app_state.session().main_agent().len();
+            self.app_state
+                .main_scroll
+                .scroll_to_bottom(entry_count.saturating_sub(1));
+        }
+
+        // Render the frame
         self.terminal.draw(|frame| {
             layout::render_layout(frame, &self.app_state);
         })?;
+
+        // Update last render time
+        self.last_render = std::time::Instant::now();
+
         Ok(())
     }
 
@@ -290,28 +314,36 @@ where
     ///
     /// Used for batching rapid updates to maintain 60fps
     fn accumulate_pending_entries(&mut self, entries: Vec<crate::model::ConversationEntry>) {
-        todo!("accumulate_pending_entries: not implemented")
+        self.pending_entries.extend(entries);
     }
 
-    /// Get count of pending entries in buffer
+    /// Get count of pending entries in buffer (for testing)
+    #[cfg(test)]
     fn pending_entry_count(&self) -> usize {
-        todo!("pending_entry_count: not implemented")
+        self.pending_entries.len()
     }
 
     /// Flush pending entries to session and clear buffer
     fn flush_pending_entries(&mut self) {
-        todo!("flush_pending_entries: not implemented")
+        if self.pending_entries.is_empty() {
+            return;
+        }
+
+        // Move entries from buffer to session
+        let entries = std::mem::take(&mut self.pending_entries);
+        self.app_state.add_entries(entries);
     }
 
     /// Check if enough time has elapsed to render a new frame (16ms for 60fps)
     fn should_render_frame(&self) -> bool {
-        todo!("should_render_frame: not implemented")
+        const FRAME_DURATION: std::time::Duration = std::time::Duration::from_millis(16);
+        self.last_render.elapsed() >= FRAME_DURATION
     }
 
     /// Set the last render time (for testing)
     #[cfg(test)]
     fn set_last_render_time(&mut self, time: std::time::Instant) {
-        todo!("set_last_render_time: not implemented")
+        self.last_render = time;
     }
 }
 
@@ -972,8 +1004,6 @@ mod tests {
         // This test verifies the core requirement:
         // When many entries arrive rapidly (< 16ms apart),
         // we should NOT render after each one.
-
-        use std::time::Instant;
 
         let mut app = create_test_app();
 
