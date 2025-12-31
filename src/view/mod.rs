@@ -27,7 +27,9 @@ use crate::state::{
     search_input_handler, AppState, FocusPane,
 };
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind},
+    event::{
+        self, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+    },
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
@@ -73,6 +75,10 @@ where
     log_receiver: std::sync::mpsc::Receiver<crate::state::log_pane::LogPaneEntry>,
     /// Last rendered tab area (for mouse click detection)
     last_tab_area: Option<ratatui::layout::Rect>,
+    /// Last rendered main pane area (for entry click detection)
+    last_main_area: Option<ratatui::layout::Rect>,
+    /// Last rendered subagent pane area (for entry click detection)
+    last_subagent_area: Option<ratatui::layout::Rect>,
 }
 
 impl TuiApp<CrosstermBackend<Stdout>> {
@@ -125,6 +131,8 @@ impl TuiApp<CrosstermBackend<Stdout>> {
             pending_entries: Vec::new(),
             log_receiver,
             last_tab_area: None,
+            last_main_area: None,
+            last_subagent_area: None,
         })
     }
 
@@ -203,6 +211,8 @@ where
             pending_entries: Vec::new(),
             log_receiver,
             last_tab_area: None,
+            last_main_area: None,
+            last_subagent_area: None,
         }
     }
 
@@ -512,27 +522,38 @@ where
 
     /// Handle a single mouse event
     ///
-    /// Currently handles left-click on tab bar to switch tabs
+    /// Handles left-click on tab bar to switch tabs and on entries to expand/collapse
     fn handle_mouse(&mut self, mouse: MouseEvent) {
         // Only handle left mouse button down events
         if !matches!(mouse.kind, MouseEventKind::Down(MouseButton::Left)) {
             return;
         }
 
-        // Only process clicks when we have a tab area
-        let tab_area = match self.last_tab_area {
-            Some(area) => area,
-            None => return,
-        };
+        // Handle tab clicks if we have a tab area
+        if let Some(tab_area) = self.last_tab_area {
+            let new_state = crate::state::mouse_handler::handle_mouse_click(
+                self.app_state.clone(),
+                mouse.column,
+                mouse.row,
+                tab_area,
+            );
+            self.app_state = new_state;
+        }
 
-        // Use pure function to handle the click and update state
-        let new_state = crate::state::mouse_handler::handle_mouse_click(
-            self.app_state.clone(),
-            mouse.column,
-            mouse.row,
-            tab_area,
-        );
-        self.app_state = new_state;
+        // Handle entry clicks if we have pane areas
+        if let Some(main_area) = self.last_main_area {
+            let entry_result = crate::state::mouse_handler::detect_entry_click(
+                mouse.column,
+                mouse.row,
+                main_area,
+                self.last_subagent_area,
+                &self.app_state,
+            );
+            self.app_state = crate::state::mouse_handler::handle_entry_click(
+                self.app_state.clone(),
+                entry_result,
+            );
+        }
     }
 
     /// Render the current frame
@@ -551,10 +572,14 @@ where
                 .scroll_to_bottom(entry_count.saturating_sub(1));
         }
 
-        // Calculate tab area before rendering (for mouse click detection)
+        // Calculate areas before rendering (for mouse click detection)
         let size = self.terminal.size()?;
         let frame_area = ratatui::layout::Rect::new(0, 0, size.width, size.height);
         self.last_tab_area = layout::calculate_tab_area(frame_area, &self.app_state);
+
+        let (main_area, subagent_area) = layout::calculate_pane_areas(frame_area, &self.app_state);
+        self.last_main_area = Some(main_area);
+        self.last_subagent_area = subagent_area;
 
         // Render the frame
         self.terminal.draw(|frame| {
@@ -762,6 +787,8 @@ mod tests {
             pending_entries: Vec::new(),
             log_receiver: log_rx,
             last_tab_area: None,
+            last_main_area: None,
+            last_subagent_area: None,
         }
     }
 

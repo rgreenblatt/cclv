@@ -388,7 +388,10 @@ fn detect_entry_click_detects_main_pane_first_entry() {
         None,
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("First message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("First message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     session.add_conversation_entry(ConversationEntry::Valid(Box::new(log_entry)));
@@ -610,4 +613,101 @@ fn handle_entry_click_preserves_state_when_no_entry() {
         was_expanded,
         "NoEntry click should preserve expansion state"
     );
+}
+
+// ===== Y-to-Entry Mapping Tests =====
+
+#[test]
+fn detect_entry_click_maps_different_y_positions_to_different_entries() {
+    let mut session = Session::new(make_session_id("test-session"));
+
+    // Add three entries to main agent
+    for i in 0..3 {
+        let uuid = make_entry_uuid(&format!("entry-{}", i));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            make_session_id("test-session"),
+            None,
+            Utc::now(),
+            EntryType::User,
+            Message::new(Role::User, MessageContent::Text(format!("Message {}", i))),
+            EntryMetadata::default(),
+        );
+        session.add_conversation_entry(ConversationEntry::Valid(Box::new(log_entry)));
+    }
+
+    let state = AppState::new(session);
+
+    // Main pane at (0, 0) with width 40, height 20
+    // Inner area: (1, 1) to (39, 19) - 18 lines tall
+    let main_area = Rect::new(0, 0, 40, 20);
+
+    // Click near top of inner area (y=2) - should hit first entry
+    let result_top = detect_entry_click(5, 2, main_area, None, &state);
+    assert_eq!(
+        result_top,
+        EntryClickResult::MainPaneEntry(0),
+        "Click near top should hit first entry"
+    );
+
+    // Click in middle of inner area (y=10) - should hit second or third entry
+    let result_mid = detect_entry_click(5, 10, main_area, None, &state);
+    assert!(
+        matches!(
+            result_mid,
+            EntryClickResult::MainPaneEntry(1) | EntryClickResult::MainPaneEntry(2)
+        ),
+        "Click in middle should hit entry 1 or 2, got {:?}",
+        result_mid
+    );
+
+    // Click near bottom of inner area (y=18) - should hit last entry
+    let result_bottom = detect_entry_click(5, 18, main_area, None, &state);
+    assert_eq!(
+        result_bottom,
+        EntryClickResult::MainPaneEntry(2),
+        "Click near bottom should hit last entry"
+    );
+}
+
+#[test]
+fn detect_entry_click_with_single_entry_always_returns_index_0() {
+    let mut session = Session::new(make_session_id("test-session"));
+
+    // Add single entry
+    let uuid = make_entry_uuid("entry-0");
+    let log_entry = LogEntry::new(
+        uuid,
+        None,
+        make_session_id("test-session"),
+        None,
+        Utc::now(),
+        EntryType::User,
+        Message::new(
+            Role::User,
+            MessageContent::Text("Single message".to_string()),
+        ),
+        EntryMetadata::default(),
+    );
+    session.add_conversation_entry(ConversationEntry::Valid(Box::new(log_entry)));
+
+    let state = AppState::new(session);
+    let main_area = Rect::new(0, 0, 40, 20);
+
+    // Any click within inner area should hit entry 0
+    let results = vec![
+        detect_entry_click(5, 1, main_area, None, &state),
+        detect_entry_click(5, 5, main_area, None, &state),
+        detect_entry_click(5, 10, main_area, None, &state),
+        detect_entry_click(5, 18, main_area, None, &state),
+    ];
+
+    for result in results {
+        assert_eq!(
+            result,
+            EntryClickResult::MainPaneEntry(0),
+            "All clicks on single entry should return index 0"
+        );
+    }
 }
