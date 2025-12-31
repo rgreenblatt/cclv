@@ -568,7 +568,7 @@ mod tests {
 
     #[test]
     fn log_entry_parse_accepts_valid_minimal_entry() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Hello"},"sessionId":"session-123","uuid":"uuid-001","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Hello"},"session_id":"session-123","uuid":"uuid-001","timestamp":"2025-12-25T10:00:00Z"}"#;
         let result = LogEntry::parse(raw);
 
         assert!(result.is_ok(), "Should parse valid minimal entry");
@@ -580,7 +580,7 @@ mod tests {
 
     #[test]
     fn log_entry_parse_accepts_entry_with_all_fields() {
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Response"},"sessionId":"s1","uuid":"u2","parentUuid":"u1","agentId":"agent-1","timestamp":"2025-12-25T10:00:00Z","cwd":"/home","gitBranch":"main","version":"1.0.0","isSidechain":true}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Response"},"session_id":"s1","uuid":"u2","parentUuid":"u1","agentId":"agent-1","timestamp":"2025-12-25T10:00:00Z","cwd":"/home","gitBranch":"main","version":"1.0.0","isSidechain":true}"#;
         let result = LogEntry::parse(raw);
 
         assert!(result.is_ok(), "Should parse entry with all fields");
@@ -608,7 +608,7 @@ mod tests {
 
     #[test]
     fn log_entry_parse_rejects_missing_uuid() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"sessionId":"s1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","timestamp":"2025-12-25T10:00:00Z"}"#;
         let result = LogEntry::parse(raw);
 
         assert!(result.is_err(), "Should reject missing uuid");
@@ -616,7 +616,7 @@ mod tests {
 
     #[test]
     fn log_entry_parse_rejects_empty_uuid() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"sessionId":"s1","uuid":"","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","uuid":"","timestamp":"2025-12-25T10:00:00Z"}"#;
         let result = LogEntry::parse(raw);
 
         assert!(result.is_err(), "Should reject empty uuid");
@@ -631,7 +631,7 @@ mod tests {
 
     #[test]
     fn log_entry_parse_rejects_invalid_timestamp() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"sessionId":"s1","uuid":"u1","timestamp":"not-a-timestamp"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","uuid":"u1","timestamp":"not-a-timestamp"}"#;
         let result = LogEntry::parse(raw);
 
         assert!(result.is_err(), "Should reject invalid timestamp");
