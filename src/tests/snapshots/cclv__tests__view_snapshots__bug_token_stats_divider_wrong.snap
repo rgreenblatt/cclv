@@ -1,0 +1,29 @@
+---
+source: src/tests/view_snapshots.rs
+expression: output
+---
+┌Conversations─────────────────────────────────────────────────────────────────┐
+│ Main                                                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+┌Main [Opus] (4 entries)───────────────────────────────────────────────────────┐
+││  1 Test message                                                             │
+│                                                                              │
+││  2 This is a thinking block with some content that should be estimated as to│
+││    kens. Let me think about this carefully.                                 │
+││    Here is my response.                                                     │
+│── 100 in / 50 out / $0.01 | Context: 800 (0%) ──                             │
+││  3 Another test                                                             │
+│                                                                              │
+││  4 Second response.                                                         │
+│── 150 in / 30 out / $0.01 | Context: 1.8k (0%) ──                            │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

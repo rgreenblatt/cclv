@@ -3275,3 +3275,119 @@ fn bug_number_keys_should_select_tabs() {
         after_1
     );
 }
+
+// ===== Token Stats Divider Bug Reproduction =====
+
+/// Bug reproduction: Entry separator token stats not calculated properly
+///
+/// EXPECTED: Token separator should match Claude Code statusline format:
+///   - `↓{read_non_cached}/{read_total} ↑{write_non_cached}/{write_total}`
+///   - read_non_cached = input_tokens + cache_creation_input_tokens
+///   - read_total = input_tokens + cache_creation_input_tokens + cache_read_input_tokens
+///   - write_non_cached = output_tokens
+///   - write_total = output_tokens + estimated_thinking_tokens (chars/4)
+///   - Context = input + cache_creation + cache_read + output (THIS ENTRY ONLY)
+///
+/// CRITICAL: Context calculation is WRONG - currently accumulates across entries.
+///   Each entry's input_tokens already represents the current context window state
+///   from the API's perspective. It includes prior conversation context - it's NOT
+///   cumulative across entries. We should show THIS entry's context, not accumulated.
+///
+/// ACTUAL: Shows `{input} in / {output} out` format:
+///   - Only shows raw input_tokens, not read breakdown
+///   - Context INCORRECTLY accumulates all previous entries (grows to 100% fast)
+///   - No thinking/tool_use token estimation
+///
+/// Reference: /home/claude/.claude/claude-code-status-line.py (lines 300-308)
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/token_stats_repro.jsonl
+/// 2. Observe entry separator lines - context % grows with each entry
+/// 3. Expected: each entry's context should be independent, not accumulated
+#[test]
+#[ignore = "cclv-5ur.70: token stats divider calculation incorrect"]
+fn bug_token_stats_divider_wrong_calculation() {
+    use crate::source::FileSource;
+    use crate::state::AppState;
+    use crate::view::TuiApp;
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+    use std::path::PathBuf;
+
+    // Load minimal fixture with token usage data
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/token_stats_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal wide enough to show full separator
+    let backend = TestBackend::new(80, 25);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = crate::config::keybindings::KeyBindings::default();
+    let input_source =
+        crate::source::InputSource::Stdin(crate::source::StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    app.render_test().expect("Render should succeed");
+
+    let buffer = app.terminal().backend().buffer();
+    let output = buffer_to_string(buffer);
+
+    // Snapshot captures the buggy output format
+    insta::assert_snapshot!("bug_token_stats_divider_wrong", output);
+
+    // Entry 1 has:
+    //   input_tokens: 100, cache_creation: 500, cache_read: 200, output: 50
+    //   thinking block: ~25 tokens estimated (100 chars / 4)
+    // Expected format per Claude Code statusline:
+    //   read_non_cached = 100 + 500 = 600 (0.6k)
+    //   read_total = 100 + 500 + 200 = 800 (0.8k)
+    //   write_non_cached = 50
+    //   write_total = 50 + 25 = 75
+    //   context = 100 + 500 + 200 + 50 = 850 (0.9k)
+    //
+    // Expected: "↓0.6k/0.8k ↑50/75" or similar with arrows
+    // Actual: "100 in / 50 out" - missing cache breakdown and arrows
+
+    assert!(
+        output.contains("↓") && output.contains("↑"),
+        "BUG: Token divider format is incorrect.\n\
+         Expected: Claude Code statusline format with ↓read ↑write arrows\n\
+         Actual: Shows '{{input}} in / {{output}} out' without cache breakdown\n\n\
+         The divider should show:\n\
+         - ↓{{read_non_cached}}/{{read_total}} for input (cached vs total)\n\
+         - ↑{{write_non_cached}}/{{write_total}} for output (with thinking estimate)\n\n\
+         Per Claude Code statusline script, context should also include output_tokens.\n\n\
+         Actual output:\n{output}"
+    );
+
+    // INVARIANT: Context should NOT accumulate across entries.
+    // Entry 2 has: input=150, cache_creation=0, cache_read=800, output=30
+    // Correct context for entry 2 = 150 + 0 + 800 + 30 = 980 tokens (0.5% of 200k)
+    // NOT 1.8k which would be accumulated (entry1 + entry2)
+    //
+    // If we see "1.8k" in entry 2's separator, context is wrongly accumulated.
+    // Correct value should show ~1.0k or 980 for entry 2.
+    assert!(
+        !output.contains("Context: 1.8k"),
+        "BUG: Context is incorrectly ACCUMULATED across entries.\n\
+         Entry 2 shows 'Context: 1.8k' but should show ~1.0k (this entry's tokens only).\n\n\
+         Entry 2 has: input=150, cache_creation=0, cache_read=800, output=30\n\
+         Correct context = 150 + 0 + 800 + 30 = 980 tokens ≈ 1.0k\n\
+         Accumulated (wrong) = entry1(800) + entry2(980) ≈ 1.8k\n\n\
+         Each entry's input_tokens from the API already includes prior conversation\n\
+         context - we should NOT accumulate across entries.\n\n\
+         Actual output:\n{output}"
+    );
+}
