@@ -74,33 +74,43 @@ fn create_app_state_with_tabs(agent_ids: Vec<&str>) -> AppState {
     state
 }
 
-/// Initialize layout for all conversations in state with fixed height.
+/// Initialize layout for all conversations in state using actual rendering.
 /// Required for tests that use hit_test-based entry detection.
-fn init_layout_for_state(state: &mut AppState, height_per_entry: u16) {
+fn init_layout_for_state(state: &mut AppState) {
     use crate::state::WrapMode;
     use crate::view_state::layout_params::LayoutParams;
-    use crate::view_state::types::LineHeight;
 
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    let height_calc =
-        |_entry: &ConversationEntry, _expanded: bool, _wrap: WrapMode, _width: u16| {
-            LineHeight::new(height_per_entry).unwrap()
-        };
 
     // Initialize main conversation layout
     if let Some(session_view) = state.log_view_mut().current_session_mut() {
         session_view
             .main_mut()
-            .recompute_layout(params, height_calc);
+            .recompute_layout(params);
 
         // Initialize subagent layouts
         let agent_ids: Vec<_> = session_view.subagent_ids().cloned().collect();
         for agent_id in agent_ids {
             session_view
                 .subagent_mut(&agent_id)
-                .recompute_layout(params, height_calc);
+                .recompute_layout(params);
         }
     }
+}
+
+/// Get the measured height of an entry after rendering.
+fn get_entry_height(state: &AppState, entry_idx: usize) -> u16 {
+    use crate::view_state::types::EntryIndex;
+
+    state
+        .log_view()
+        .current_session()
+        .expect("session exists")
+        .main()
+        .get(EntryIndex::new(entry_idx))
+        .expect("entry exists")
+        .height()
+        .get()
 }
 
 // ===== detect_tab_click Tests =====
@@ -449,7 +459,7 @@ fn detect_entry_click_detects_main_pane_first_entry() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    init_layout_for_state(&mut state, 10);
+    init_layout_for_state(&mut state);
 
     // Main pane at (0, 0) with width 40, height 20
     // Click on first entry (inside border: y=1)
@@ -470,7 +480,7 @@ fn detect_entry_click_detects_subagent_pane_entry() {
     // Set focus and select the first subagent tab
     state.focus = crate::state::FocusPane::Subagent;
     state.select_tab(1); // 1-indexed
-    init_layout_for_state(&mut state, 10);
+    init_layout_for_state(&mut state);
 
     // Main pane area
     let main_area = Rect::new(0, 0, 40, 20);
@@ -522,13 +532,17 @@ fn detect_entry_click_accounts_for_border() {
 #[test]
 fn detect_entry_click_handles_empty_conversation() {
     let mut state = create_app_state_with_tabs(vec![]);
-    init_layout_for_state(&mut state, 10);
+    init_layout_for_state(&mut state);
 
     let main_area = Rect::new(0, 0, 40, 20);
 
     // Note: create_app_state_with_tabs adds a dummy main entry when vec is empty
     // to ensure session_view exists, so conversation has 1 entry
-    let result = detect_entry_click(5, 5, main_area, None, &state);
+    let entry_height = get_entry_height(&state, 0);
+
+    // Click inside the entry (accounting for border at y=1)
+    let click_y = 1 + (entry_height / 2);
+    let result = detect_entry_click(5, click_y, main_area, None, &state);
 
     assert_eq!(
         result,
@@ -564,35 +578,41 @@ fn detect_entry_click_maps_different_y_positions_to_different_entries() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    init_layout_for_state(&mut state, 10);
+    init_layout_for_state(&mut state);
 
-    // Main pane at (0, 0) with width 40, height 20
-    // Inner area: (1, 1) to (39, 19) - 18 lines tall
-    // Layout with height=10 per entry: Entry 0 at y=0..10, Entry 1 at y=10..20, Entry 2 at y=20..30
     let main_area = Rect::new(0, 0, 40, 20);
 
-    // Click at y=2 (inside border) -> viewport_y = 1 -> Entry 0 (y=0..10)
-    let result_top = detect_entry_click(5, 2, main_area, None, &state);
+    // Get actual entry positions
+    let h0 = get_entry_height(&state, 0);
+    let h1 = get_entry_height(&state, 1);
+    let pos0 = 0;
+    let pos1 = h0;
+
+    // Click inside entry 0 (border starts at y=1)
+    let click_y0 = 1 + pos0 + (h0 / 2);
+    let result_top = detect_entry_click(5, click_y0, main_area, None, &state);
     assert_eq!(
         result_top,
         EntryClickResult::MainPaneEntry(0),
-        "Click at viewport_y=1 should hit entry 0"
+        "Click inside entry 0 should hit entry 0"
     );
 
-    // Click at y=11 (inside border) -> viewport_y = 10 -> Entry 1 (starts at y=10)
-    let result_mid = detect_entry_click(5, 11, main_area, None, &state);
+    // Click at start of entry 1
+    let click_y1_start = 1 + pos1;
+    let result_mid = detect_entry_click(5, click_y1_start, main_area, None, &state);
     assert_eq!(
         result_mid,
         EntryClickResult::MainPaneEntry(1),
-        "Click at viewport_y=10 should hit entry 1"
+        "Click at start of entry 1 should hit entry 1"
     );
 
-    // Click at y=16 (inside border) -> viewport_y = 15 -> Entry 1 (y=10..20)
-    let result_bottom = detect_entry_click(5, 16, main_area, None, &state);
+    // Click in middle of entry 1
+    let click_y1_mid = 1 + pos1 + (h1 / 2);
+    let result_bottom = detect_entry_click(5, click_y1_mid, main_area, None, &state);
     assert_eq!(
         result_bottom,
         EntryClickResult::MainPaneEntry(1),
-        "Click at viewport_y=15 should hit entry 1"
+        "Click in middle of entry 1 should hit entry 1"
     );
 }
 
@@ -619,31 +639,35 @@ fn detect_entry_click_with_single_entry_always_returns_index_0() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
-    init_layout_for_state(&mut state, 10);
+    init_layout_for_state(&mut state);
     let main_area = Rect::new(0, 0, 40, 20);
 
-    // Entry height is 10, so viewport_y 0-9 should hit entry 0
-    // Click at y=1 (inside border) -> viewport_y = 0 -> hit
+    let entry_height = get_entry_height(&state, 0);
+
+    // Click at start of entry (border at y=1)
     assert_eq!(
         detect_entry_click(5, 1, main_area, None, &state),
         EntryClickResult::MainPaneEntry(0)
     );
 
-    // Click at y=5 -> viewport_y = 4 -> hit
+    // Click in middle of entry
+    let click_mid = 1 + (entry_height / 2);
     assert_eq!(
-        detect_entry_click(5, 5, main_area, None, &state),
+        detect_entry_click(5, click_mid, main_area, None, &state),
         EntryClickResult::MainPaneEntry(0)
     );
 
-    // Click at y=10 -> viewport_y = 9 -> hit (last line of entry)
+    // Click at last line of entry
+    let click_last = 1 + entry_height - 1;
     assert_eq!(
-        detect_entry_click(5, 10, main_area, None, &state),
+        detect_entry_click(5, click_last, main_area, None, &state),
         EntryClickResult::MainPaneEntry(0)
     );
 
-    // Click at y=18 -> viewport_y = 17 -> miss (beyond 10-line entry)
+    // Click beyond entry height
+    let click_beyond = 1 + entry_height + 5;
     assert_eq!(
-        detect_entry_click(5, 18, main_area, None, &state),
+        detect_entry_click(5, click_beyond, main_area, None, &state),
         EntryClickResult::NoEntry,
         "Click beyond entry height should return NoEntry"
     );
@@ -655,11 +679,7 @@ fn detect_entry_click_with_single_entry_always_returns_index_0() {
 
 #[test]
 fn detect_entry_click_uses_actual_entry_heights_from_layout() {
-    use crate::state::WrapMode;
-    use crate::view_state::layout_params::LayoutParams;
-    use crate::view_state::types::LineHeight;
-
-    // Create entries with VARIABLE heights (not fixed 4 lines)
+    // Create three entries
     let mut entries = Vec::new();
     for i in 0..3 {
         let uuid = make_entry_uuid(&format!("entry-{}", i));
@@ -678,78 +698,58 @@ fn detect_entry_click_uses_actual_entry_heights_from_layout() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
+    init_layout_for_state(&mut state);
 
-    // Force layout computation with variable heights
-    // Entry 0: 10 lines, Entry 1: 5 lines, Entry 2: 8 lines
-    let params = LayoutParams::new(80, WrapMode::Wrap);
-    let height_calc = |entry: &ConversationEntry, _expanded: bool, _wrap: WrapMode, _width: u16| {
-        // Use entry index to determine height
-        let idx = match entry {
-            ConversationEntry::Valid(log_entry) => {
-                let uuid_str = log_entry.uuid().to_string();
-                if uuid_str.contains("entry-0") {
-                    0
-                } else if uuid_str.contains("entry-1") {
-                    1
-                } else {
-                    2
-                }
-            }
-            _ => 0,
-        };
-        match idx {
-            0 => LineHeight::new(10).unwrap(),
-            1 => LineHeight::new(5).unwrap(),
-            _ => LineHeight::new(8).unwrap(),
-        }
-    };
-
-    // Trigger layout computation
-    if let Some(session_view) = state.log_view_mut().current_session_mut() {
-        session_view
-            .main_mut()
-            .recompute_layout(params, height_calc);
-    }
-
-    // Layout: Entry 0 at y=0..10, Entry 1 at y=10..15, Entry 2 at y=15..23
     let main_area = Rect::new(0, 0, 40, 30);
 
-    // Click at y=2 (inside border at y=1) -> relative_y = 1 -> should hit Entry 0
-    let result = detect_entry_click(5, 2, main_area, None, &state);
+    // Get actual measured heights
+    let h0 = get_entry_height(&state, 0);
+    let h1 = get_entry_height(&state, 1);
+    let pos0 = 0;
+    let pos1 = h0;
+    let pos2 = h0 + h1;
+
+    // Click in middle of entry 0 (border at y=1)
+    let click_e0 = 1 + pos0 + (h0 / 2);
+    let result = detect_entry_click(5, click_e0, main_area, None, &state);
     assert_eq!(
         result,
         EntryClickResult::MainPaneEntry(0),
-        "Click at y=2 (absolute y=1) should hit entry 0 (y=0..10)"
+        "Click in entry 0 should hit entry 0"
     );
 
-    // Click at y=11 (inside border) -> relative_y = 10 -> should hit Entry 1 (starts at y=10)
-    let result = detect_entry_click(5, 11, main_area, None, &state);
+    // Click at start of entry 1
+    let click_e1 = 1 + pos1;
+    let result = detect_entry_click(5, click_e1, main_area, None, &state);
     assert_eq!(
         result,
         EntryClickResult::MainPaneEntry(1),
-        "Click at y=11 (absolute y=10) should hit entry 1 (y=10..15)"
+        "Click at start of entry 1 should hit entry 1"
     );
 
-    // Click at y=16 (inside border) -> relative_y = 15 -> should hit Entry 2 (starts at y=15)
-    let result = detect_entry_click(5, 16, main_area, None, &state);
+    // Click at start of entry 2
+    let click_e2 = 1 + pos2;
+    let result = detect_entry_click(5, click_e2, main_area, None, &state);
     assert_eq!(
         result,
         EntryClickResult::MainPaneEntry(2),
-        "Click at y=16 (absolute y=15) should hit entry 2 (y=15..23)"
+        "Click at start of entry 2 should hit entry 2"
     );
 }
 
 #[test]
 fn detect_entry_click_accounts_for_scroll_offset() {
-    use crate::state::WrapMode;
-    use crate::view_state::layout_params::LayoutParams;
     use crate::view_state::scroll::ScrollPosition;
-    use crate::view_state::types::{LineHeight, LineOffset};
+    use crate::view_state::types::LineOffset;
 
-    // Create 5 entries with 10 lines each
+    // Create 10 entries with longer text to force scrolling
     let mut entries = Vec::new();
-    for i in 0..5 {
+    for i in 0..10 {
         let uuid = make_entry_uuid(&format!("entry-{}", i));
+        let long_text = format!(
+            "This is a longer message {} that will take multiple lines when wrapped at 80 characters width",
+            i
+        );
         let log_entry = LogEntry::new(
             uuid,
             None,
@@ -757,7 +757,7 @@ fn detect_entry_click_accounts_for_scroll_offset() {
             None,
             Utc::now(),
             EntryType::User,
-            Message::new(Role::User, MessageContent::Text(format!("Message {}", i))),
+            Message::new(Role::User, MessageContent::Text(long_text)),
             EntryMetadata::default(),
         );
         entries.push(ConversationEntry::Valid(Box::new(log_entry)));
@@ -765,53 +765,45 @@ fn detect_entry_click_accounts_for_scroll_offset() {
 
     let mut state = AppState::new();
     state.add_entries(entries);
+    init_layout_for_state(&mut state);
 
-    // Layout with fixed height: each entry is 10 lines
-    let params = LayoutParams::new(80, WrapMode::Wrap);
-    let height_calc = |_entry: &ConversationEntry,
-                       _expanded: bool,
-                       _wrap: WrapMode,
-                       _width: u16| LineHeight::new(10).unwrap();
+    // Use smaller viewport to ensure scrolling is needed
+    let main_area = Rect::new(0, 0, 40, 15); // Smaller height
 
-    // Trigger layout and set scroll position
+    // Get cumulative heights to find scroll position
+    let h0 = get_entry_height(&state, 0);
+    let h1 = get_entry_height(&state, 1);
+    let h2 = get_entry_height(&state, 2);
+    let scroll_to = h0 + h1; // Skip entries 0 and 1
+
+    // Set scroll position
     if let Some(session_view) = state.log_view_mut().current_session_mut() {
         session_view
             .main_mut()
-            .recompute_layout(params, height_calc);
-        // Scroll to line 20 (skipping entries 0 and 1)
-        session_view
-            .main_mut()
-            .set_scroll(ScrollPosition::AtLine(LineOffset::new(20)));
+            .set_scroll(ScrollPosition::AtLine(LineOffset::new(scroll_to as usize)));
     }
 
-    // Layout: Entry 0 at y=0..10, Entry 1 at y=10..20, Entry 2 at y=20..30, Entry 3 at y=30..40, Entry 4 at y=40..50
-    // Scroll offset = 20, so viewport shows y=20..50 (entries 2, 3, 4)
-    let main_area = Rect::new(0, 0, 40, 30);
-
-    // Click at viewport y=2 (inside border at y=1) -> absolute y = 20 + 1 = 21 -> Entry 2
+    // Click near top of viewport (border at y=1) should hit entry 2
     let result = detect_entry_click(5, 2, main_area, None, &state);
     assert_eq!(
         result,
         EntryClickResult::MainPaneEntry(2),
-        "Click at viewport y=2 with scroll=20 should hit entry 2 (absolute y=21)"
+        "Click at viewport top with scroll should hit entry 2"
     );
 
-    // Click at viewport y=11 -> absolute y = 20 + 10 = 30 -> Entry 3 (starts at y=30)
-    let result = detect_entry_click(5, 11, main_area, None, &state);
+    // Click further down should hit entry 3
+    let click_e3 = 1 + h2 + 1; // border + entry2_height + into entry3
+    let result = detect_entry_click(5, click_e3, main_area, None, &state);
     assert_eq!(
         result,
         EntryClickResult::MainPaneEntry(3),
-        "Click at viewport y=11 with scroll=20 should hit entry 3 (absolute y=30)"
+        "Click further down with scroll should hit entry 3"
     );
 }
 
 #[test]
 fn detect_entry_click_returns_no_entry_when_clicking_beyond_content() {
-    use crate::state::WrapMode;
-    use crate::view_state::layout_params::LayoutParams;
-    use crate::view_state::types::LineHeight;
-
-    // Create single entry with height 5
+    // Create single entry
     let uuid = make_entry_uuid("entry-0");
     let log_entry = LogEntry::new(
         uuid,
@@ -826,24 +818,14 @@ fn detect_entry_click_returns_no_entry_when_clicking_beyond_content() {
 
     let mut state = AppState::new();
     state.add_entries(vec![ConversationEntry::Valid(Box::new(log_entry))]);
-
-    // Layout with height 5
-    let params = LayoutParams::new(80, WrapMode::Wrap);
-    let height_calc = |_entry: &ConversationEntry,
-                       _expanded: bool,
-                       _wrap: WrapMode,
-                       _width: u16| LineHeight::new(5).unwrap();
-
-    if let Some(session_view) = state.log_view_mut().current_session_mut() {
-        session_view
-            .main_mut()
-            .recompute_layout(params, height_calc);
-    }
+    init_layout_for_state(&mut state);
 
     let main_area = Rect::new(0, 0, 40, 30);
 
-    // Click at y=10 (inside border) -> relative_y = 9 -> beyond entry height of 5
-    let result = detect_entry_click(5, 10, main_area, None, &state);
+    // Click well beyond entry height
+    let entry_height = get_entry_height(&state, 0);
+    let click_beyond = 1 + entry_height + 10;
+    let result = detect_entry_click(5, click_beyond, main_area, None, &state);
     assert_eq!(
         result,
         EntryClickResult::NoEntry,

@@ -3,12 +3,12 @@ source: tests/view_snapshots.rs
 expression: output
 ---
 ┌Main Agent (1 entries)────────────────────────────────────────────────────────┐
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
+│Let me read that file for you.                                                │
+│Tool: Read                                                                    │
+│  {                                                                           │
+│    "file_path": "/home/user/test.rs",                                        │
+│    "limit": 100                                                              │
+│  }                                                                           │
 │                                                                              │
 │                                                                              │
 │                                                                              │

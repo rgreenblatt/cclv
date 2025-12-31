@@ -3,26 +3,26 @@ source: tests/view_snapshots.rs
 expression: at_stuck
 ---
 ┌Main Agent (5 entries)────────────────────────────────────────────────────────┐
+│Reviewing all previous considerations.                                        │
+│(+20 more lines)                                                              │
+│Final implementation recommendations and summary.                             │
 │                                                                              │
-│Second, mapping out the data flow is essential.                               │
+│The complete solution addresses all identified requirements.                  │
+│(+18 more lines)                                                              │
 │                                                                              │
-│Third, identifying potential bottlenecks.                                     │
+│Fourth entry with additional content to ensure scrolling works.               │
 │                                                                              │
-│Fourth, considering scalability requirements.                                 │
+│This provides more lines to scroll through.                                   │
 │                                                                              │
-│Fifth, evaluating security implications.                                      │
+│Line 3.                                                                       │
+│Line 4.                                                                       │
+│Line 5.                                                                       │
 │                                                                              │
-│Sixth, reviewing compliance requirements.                                     │
+│Fifth entry.                                                                  │
 │                                                                              │
-│Seventh, assessing integration points.                                        │
+│More content here.                                                            │
 │                                                                              │
-│Eighth, planning for failure scenarios.                                       │
+│Line 3.                                                                       │
+│Line 4.                                                                       │
 │                                                                              │
-│Ninth, designing recovery mechanisms.                                         │
-│                                                                              │
-│Tenth, establishing monitoring strategy.                                      │
-│                                                                              │
-│Eleventh, defining success metrics.                                           │
-│                                                                              │
-│Twelfth, creating rollback procedures.                                        │
 └──────────────────────────────────────────────────────────────────────────────┘

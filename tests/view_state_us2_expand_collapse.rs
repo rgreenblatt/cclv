@@ -40,8 +40,20 @@ fn create_test_entry(uuid_str: &str, text: &str) -> ConversationEntry {
     ConversationEntry::Valid(Box::new(entry))
 }
 
+/// Create a test entry with long text that will be collapsible.
+/// The text must exceed 10 lines to trigger collapse behavior.
+fn create_long_entry(uuid_str: &str) -> ConversationEntry {
+    // Create text with 15 lines (exceeds COLLAPSE_THRESHOLD of 10)
+    let long_text = (0..15)
+        .map(|i| format!("This is line {} of a long message that will be collapsible", i))
+        .collect::<Vec<_>>()
+        .join("\n");
+    create_test_entry(uuid_str, &long_text)
+}
+
 /// Height calculator: collapsed entries = 3 lines, expanded = 50 lines.
 /// Simulates a long message that's much taller when expanded.
+#[allow(dead_code)]
 fn variable_height_calculator(
     entry: &ConversationEntry,
     expanded: bool,
@@ -68,13 +80,13 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
     // WHEN: User presses Enter/Space to expand
     // THEN: Entry expands and remains visible
 
-    // Create conversation with 5 entries
+    // Create conversation with 5 entries (using long text so they're collapsible)
     let entries = vec![
-        create_test_entry("entry-0", "First message"),
-        create_test_entry("entry-1", "Second message"),
-        create_test_entry("entry-2", "Third message (target)"),
-        create_test_entry("entry-3", "Fourth message"),
-        create_test_entry("entry-4", "Fifth message"),
+        create_long_entry("entry-0"),
+        create_long_entry("entry-1"),
+        create_long_entry("entry-2"), // target entry
+        create_long_entry("entry-3"),
+        create_long_entry("entry-4"),
     ];
 
     let mut view_state = ConversationViewState::new(None, None, entries);
@@ -82,35 +94,49 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
     let viewport = ViewportDimensions::new(80, 24);
 
     // Initial layout - all collapsed
-    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params);
 
-    // Each entry is 3 lines when collapsed
-    // Total height = 5 * 3 = 15 lines
+    // Calculate expected height from actual entries (all collapsed)
+    let expected_total: usize = view_state
+        .entries()
+        .iter()
+        .map(|entry_view| entry_view.height().get() as usize)
+        .sum();
     assert_eq!(
         view_state.total_height(),
-        15,
-        "Initial total height should be 15 lines (5 entries * 3 lines)"
+        expected_total,
+        "Initial total height should match sum of entry heights"
     );
 
-    // Scroll to show entry 2 (it's at line offset 6)
-    view_state.set_scroll(ScrollPosition::at_line(6));
+    // Scroll to show entry 2
+    let entry_2_y = view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get();
+    view_state.set_scroll(ScrollPosition::at_line(entry_2_y));
 
     // Verify entry 2 is NOT expanded
     let entry_2 = view_state.get(EntryIndex::new(2)).unwrap();
     assert!(!entry_2.is_expanded(), "Entry 2 should start collapsed");
+
+    // Calculate expected cumulative_y for entry 2 (sum of heights of entries 0 and 1)
+    let entry_2_y_expected: usize = view_state
+        .entries()
+        .iter()
+        .take(2)
+        .map(|e| e.height().get() as usize)
+        .sum();
     assert_eq!(
         view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
-        6,
-        "Entry 2 should be at line offset 6"
+        entry_2_y_expected,
+        "Entry 2 cumulative_y should be sum of previous entry heights"
     );
 
+    // Capture state before toggle
+    let entry_2_height_before = entry_2.height().get();
+    let total_height_before = view_state.total_height();
+    let entry_2_y_before = view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get();
+    let entry_3_y_before = view_state.entry_cumulative_y(EntryIndex::new(3)).unwrap().get();
+
     // WHEN: Toggle expand on entry 2
-    let result = view_state.toggle_expand(
-        EntryIndex::new(2),
-        params,
-        viewport,
-        variable_height_calculator,
-    );
+    let result = view_state.toggle_expand(EntryIndex::new(2), params, viewport);
 
     // THEN: Toggle succeeded
     assert_eq!(
@@ -126,33 +152,36 @@ fn us2_scenario1_expand_collapsed_entry_remains_visible() {
         "Entry 2 should be expanded after toggle"
     );
 
-    // THEN: Entry 2 height changed from 3 to 50
-    assert_eq!(
-        entry_2_after.height().get(),
-        50,
-        "Expanded entry should be 50 lines tall"
+    // THEN: Entry 2 height changed (should be taller when expanded)
+    let entry_2_height_after = entry_2_after.height().get();
+    assert!(
+        entry_2_height_after > entry_2_height_before,
+        "Expanded entry should be taller than collapsed (was {}, now {})",
+        entry_2_height_before,
+        entry_2_height_after
     );
 
-    // THEN: Total height increased by 47 lines (50 - 3)
-    // New total: 3 + 3 + 50 + 3 + 3 = 62
+    // THEN: Total height increased by the height delta
+    let height_delta = entry_2_height_after - entry_2_height_before;
+    let expected_total_after = total_height_before + height_delta as usize;
     assert_eq!(
         view_state.total_height(),
-        62,
-        "Total height should increase to 62 lines"
+        expected_total_after,
+        "Total height should increase by height delta"
     );
 
     // THEN: Entry 2 remains at same cumulative_y (scroll stability)
     assert_eq!(
         view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
-        6,
+        entry_2_y_before,
         "Entry 2 cumulative_y should remain stable"
     );
 
-    // THEN: Following entries shifted down by 47 lines
+    // THEN: Following entries shifted down by height delta
     assert_eq!(
         view_state.entry_cumulative_y(EntryIndex::new(3)).unwrap().get(),
-        56, // Was at 9, now at 9 + 47 = 56
-        "Entry 3 should shift down after entry 2 expands"
+        entry_3_y_before + height_delta as usize,
+        "Entry 3 should shift down by height delta"
     );
 }
 
@@ -165,10 +194,10 @@ fn us2_scenario2_collapse_expanded_entry_smooth_shift() {
     // THEN: Following entries shift up smoothly without viewport jump
 
     let entries = vec![
-        create_test_entry("entry-0", "First"),
-        create_test_entry("entry-1", "Second (will be expanded)"),
-        create_test_entry("entry-2", "Third"),
-        create_test_entry("entry-3", "Fourth"),
+        create_long_entry("entry-0"),
+        create_long_entry("entry-1"), // will be expanded then collapsed
+        create_long_entry("entry-2"),
+        create_long_entry("entry-3"),
     ];
 
     let mut view_state = ConversationViewState::new(None, None, entries);
@@ -176,38 +205,45 @@ fn us2_scenario2_collapse_expanded_entry_smooth_shift() {
     let viewport = ViewportDimensions::new(80, 24);
 
     // Initial layout
-    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params);
 
     // Expand entry 1 first
-    view_state.toggle_expand(
-        EntryIndex::new(1),
-        params,
-        viewport,
-        variable_height_calculator,
-    );
+    view_state
+        .toggle_expand(EntryIndex::new(1), params, viewport)
+        .expect("Should be able to toggle expand");
 
     // Verify entry 1 is expanded
     let entry_1_before = view_state.get(EntryIndex::new(1)).unwrap();
     assert!(entry_1_before.is_expanded(), "Entry 1 should be expanded");
-    assert_eq!(entry_1_before.height().get(), 50);
 
-    // Total height: 3 + 50 + 3 + 3 = 59
-    assert_eq!(view_state.total_height(), 59);
+    // Calculate expected total height after expansion
+    let expected_total: usize = view_state
+        .entries()
+        .iter()
+        .map(|e| e.height().get() as usize)
+        .sum();
+    assert_eq!(view_state.total_height(), expected_total);
 
-    // Entry 2 should be at line 53 (3 + 50)
+    // Entry 2 should be at cumulative_y = sum of heights of entries 0 and 1
+    let entry_2_y_expected: usize = view_state
+        .entries()
+        .iter()
+        .take(2)
+        .map(|e| e.height().get() as usize)
+        .sum();
     assert_eq!(
         view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
-        53,
-        "Entry 2 should be at line 53 before collapse"
+        entry_2_y_expected,
+        "Entry 2 cumulative_y should be sum of previous entry heights"
     );
 
+    // Capture heights before collapse
+    let entry_1_height_before = entry_1_before.height().get();
+    let total_height_before = view_state.total_height();
+    let entry_2_y_before = view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get();
+
     // WHEN: Collapse entry 1
-    let result = view_state.toggle_expand(
-        EntryIndex::new(1),
-        params,
-        viewport,
-        variable_height_calculator,
-    );
+    let result = view_state.toggle_expand(EntryIndex::new(1), params, viewport);
 
     // THEN: Toggle succeeded, now collapsed
     assert_eq!(
@@ -219,24 +255,31 @@ fn us2_scenario2_collapse_expanded_entry_smooth_shift() {
     // THEN: Entry 1 is collapsed
     let entry_1_after = view_state.get(EntryIndex::new(1)).unwrap();
     assert!(!entry_1_after.is_expanded(), "Entry 1 should be collapsed");
-    assert_eq!(
-        entry_1_after.height().get(),
-        3,
-        "Collapsed entry should be 3 lines"
+
+    // THEN: Entry 1 height decreased
+    let entry_1_height_after = entry_1_after.height().get();
+    assert!(
+        entry_1_height_after < entry_1_height_before,
+        "Collapsed entry should be shorter than expanded (was {}, now {})",
+        entry_1_height_before,
+        entry_1_height_after
     );
 
-    // THEN: Total height reduced by 47 lines
+    // THEN: Total height reduced by height delta
+    let height_delta = entry_1_height_before - entry_1_height_after;
+    let expected_total_after = total_height_before - height_delta as usize;
     assert_eq!(
         view_state.total_height(),
-        12, // 3 + 3 + 3 + 3
-        "Total height should be 12 lines after collapse"
+        expected_total_after,
+        "Total height should decrease by height delta"
     );
 
     // THEN: Entry 2 shifted up smoothly
+    let entry_2_y_after = view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get();
     assert_eq!(
-        view_state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
-        6, // 3 + 3
-        "Entry 2 should shift up to line 6"
+        entry_2_y_after,
+        entry_2_y_before - height_delta as usize,
+        "Entry 2 should shift up by height delta"
     );
 }
 
@@ -258,17 +301,14 @@ fn us2_scenario3_toggle_response_under_16ms() {
     let viewport = ViewportDimensions::new(80, 24);
 
     // Initial layout
-    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params);
 
     // Measure toggle time
     let start = Instant::now();
 
-    view_state.toggle_expand(
-        EntryIndex::new(10),
-        params,
-        viewport,
-        variable_height_calculator,
-    );
+    view_state
+        .toggle_expand(EntryIndex::new(10), params, viewport)
+        .expect("Should be able to toggle expand");
 
     let elapsed = start.elapsed();
 
@@ -305,7 +345,7 @@ fn us2_scenario4_entries_above_viewport_toggle_visible_stable() {
     let viewport = ViewportDimensions::new(80, 24);
 
     // Initial layout - all collapsed (3 lines each)
-    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params);
 
     // Scroll to show entry 6 at top of viewport
     // Entry 6 is at line 18 (6 * 3)
@@ -325,26 +365,26 @@ fn us2_scenario4_entries_above_viewport_toggle_visible_stable() {
         "Entry 6 should be in viewport before toggle"
     );
 
-    // Record entry 6 position before toggle
+    // Record entry 6 position and entry 2 height before toggle
     let entry_6_y_before = view_state.entry_cumulative_y(EntryIndex::new(6)).unwrap().get();
+    let entry_2_height_before = view_state.get(EntryIndex::new(2)).unwrap().height().get();
 
     // WHEN: Toggle entry 2 (above viewport)
-    view_state.toggle_expand(
-        EntryIndex::new(2),
-        params,
-        viewport,
-        variable_height_calculator,
-    );
+    view_state
+        .toggle_expand(EntryIndex::new(2), params, viewport)
+        .expect("Should be able to toggle expand");
 
     // THEN: Entry 2 is now expanded
     let entry_2 = view_state.get(EntryIndex::new(2)).unwrap();
     assert!(entry_2.is_expanded(), "Entry 2 should be expanded");
 
-    // THEN: Entry 6 shifted down by 47 lines (50 - 3)
+    // THEN: Entry 6 shifted down by height delta
+    let entry_2_height_after = entry_2.height().get();
+    let height_delta = entry_2_height_after - entry_2_height_before;
     assert_eq!(
         view_state.entry_cumulative_y(EntryIndex::new(6)).unwrap().get(),
-        entry_6_y_before + 47,
-        "Entry 6 should shift down by 47 lines"
+        entry_6_y_before + height_delta as usize,
+        "Entry 6 should shift down by height delta"
     );
 
     // THEN: Scroll position adjusted to keep entry 6 at same position in viewport
@@ -385,15 +425,10 @@ fn toggle_nonexistent_entry_returns_none() {
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
-    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params);
 
     // Try to toggle entry 999 (doesn't exist)
-    let result = view_state.toggle_expand(
-        EntryIndex::new(999),
-        params,
-        viewport,
-        variable_height_calculator,
-    );
+    let result = view_state.toggle_expand(EntryIndex::new(999), params, viewport);
 
     assert_eq!(
         result, None,
@@ -411,7 +446,7 @@ fn multiple_toggles_preserve_idempotence() {
     let params = LayoutParams::new(80, WrapMode::Wrap);
     let viewport = ViewportDimensions::new(80, 24);
 
-    view_state.relayout_from(EntryIndex::new(0), params, variable_height_calculator);
+    view_state.relayout_from(EntryIndex::new(0), params);
 
     // Initial state: collapsed
     let initial = view_state.get(EntryIndex::new(0)).unwrap().is_expanded();
@@ -419,12 +454,9 @@ fn multiple_toggles_preserve_idempotence() {
 
     // Toggle 4 times (even number)
     for _ in 0..4 {
-        view_state.toggle_expand(
-            EntryIndex::new(0),
-            params,
-            viewport,
-            variable_height_calculator,
-        );
+        view_state
+            .toggle_expand(EntryIndex::new(0), params, viewport)
+            .expect("Should be able to toggle expand");
     }
 
     // Should be back to initial state

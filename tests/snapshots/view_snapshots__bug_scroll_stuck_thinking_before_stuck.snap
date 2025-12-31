@@ -3,26 +3,26 @@ source: tests/view_snapshots.rs
 expression: before_stuck
 ---
 ┌Main Agent (5 entries)────────────────────────────────────────────────────────┐
+│Reviewing all previous considerations.                                        │
+│(+20 more lines)                                                              │
+│Final implementation recommendations and summary.                             │
 │                                                                              │
+│The complete solution addresses all identified requirements.                  │
+│(+18 more lines)                                                              │
 │                                                                              │
+│Fourth entry with additional content to ensure scrolling works.               │
 │                                                                              │
+│This provides more lines to scroll through.                                   │
 │                                                                              │
+│Line 3.                                                                       │
+│Line 4.                                                                       │
+│Line 5.                                                                       │
 │                                                                              │
+│Fifth entry.                                                                  │
 │                                                                              │
+│More content here.                                                            │
 │                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
+│Line 3.                                                                       │
+│Line 4.                                                                       │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘

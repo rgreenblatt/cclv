@@ -25,7 +25,7 @@ use cclv::model::{
 use cclv::state::WrapMode;
 use cclv::view::{ConversationView, MessageStyles};
 use cclv::view_state::conversation::ConversationViewState;
-use cclv::view_state::layout::calculate_height;
+// calculate_height is now used internally by ConversationViewState
 use cclv::view_state::layout_params::LayoutParams;
 use cclv::view_state::scroll::ScrollPosition;
 use cclv::view_state::types::EntryIndex;
@@ -92,7 +92,7 @@ fn arb_conversation_view_state() -> impl Strategy<Value = ConversationViewState>
         let mut state = ConversationViewState::new(None, None, entries);
         let params = LayoutParams::new(80, wrap_mode);
         // Use REAL production height calculator - this is still black-box testing
-        state.relayout_from(EntryIndex::new(0), params, calculate_height);
+        state.relayout_from(EntryIndex::new(0), params);
         state
     })
 }

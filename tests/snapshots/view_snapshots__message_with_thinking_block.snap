@@ -3,11 +3,11 @@ source: tests/view_snapshots.rs
 expression: output
 ---
 ┌Main Agent (1 entries)────────────────────────────────────────────────────────┐
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
-│                                                                              │
+│Let me analyze this problem step by step:                                     │
+│1. First, I need to understand the requirements                               │
+│2. Then identify the key components                                           │
+│3. Finally, propose a solution                                                │
+│Based on my analysis, here's what I recommend...                              │
 │                                                                              │
 │                                                                              │
 │                                                                              │

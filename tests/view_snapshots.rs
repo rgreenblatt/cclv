@@ -13,7 +13,7 @@ use cclv::state::WrapMode;
 use cclv::view::{tabs, ConversationView, MessageStyles, StatsPanel};
 use cclv::view_state::conversation::ConversationViewState;
 use cclv::view_state::layout_params::LayoutParams;
-use cclv::view_state::types::{EntryIndex, LineHeight, ViewportDimensions};
+use cclv::view_state::types::{EntryIndex, ViewportDimensions};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 use std::collections::{HashMap, HashSet};
@@ -351,7 +351,6 @@ fn snapshot_message_expanded_multiline() {
             EntryIndex::new(0),
             params,
             ViewportDimensions::new(80, 24),
-            |_, _, _, _| LineHeight::new(100).unwrap(), // Mock height calculation
         )
         .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
@@ -393,12 +392,13 @@ That's the code."#;
     // Expand to see full code block
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(
-        EntryIndex::new(0),
-        params,
-        ViewportDimensions::new(80, 24),
-        |_, _, _, _| LineHeight::new(100).unwrap(),
-    );
+    view_state
+        .toggle_expand(
+            EntryIndex::new(0),
+            params,
+            ViewportDimensions::new(80, 24),
+        )
+        .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(70, 25);
@@ -443,12 +443,13 @@ fn snapshot_message_with_tool_use() {
     let conversation = create_test_conversation(vec![entry.clone()]);
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(
-        EntryIndex::new(0),
-        params,
-        ViewportDimensions::new(80, 24),
-        |_, _, _, _| LineHeight::new(100).unwrap(),
-    );
+    view_state
+        .toggle_expand(
+            EntryIndex::new(0),
+            params,
+            ViewportDimensions::new(80, 24),
+        )
+        .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
@@ -490,12 +491,13 @@ Total lines: 3"#;
     let conversation = create_test_conversation(vec![entry.clone()]);
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(
-        EntryIndex::new(0),
-        params,
-        ViewportDimensions::new(80, 24),
-        |_, _, _, _| LineHeight::new(100).unwrap(),
-    );
+    view_state
+        .toggle_expand(
+            EntryIndex::new(0),
+            params,
+            ViewportDimensions::new(80, 24),
+        )
+        .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
@@ -535,12 +537,13 @@ fn snapshot_message_with_thinking_block() {
     let conversation = create_test_conversation(vec![entry.clone()]);
     let mut view_state = ConversationViewState::new(None, None, conversation.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.toggle_expand(
-        EntryIndex::new(0),
-        params,
-        ViewportDimensions::new(80, 24),
-        |_, _, _, _| LineHeight::new(100).unwrap(),
-    );
+    view_state
+        .toggle_expand(
+            EntryIndex::new(0),
+            params,
+            ViewportDimensions::new(80, 24),
+        )
+        .expect("Should be able to toggle expand");
     let styles = MessageStyles::new();
 
     let mut terminal = create_terminal(80, 20);
@@ -1391,7 +1394,7 @@ fn bug_horizontal_scroll_does_not_work() {
 #[test]
 #[ignore = "cclv-5ur.14: scroll behavior bug - tracked by cclv-5ur.14.8"]
 fn bug_jerky_scroll_line_by_line() {
-    use cclv::view_state::layout::calculate_height;
+    // calculate_height is now used internally by ConversationViewState
     use chrono::Utc;
 
     // Create entries with varying content lengths
@@ -1437,7 +1440,7 @@ fn bug_jerky_scroll_line_by_line() {
     // Create view state
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::NoWrap);
-    state.relayout_from(EntryIndex::new(0), params, calculate_height);
+    state.relayout_from(EntryIndex::new(0), params);
 
     // Use a small viewport to force scrolling (content is ~17 lines)
     let viewport = ViewportDimensions::new(80, 10);
@@ -1536,7 +1539,7 @@ fn bug_jerky_scroll_line_by_line() {
 #[ignore = "cclv-5ur.14: height mismatch bug - tracked by cclv-5ur.14.8"]
 fn bug_collapsed_entry_height_mismatch() {
     use cclv::source::FileSource;
-    use cclv::view_state::layout::calculate_height;
+    // calculate_height is now used internally by ConversationViewState
     use cclv::view_state::scroll::ScrollPosition;
     use cclv::view_state::types::LineOffset;
     use std::path::PathBuf;
@@ -1554,7 +1557,7 @@ fn bug_collapsed_entry_height_mismatch() {
     // Create view state with entries NOT expanded (collapsed by default)
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(211, WrapMode::Wrap);
-    state.relayout_from(EntryIndex::new(0), params, calculate_height);
+    state.relayout_from(EntryIndex::new(0), params);
 
     // Use viewport similar to actual terminal (211x62 observed in tmux)
     let viewport = ViewportDimensions::new(211, 62);
@@ -1633,10 +1636,9 @@ fn bug_collapsed_entry_height_mismatch() {
 /// Fixture: 5 entries with thinking blocks + text content
 /// The bug occurs when trying to scroll line-by-line through thinking blocks.
 #[test]
-#[ignore = "cclv-5ur.14: scroll stuck with thinking block entries"]
 fn bug_scroll_stuck_with_thinking_blocks() {
     use cclv::source::FileSource;
-    use cclv::view_state::layout::calculate_height;
+    // calculate_height is now used internally by ConversationViewState
     use cclv::view_state::scroll::ScrollPosition;
     use cclv::view_state::types::LineOffset;
     use std::path::PathBuf;
@@ -1662,7 +1664,7 @@ fn bug_scroll_stuck_with_thinking_blocks() {
     // This is how entries appear initially in the TUI
     let mut state = ConversationViewState::new(None, None, entries.clone());
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.relayout_from(EntryIndex::new(0), params, calculate_height);
+    state.relayout_from(EntryIndex::new(0), params);
 
     // Helper to render and get output as string
     let render = |s: &ConversationViewState| -> String {
@@ -1683,12 +1685,19 @@ fn bug_scroll_stuck_with_thinking_blocks() {
     let total_height = state.total_height();
     let mut stuck_positions = Vec::new();
 
+    // Calculate the viewport height from the test backend
+    let viewport_height = 24; // TestBackend::new(80, 24)
+
+    // Calculate the maximum VALID scroll offset
+    // Beyond this, scroll is correctly clamped to show the end of the document
+    let max_scroll = total_height.saturating_sub(viewport_height);
+
     state.set_scroll(ScrollPosition::Top);
     let mut prev_output = render(&state);
 
-    // Test first 50 scroll positions (thinking blocks should be visible in this range)
-    let test_range = total_height.min(50);
-    for offset in 1..test_range {
+    // ONLY test positions within the valid scroll range
+    // Positions beyond max_scroll are SUPPOSED to show identical content (clamped)
+    for offset in 1..=max_scroll {
         state.set_scroll(ScrollPosition::AtLine(LineOffset::new(offset)));
         let current_output = render(&state);
 
@@ -1712,20 +1721,19 @@ fn bug_scroll_stuck_with_thinking_blocks() {
         insta::assert_snapshot!("bug_scroll_stuck_thinking_at_stuck", at_stuck);
     }
 
-    // THE KEY ASSERTION: Scroll should never get stuck
-    // Every line offset should produce different rendered output
+    // THE KEY ASSERTION: Scroll should never get stuck WITHIN valid range
+    // Every line offset within [0, max_scroll] should produce different rendered output
     assert!(
         stuck_positions.is_empty(),
         "BUG: Scroll got stuck at {} positions with thinking blocks.\n\
          Stuck positions (consecutive identical outputs): {:?}\n\
-         Tested {} scroll positions (0 to {}).\n\
-         Total document height: {} lines.\n\n\
-         This violates the core scroll contract: each line offset should \
-         produce different visible content.",
+         Valid scroll range: 0 to {} (viewport_height={}, total_height={}).\n\n\
+         This violates the core scroll contract: each line offset within the \
+         valid scroll range should produce different visible content.",
         stuck_positions.len(),
         stuck_positions,
-        test_range,
-        test_range - 1,
+        max_scroll,
+        viewport_height,
         total_height
     );
 }

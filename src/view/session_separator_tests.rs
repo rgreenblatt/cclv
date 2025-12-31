@@ -45,6 +45,7 @@ fn make_valid_entry(uuid: &str, session_id: &str, text: &str) -> ConversationEnt
 }
 
 /// Stub height calculator: returns fixed height for testing
+#[allow(dead_code)]
 fn stub_height_calculator(
     _entry: &ConversationEntry,
     _expanded: bool,
@@ -70,7 +71,7 @@ fn renders_separator_when_session_changes() {
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.recompute_layout(params, stub_height_calculator);
+    view_state.recompute_layout(params);
 
     // Render the conversation
     let styles = MessageStyles::default();
@@ -108,7 +109,7 @@ fn no_separator_for_first_session() {
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.recompute_layout(params, stub_height_calculator);
+    view_state.recompute_layout(params);
 
     // Render the conversation
     let styles = MessageStyles::default();
@@ -145,7 +146,7 @@ fn separator_contains_session_id() {
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.recompute_layout(params, stub_height_calculator);
+    view_state.recompute_layout(params);
 
     // Render
     let styles = MessageStyles::default();
@@ -183,7 +184,7 @@ fn multiple_session_changes_render_multiple_separators() {
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.recompute_layout(params, stub_height_calculator);
+    view_state.recompute_layout(params);
 
     // Render
     let styles = MessageStyles::default();
@@ -219,7 +220,7 @@ fn separator_styled_with_dim_gray() {
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    view_state.recompute_layout(params, stub_height_calculator);
+    view_state.recompute_layout(params);
 
     // Render
     let styles = MessageStyles::default();

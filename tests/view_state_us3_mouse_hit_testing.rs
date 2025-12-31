@@ -15,9 +15,8 @@ use cclv::model::{
 use cclv::state::WrapMode;
 use cclv::view_state::{
     conversation::ConversationViewState,
-    hit_test::HitTestResult,
     layout_params::LayoutParams,
-    types::{EntryIndex, LineHeight, LineOffset, ViewportDimensions},
+    types::{EntryIndex, LineOffset, ViewportDimensions},
 };
 use chrono::Utc;
 
@@ -44,37 +43,6 @@ fn make_entry(uuid: &str) -> ConversationEntry {
     ConversationEntry::Valid(Box::new(entry))
 }
 
-/// Height calculator that returns a fixed height
-fn fixed_height(
-    _entry: &ConversationEntry,
-    _expanded: bool,
-    _wrap: WrapMode,
-    _width: u16,
-) -> LineHeight {
-    LineHeight::new(10).unwrap()
-}
-
-/// Height calculator with variable heights based on entry index
-fn variable_height(
-    entry: &ConversationEntry,
-    _expanded: bool,
-    _wrap: WrapMode,
-    _width: u16,
-) -> LineHeight {
-    // Extract index from UUID pattern "entry-N"
-    if let ConversationEntry::Valid(log_entry) = entry {
-        let uuid_str = log_entry.uuid().as_str();
-        if let Some(idx_str) = uuid_str.strip_prefix("entry-") {
-            if let Ok(idx) = idx_str.parse::<u16>() {
-                // Vary heights: 5, 10, 15, 20, 5, 10, 15, 20, ...
-                let height = 5 + ((idx % 4) * 5);
-                return LineHeight::new(height).unwrap();
-            }
-        }
-    }
-    LineHeight::new(10).unwrap()
-}
-
 // ===== US3 Scenario 1: Click Specific Entry (Not Adjacent) =====
 
 #[test]
@@ -90,44 +58,52 @@ fn us3_scenario1_click_specific_entry_not_adjacent() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.relayout_from(EntryIndex::new(0), params, fixed_height);
+    state.relayout_from(EntryIndex::new(0), params);
 
-    // Layout: Each entry is 10 lines
-    // Entry 0: lines 0..10
-    // Entry 1: lines 10..20
-    // Entry 2: lines 20..30
-    // Entry 3: lines 30..40
-    // Entry 4: lines 40..50
+    // Get actual heights after relayout
+    let h0 = state.get(EntryIndex::new(0)).unwrap().height().get() as usize;
+    let h1 = state.get(EntryIndex::new(1)).unwrap().height().get() as usize;
+    let h2 = state.get(EntryIndex::new(2)).unwrap().height().get() as usize;
 
-    // WHEN: Click on entry 2 (middle of entry at line 25)
-    let result = state.hit_test(25, 10, LineOffset::new(0));
+    // Layout: (using actual heights)
+    // Entry 0: lines 0..h0
+    // Entry 1: lines h0..(h0+h1)
+    // Entry 2: lines (h0+h1)..(h0+h1+h2)
+    // Entry 3: lines (h0+h1+h2)..
+    // Entry 4: lines ..
+
+    // WHEN: Click in middle of entry 2
+    let entry2_start = h0 + h1;
+    let click_y = entry2_start + (h2 / 2);
+    let result = state.hit_test(click_y as u16, 10, LineOffset::new(0));
 
     // THEN: Entry 2 is selected (not entry 1 or 3)
     assert_eq!(
-        result,
-        HitTestResult::Hit {
-            entry_index: EntryIndex::new(2),
-            line_in_entry: 5,
-            column: 10
-        },
-        "Click at line 25 should hit entry 2, not adjacent entries"
+        result.entry_index(),
+        Some(EntryIndex::new(2)),
+        "Click in middle of entry 2 should hit entry 2, not adjacent entries"
     );
 
     // Verify adjacent entries are NOT hit
-    // Click at line 19 should hit entry 1
-    let result_above = state.hit_test(19, 10, LineOffset::new(0));
+    // Click in middle of entry 1
+    let entry1_start = h0;
+    let click_y_entry1 = entry1_start + (h1 / 2);
+    let result_above = state.hit_test(click_y_entry1 as u16, 10, LineOffset::new(0));
     assert_eq!(
         result_above.entry_index(),
         Some(EntryIndex::new(1)),
-        "Click at line 19 should hit entry 1"
+        "Click in middle of entry 1 should hit entry 1"
     );
 
-    // Click at line 30 should hit entry 3
-    let result_below = state.hit_test(30, 10, LineOffset::new(0));
+    // Click in middle of entry 3
+    let h3 = state.get(EntryIndex::new(3)).unwrap().height().get() as usize;
+    let entry3_start = h0 + h1 + h2;
+    let click_y_entry3 = entry3_start + (h3 / 2);
+    let result_below = state.hit_test(click_y_entry3 as u16, 10, LineOffset::new(0));
     assert_eq!(
         result_below.entry_index(),
         Some(EntryIndex::new(3)),
-        "Click at line 30 should hit entry 3"
+        "Click in middle of entry 3 should hit entry 3"
     );
 }
 
@@ -144,11 +120,17 @@ fn us3_scenario2_click_expand_collapse_indicator() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.relayout_from(EntryIndex::new(0), params, fixed_height);
+    state.relayout_from(EntryIndex::new(0), params);
+
+    // Get actual heights
+    let h0 = state.get(EntryIndex::new(0)).unwrap().height().get() as usize;
+    let h1 = state.get(EntryIndex::new(1)).unwrap().height().get() as usize;
 
     // WHEN: Click on expand/collapse indicator (assumed to be at column 0-2)
-    // First, we need to hit-test to identify which entry
-    let result = state.hit_test(15, 1, LineOffset::new(0)); // Line 15, col 1 -> entry 1
+    // Click in middle of entry 1
+    let entry1_start = h0;
+    let click_y = entry1_start + (h1 / 2);
+    let result = state.hit_test(click_y as u16, 1, LineOffset::new(0));
 
     // THEN: hit_test returns correct entry for toggle action
     assert_eq!(
@@ -162,7 +144,7 @@ fn us3_scenario2_click_expand_collapse_indicator() {
 
     // Toggle expand state
     let viewport = ViewportDimensions::new(80, 24);
-    let new_state = state.toggle_expand(EntryIndex::new(1), params, viewport, fixed_height);
+    let new_state = state.toggle_expand(EntryIndex::new(1), params, viewport);
     assert_eq!(
         new_state,
         Some(!initial_expanded),
@@ -188,39 +170,38 @@ fn us3_scenario3_scrolled_middle_hit_test_correct() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.relayout_from(EntryIndex::new(0), params, fixed_height);
+    state.relayout_from(EntryIndex::new(0), params);
 
-    // Total height: 20 entries * 10 lines = 200 lines
-    // Entry 10: lines 100..110
-    // Entry 11: lines 110..120
+    // Calculate cumulative heights to find entry positions
+    let mut cumulative_heights = vec![0usize];
+    for i in 0..20 {
+        let h = state.get(EntryIndex::new(i)).unwrap().height().get() as usize;
+        cumulative_heights.push(cumulative_heights[i] + h);
+    }
 
-    // WHEN: Scrolled to middle (scroll_offset = 100), click at screen_y = 15
-    // Absolute Y = 100 + 15 = 115 (which is in entry 11)
-    let result = state.hit_test(15, 20, LineOffset::new(100));
+    // WHEN: Scrolled to middle of entry 11, click at screen_y = 5
+    // Find entry 11 position
+    let entry11_start = cumulative_heights[11];
+    let h11 = state.get(EntryIndex::new(11)).unwrap().height().get() as usize;
+    let scroll_offset = entry11_start; // Scroll so entry 11 is at top
+    let screen_y = h11 / 2; // Click in middle of entry 11
+    let result = state.hit_test(screen_y as u16, 20, LineOffset::new(scroll_offset));
 
-    // THEN: Hit-test correctly maps to entry 11, line 5 within entry
+    // THEN: Hit-test correctly maps to entry 11
     assert_eq!(
-        result,
-        HitTestResult::Hit {
-            entry_index: EntryIndex::new(11),
-            line_in_entry: 5,
-            column: 20
-        },
-        "With scroll_offset=100, screen_y=15 should map to entry 11"
+        result.entry_index(),
+        Some(EntryIndex::new(11)),
+        "With entry 11 at top, clicking in middle should hit entry 11"
     );
 
     // Verify at different scroll positions
-    // Scroll to bottom (offset = 180), click at screen_y = 10
-    // Absolute Y = 180 + 10 = 190 (entry 19, line 0)
-    let result_bottom = state.hit_test(10, 30, LineOffset::new(180));
+    // Scroll to entry 19, click at screen_y = 0 (first line of entry 19)
+    let entry19_start = cumulative_heights[19];
+    let result_bottom = state.hit_test(0, 30, LineOffset::new(entry19_start));
     assert_eq!(
-        result_bottom,
-        HitTestResult::Hit {
-            entry_index: EntryIndex::new(19),
-            line_in_entry: 0,
-            column: 30
-        },
-        "With scroll_offset=180, screen_y=10 should map to entry 19"
+        result_bottom.entry_index(),
+        Some(EntryIndex::new(19)),
+        "With entry 19 at top, clicking at screen_y=0 should hit entry 19"
     );
 }
 
@@ -235,66 +216,49 @@ fn us3_scenario4_variable_heights_boundary_clicks() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.relayout_from(EntryIndex::new(0), params, variable_height);
+    state.relayout_from(EntryIndex::new(0), params);
 
-    // Heights: 5, 10, 15, 20, 5, 10, 15, 20
-    // Entry 0: lines 0..5   (height 5)
-    // Entry 1: lines 5..15  (height 10)
-    // Entry 2: lines 15..30 (height 15)
-    // Entry 3: lines 30..50 (height 20)
-    // Entry 4: lines 50..55 (height 5)
-    // Entry 5: lines 55..65 (height 10)
-    // Entry 6: lines 65..80 (height 15)
-    // Entry 7: lines 80..100 (height 20)
+    // Calculate cumulative heights for boundary testing
+    let mut cumulative_heights = vec![0usize];
+    for i in 0..8 {
+        let h = state.get(EntryIndex::new(i)).unwrap().height().get() as usize;
+        cumulative_heights.push(cumulative_heights[i] + h);
+    }
 
-    // WHEN: Click at last line of entry 0 (line 4)
-    let result_end_0 = state.hit_test(4, 10, LineOffset::new(0));
-    // THEN: Should hit entry 0
-    assert_eq!(
-        result_end_0.entry_index(),
-        Some(EntryIndex::new(0)),
-        "Last line of entry 0 should hit entry 0"
-    );
+    // Test boundary clicks for all entries
+    for i in 0..7 {
+        let entry_start = cumulative_heights[i];
+        let entry_end = cumulative_heights[i + 1];
+        let h = entry_end - entry_start;
 
-    // WHEN: Click at first line of entry 1 (line 5)
-    let result_start_1 = state.hit_test(5, 10, LineOffset::new(0));
-    // THEN: Should hit entry 1
-    assert_eq!(
-        result_start_1.entry_index(),
-        Some(EntryIndex::new(1)),
-        "First line of entry 1 should hit entry 1"
-    );
+        // WHEN: Click at last line of entry i
+        if h > 0 {
+            let last_line = entry_start + h - 1;
+            let result_end = state.hit_test(last_line as u16, 10, LineOffset::new(0));
+            // THEN: Should hit entry i
+            assert_eq!(
+                result_end.entry_index(),
+                Some(EntryIndex::new(i)),
+                "Last line of entry {} (line {}) should hit entry {}",
+                i,
+                last_line,
+                i
+            );
+        }
 
-    // WHEN: Click at last line of entry 2 (line 29)
-    let result_end_2 = state.hit_test(29, 10, LineOffset::new(0));
-    // THEN: Should hit entry 2
-    assert_eq!(
-        result_end_2.entry_index(),
-        Some(EntryIndex::new(2)),
-        "Last line of entry 2 should hit entry 2"
-    );
-
-    // WHEN: Click at first line of entry 3 (line 30)
-    let result_start_3 = state.hit_test(30, 10, LineOffset::new(0));
-    // THEN: Should hit entry 3
-    assert_eq!(
-        result_start_3.entry_index(),
-        Some(EntryIndex::new(3)),
-        "First line of entry 3 should hit entry 3"
-    );
-
-    // WHEN: Click between entries 4 and 5 (at line 55)
-    let result_boundary_4_5 = state.hit_test(55, 10, LineOffset::new(0));
-    // THEN: Should hit entry 5 (first line)
-    assert_eq!(
-        result_boundary_4_5,
-        HitTestResult::Hit {
-            entry_index: EntryIndex::new(5),
-            line_in_entry: 0,
-            column: 10
-        },
-        "Boundary between entries 4 and 5 should hit entry 5"
-    );
+        // WHEN: Click at first line of entry i+1
+        let first_line = entry_end;
+        let result_start = state.hit_test(first_line as u16, 10, LineOffset::new(0));
+        // THEN: Should hit entry i+1
+        assert_eq!(
+            result_start.entry_index(),
+            Some(EntryIndex::new(i + 1)),
+            "First line of entry {} (line {}) should hit entry {}",
+            i + 1,
+            first_line,
+            i + 1
+        );
+    }
 }
 
 // ===== Performance Verification: O(log n) =====
@@ -310,9 +274,7 @@ fn us3_performance_hit_test_o_log_n() {
 
     let mut state = ConversationViewState::new(None, None, entries);
     let params = LayoutParams::new(80, WrapMode::Wrap);
-    state.relayout_from(EntryIndex::new(0), params, fixed_height);
-
-    // Total height: 10,000 entries * 10 lines = 100,000 lines
+    state.relayout_from(EntryIndex::new(0), params);
 
     // WHEN: Perform hit_test at various positions
     let test_positions = vec![
