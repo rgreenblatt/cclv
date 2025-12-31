@@ -779,7 +779,6 @@ fn bug_excessive_blank_lines_in_entry_rendering() {
 /// The ConversationView widget in isolation renders correctly at offset 92, but the
 /// bug manifests through TuiApp's scroll handling.
 #[test]
-#[ignore = "Enabled by cclv-5ur.2.12, will pass after Integration phase (cclv-5ur.6) wires view-state layer"]
 fn bug_page_down_twice_causes_blank_viewport() {
     use cclv::source::FileSource;
     use cclv::state::AppState;
@@ -1392,7 +1391,6 @@ fn bug_horizontal_scroll_does_not_work() {
 ///
 /// Root cause: Scroll advances by entry boundaries (variable height) rather than visual lines.
 #[test]
-#[ignore = "cclv-5ur.11: line-by-line scroll is jerky, not smooth"]
 fn bug_jerky_scroll_line_by_line() {
     use cclv::view::calculate_entry_height;
     use chrono::Utc;
@@ -1518,7 +1516,6 @@ fn bug_jerky_scroll_line_by_line() {
 /// Root cause: Height calculator returns full content height for collapsed entries,
 /// but renderer only shows 3 summary lines + collapse indicator (~4 lines total).
 #[test]
-#[ignore = "REPRODUCER: fails until cclv-5ur.13 is fixed (run with --ignored to verify)"]
 fn bug_collapsed_entry_height_mismatch() {
     use cclv::source::FileSource;
     use cclv::view::calculate_entry_height;
