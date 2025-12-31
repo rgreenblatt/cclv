@@ -4,6 +4,8 @@ mod layout;
 mod message;
 pub mod tabs;
 
+pub use message::ConversationView;
+
 use crate::integration;
 use crate::model::{AppError, SessionId};
 use crate::source::InputSource;
