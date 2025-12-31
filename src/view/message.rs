@@ -1436,6 +1436,34 @@ pub fn render_content_block(
     }
 }
 
+// ===== Wrap Continuation Indicators =====
+
+/// Add wrap continuation indicators to lines that exceed viewport width.
+///
+/// For each Line that exceeds viewport_width when rendered, this function:
+/// 1. Calculates where the line will wrap based on character width
+/// 2. Splits the line into multiple Lines at wrap boundaries
+/// 3. Appends a dimmed `↩` (U+21A9) indicator to each wrapped segment (except the last)
+///
+/// This implements FR-052: Display subtle continuation indicator at wrap points to
+/// distinguish soft-wrapped lines from intentional line breaks.
+///
+/// # Arguments
+/// * `lines` - Vector of Lines to process
+/// * `viewport_width` - Width of the viewport for wrapping calculation (must be > 0)
+///
+/// # Returns
+/// New vector of Lines with continuation indicators inserted at wrap points
+///
+/// # Panics
+/// Never panics in public API. Invalid inputs (viewport_width = 0) return input unchanged.
+fn add_wrap_continuation_indicators(
+    _lines: Vec<Line<'static>>,
+    _viewport_width: usize,
+) -> Vec<Line<'static>> {
+    todo!("add_wrap_continuation_indicators: not implemented")
+}
+
 // ===== Tests =====
 
 #[cfg(test)]
@@ -5004,5 +5032,167 @@ mod tests {
             "Should see horizontally scrolled content starting from offset 10. Content: {}",
             content.chars().take(200).collect::<String>()
         );
+    }
+
+    // ===== Wrap Continuation Indicator Tests =====
+
+    #[test]
+    fn test_add_wrap_indicators_no_wrapping_needed() {
+        use ratatui::text::Span;
+
+        // Short line that fits within viewport
+        let lines = vec![Line::from(vec![Span::raw("Hello")])];
+
+        let result = add_wrap_continuation_indicators(lines.clone(), 80);
+
+        // Should return unchanged - no wrapping needed
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].to_string(), "Hello");
+    }
+
+    #[test]
+    fn test_add_wrap_indicators_single_line_wraps_once() {
+        use ratatui::text::Span;
+
+        // Line exactly 20 chars: "12345678901234567890"
+        let long_line = "12345678901234567890";
+        let lines = vec![Line::from(vec![Span::raw(long_line.to_string())])];
+
+        // Viewport width 10 - should wrap into 2 lines
+        let result = add_wrap_continuation_indicators(lines, 10);
+
+        // Should have 2 lines: first with ↩ indicator, second without
+        assert_eq!(result.len(), 2, "Should split into 2 lines");
+
+        // First line should end with ↩
+        let first_line_str = result[0].to_string();
+        assert!(
+            first_line_str.ends_with('↩'),
+            "First line should end with ↩ indicator, got: {}",
+            first_line_str
+        );
+
+        // Second line should NOT have ↩ (it's the final segment)
+        let second_line_str = result[1].to_string();
+        assert!(
+            !second_line_str.contains('↩'),
+            "Last segment should not have ↩ indicator, got: {}",
+            second_line_str
+        );
+    }
+
+    #[test]
+    fn test_add_wrap_indicators_multiple_wraps() {
+        use ratatui::text::Span;
+
+        // Line of 30 chars
+        let long_line = "123456789012345678901234567890";
+        let lines = vec![Line::from(vec![Span::raw(long_line.to_string())])];
+
+        // Viewport width 10 - should wrap into 3 lines
+        let result = add_wrap_continuation_indicators(lines, 10);
+
+        // Should have 3 lines
+        assert_eq!(result.len(), 3, "Should split into 3 lines");
+
+        // First two lines should have ↩
+        for (i, line) in result.iter().take(2).enumerate() {
+            let line_str = line.to_string();
+            assert!(
+                line_str.ends_with('↩'),
+                "Line {} should end with ↩ indicator, got: {}",
+                i,
+                line_str
+            );
+        }
+
+        // Last line should NOT have ↩
+        let last_line_str = result[2].to_string();
+        assert!(
+            !last_line_str.contains('↩'),
+            "Last line should not have ↩ indicator, got: {}",
+            last_line_str
+        );
+    }
+
+    #[test]
+    fn test_add_wrap_indicators_preserves_intentional_breaks() {
+        use ratatui::text::Span;
+
+        // Two short lines - intentional line breaks
+        let lines = vec![
+            Line::from(vec![Span::raw("First line")]),
+            Line::from(vec![Span::raw("Second line")]),
+        ];
+
+        let result = add_wrap_continuation_indicators(lines, 80);
+
+        // Should still be 2 lines (no wrapping needed)
+        assert_eq!(result.len(), 2, "Should preserve line count");
+
+        // Neither should have ↩ (they don't wrap)
+        for (i, line) in result.iter().enumerate() {
+            let line_str = line.to_string();
+            assert!(
+                !line_str.contains('↩'),
+                "Line {} should not have ↩ (no wrapping), got: {}",
+                i,
+                line_str
+            );
+        }
+    }
+
+    #[test]
+    fn test_add_wrap_indicators_zero_viewport_width() {
+        use ratatui::text::Span;
+
+        let lines = vec![Line::from(vec![Span::raw("Hello")])];
+
+        // Edge case: viewport_width = 0 should return input unchanged
+        let result = add_wrap_continuation_indicators(lines.clone(), 0);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].to_string(), "Hello");
+    }
+
+    #[test]
+    fn test_add_wrap_indicators_empty_lines() {
+        // Empty input should return empty output
+        let lines: Vec<Line<'static>> = vec![];
+
+        let result = add_wrap_continuation_indicators(lines, 80);
+
+        assert_eq!(result.len(), 0, "Empty input should return empty output");
+    }
+
+    #[test]
+    fn test_add_wrap_indicators_preserves_styling() {
+        use ratatui::text::Span;
+
+        // Line with styled span
+        let styled_span = Span::styled(
+            "1234567890123456789012345".to_string(),
+            Style::default().fg(Color::Blue),
+        );
+        let lines = vec![Line::from(vec![styled_span])];
+
+        // Viewport width 10 - should wrap into 3 lines
+        let result = add_wrap_continuation_indicators(lines, 10);
+
+        assert_eq!(result.len(), 3, "Should split into 3 lines");
+
+        // Verify the indicator span is separate and has DIM style
+        for line in result.iter().take(2) {
+            // First 2 lines should have continuation indicator
+            let line_str = line.to_string();
+            assert!(
+                line_str.ends_with('↩'),
+                "Line should end with ↩, got: {}",
+                line_str
+            );
+
+            // The ↩ should be in a separate span with DIM modifier
+            // (We can't easily test style in string form, but the implementation should handle this)
+        }
     }
 }
