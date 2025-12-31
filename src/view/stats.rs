@@ -82,6 +82,17 @@ impl<'a> Widget for StatsPanel<'a> {
             "  Total:  {}",
             format_tokens(self.stats.total_usage.total())
         )));
+
+        // Cache tokens (only if non-zero)
+        let total_cache = self.stats.total_usage.cache_creation_input_tokens
+            + self.stats.total_usage.cache_read_input_tokens;
+        if total_cache > 0 {
+            lines.push(Line::from(format!(
+                "  Cache:  {}",
+                format_tokens(total_cache)
+            )));
+        }
+
         lines.push(Line::from(""));
 
         // Cost section
