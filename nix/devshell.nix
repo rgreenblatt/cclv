@@ -16,15 +16,22 @@
     cargo-watch # Auto-rebuild on file changes
     cargo-edit # cargo add/rm/upgrade commands
     cargo-outdated # Check for outdated dependencies
+    cargo-llvm-cov # Code coverage reports
 
     # Additional helpful tools
     rust-analyzer # LSP server (also in toolchain extensions)
     cargo-flamegraph
     linuxPackages.perf
+    asciinema
+    asciinema-agg
+    jetbrains-mono  # Font for agg gif rendering
   ];
 
   # Environment variables for development
   RUST_BACKTRACE = "1";
+
+  # Font config for agg (asciinema gif renderer)
+  FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.jetbrains-mono pkgs.noto-fonts-color-emoji ]; };
 
   shellHook = ''
     echo "cclv - Claude Code Log Viewer"

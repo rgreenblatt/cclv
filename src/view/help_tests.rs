@@ -381,16 +381,16 @@ fn stats_shortcuts_match_cli_contract() {
     let lines = build_help_content();
     let text = help_lines_to_text(&lines);
 
-    // cli.md lines 170-177: Stats
+    // Stats keybindings (actual implementation in keybindings.rs)
     assert!(text.contains("s"), "Must show s for toggle stats panel");
-    assert!(text.contains("!"), "Must show ! for filter: global");
+    assert!(text.contains("  f  "), "Must show f for filter: global");
     assert!(
-        text.contains("@"),
-        "Must show @ for filter: main agent only"
+        text.contains("  m  "),
+        "Must show m for filter: main agent only"
     );
     assert!(
-        text.contains("#"),
-        "Must show # for filter: current subagent"
+        text.contains("  S  "),
+        "Must show S for filter: current subagent"
     );
 
     assert!(

@@ -188,7 +188,7 @@ fn build_help_content() -> Vec<Line<'static>> {
             Span::styled("Start search", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  Enter       ", key_style),
+            Span::styled("  Ctrl+s      ", key_style),
             Span::styled("Submit search", desc_style),
         ]),
         Line::from(vec![
@@ -211,15 +211,15 @@ fn build_help_content() -> Vec<Line<'static>> {
             Span::styled("Toggle stats panel", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  !           ", key_style),
+            Span::styled("  f           ", key_style),
             Span::styled("Filter: Global", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  @           ", key_style),
+            Span::styled("  m           ", key_style),
             Span::styled("Filter: Main agent only", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  #           ", key_style),
+            Span::styled("  S           ", key_style),
             Span::styled("Filter: Current subagent", desc_style),
         ]),
         empty_line(),

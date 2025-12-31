@@ -2932,7 +2932,6 @@ fn bug_tab_click_region_mismatch() {
 /// 3. Observe: No help popup appears (status bar still shows "?: Help")
 /// 4. Press 's' to verify stats popup works (it does)
 #[test]
-#[ignore = "cclv-5ur.65: help popup not triggered by '?' key from real terminals"]
 fn bug_help_popup_not_triggered_by_question_mark() {
     use crate::source::FileSource;
     use crate::state::AppState;

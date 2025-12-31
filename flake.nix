@@ -61,6 +61,7 @@
             extensions = [
               "rust-src"
               "rust-analyzer"
+              "llvm-tools-preview"
             ];
             targets = [
               "x86_64-unknown-linux-musl"
