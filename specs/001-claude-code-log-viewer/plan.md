@@ -404,9 +404,10 @@ Static binaries:
 | US3 - Usage Statistics | cclv-07v.5 | ✅ Complete | Token counts, cost estimation, filtering |
 | US4 - Keyboard Navigation | cclv-07v.6 | ✅ Complete | Key bindings, focus cycling, shortcuts |
 | US5 - Search | cclv-07v.7 | ✅ Complete | Search state machine, highlighting, navigation |
-| Polish | cclv-07v.8 | 🔄 In Progress | 2 tasks remain: theme selection, snapshot tests |
-| **Line Wrapping** | cclv-07v.9 | 🔄 In Progress | Core + per-entry done; **section-level rendering (cclv-07v.9.20) pending** |
-| **Logging Pane** | cclv-07v.9.17 | ✅ Complete | Toggleable bottom panel, ring buffer, severity badges |
+| Polish | cclv-07v.8 | ✅ Complete | Theme selection, snapshot tests |
+| Line Wrapping | cclv-07v.9 | ✅ Complete | Core + per-entry + section-level rendering |
+| Logging Pane | cclv-07v.9.17 | ✅ Complete | Toggleable bottom panel, ring buffer, severity badges |
+| **JSONL Format Fix** | cclv-07v.11 | 🔲 **NEW P0** | **Parser cannot parse actual Claude Code output** |
 
 ---
 
@@ -517,7 +518,7 @@ pub enum KeyAction {
 | cclv-07v.9.13 | LW-013 | Add tests for wrap rendering behavior | ✅ Complete |
 | cclv-07v.9.14 | LW-014 | Per-entry Paragraph architecture refactor | ✅ Complete |
 | cclv-07v.9.17 | LW-015 | Logging pane feature (FR-054–FR-060) | ✅ Complete |
-| cclv-07v.9.20 | LW-016 | **Section-level rendering** (see below) | 🔲 Open |
+| cclv-07v.9.20 | LW-016 | Section-level rendering (FR-053) | ✅ Complete |
 
 **Checkpoint**: All wrap-related tests pass; visual verification of wrap indicator and code block exemption.
 
@@ -750,6 +751,245 @@ pub struct AppConfig {
 
 ---
 
+## Phase: JSONL Format Compatibility Fix (NEW - P0)
+
+**Purpose**: Fix parser to match actual Claude Code CLI output format. Currently the parser cannot parse real session logs, breaking the primary use case.
+
+**Problem Discovery** (2025-12-26 clarification session):
+- Attempted to view `cc-session-log.jsonl` (produced by drinking-bird.sh)
+- All entries fail to parse due to format mismatches
+- Parser was designed against an assumed format, not actual Claude Code output
+
+**Requirements** (FR-009a through FR-009d):
+- FR-009a: Parser MUST use snake_case field names (`session_id`, not `sessionId`)
+- FR-009b: Parser MUST handle all entry types: `system`, `user`, `assistant`, `result`
+- FR-009c: Parser MUST NOT require a `timestamp` field
+- FR-009d: Parser MUST handle nested `usage.cache_creation` structure
+
+### Actual vs Expected Format Comparison
+
+| Field | Expected (tests) | Actual (Claude Code) |
+|-------|------------------|----------------------|
+| Session ID | `sessionId` (camelCase) | `session_id` (snake_case) |
+| Timestamp | Required `timestamp` field | **No timestamp field** |
+| Entry types | user, assistant, summary | system, user, assistant, result |
+| Parent reference | `parentUuid` | `parent_tool_use_id` |
+| Usage structure | Flat | Nested with `cache_creation` object |
+| Result entries | N/A | Has `total_cost_usd`, `duration_ms`, `modelUsage` |
+
+### Actual Claude Code JSONL Structure
+
+```json
+// type: "system" (init, hook_response)
+{
+  "type": "system",
+  "subtype": "init",
+  "session_id": "uuid",
+  "uuid": "uuid",
+  "cwd": "/path",
+  "model": "claude-opus-4-5-20251101",
+  "tools": ["Task", "Read", ...],
+  "agents": ["general-purpose", ...],
+  "skills": ["commit", ...]
+}
+
+// type: "assistant"
+{
+  "type": "assistant",
+  "message": {
+    "model": "claude-opus-4-5-20251101",
+    "id": "msg_xxx",
+    "type": "message",
+    "role": "assistant",
+    "content": [{"type": "text", "text": "..."}, {"type": "thinking", "thinking": "...", "signature": "..."}],
+    "usage": {
+      "input_tokens": 9,
+      "output_tokens": 1,
+      "cache_creation_input_tokens": 37428,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 37428,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "service_tier": "standard"
+    }
+  },
+  "parent_tool_use_id": null,
+  "session_id": "uuid",
+  "uuid": "uuid"
+}
+
+// type: "user"
+{
+  "type": "user",
+  "message": {
+    "role": "user",
+    "content": [{"type": "tool_result", "tool_use_id": "toolu_xxx", "content": "..."}]
+  },
+  "parent_tool_use_id": null,
+  "session_id": "uuid",
+  "uuid": "uuid",
+  "tool_use_result": {"success": true, "commandName": "..."},
+  "isSynthetic": true
+}
+
+// type: "result" (session end)
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 306681,
+  "num_turns": 36,
+  "result": "...",
+  "session_id": "uuid",
+  "total_cost_usd": 1.3874568,
+  "usage": {...},
+  "modelUsage": {
+    "claude-opus-4-5-20251101": {"inputTokens": 107, "outputTokens": 8320, ...}
+  }
+}
+```
+
+### Design Decisions
+
+| Aspect | Decision | Rationale |
+|--------|----------|-----------|
+| Serde attributes | Use snake_case as default | Match actual format; simpler than aliasing |
+| Entry types | Add System and Result variants | Full format coverage |
+| Timestamp | Make optional | Actual entries don't have this field |
+| System entries | Parse metadata (tools, agents, skills) | Useful for session info display |
+| Result entries | Extract cost/usage for statistics | Accurate cost tracking from source |
+| Backwards compat | Update all test fixtures | Tests should use actual format |
+
+### Data Model Changes
+
+```rust
+// ===== src/parser/mod.rs changes =====
+
+/// Raw JSON structure - NOW MATCHES ACTUAL FORMAT
+#[derive(Debug, Deserialize)]
+struct RawLogEntry {
+    #[serde(rename = "type")]
+    entry_type: String,
+    #[serde(default)]
+    message: Option<RawMessage>,  // Optional: system entries may lack message
+    #[serde(default)]
+    session_id: Option<String>,   // snake_case (actual format)
+    uuid: String,
+    #[serde(default)]
+    parent_tool_use_id: Option<String>,  // Replaces parentUuid
+    #[serde(default)]
+    subtype: Option<String>,      // For system entries: init, hook_response
+    // No timestamp field - not present in actual format
+    // ... system entry fields
+    #[serde(default)]
+    cwd: Option<String>,
+    #[serde(default)]
+    model: Option<String>,
+    #[serde(default)]
+    tools: Option<Vec<String>>,
+    #[serde(default)]
+    agents: Option<Vec<String>>,
+    #[serde(default)]
+    skills: Option<Vec<String>>,
+    // ... result entry fields
+    #[serde(default)]
+    total_cost_usd: Option<f64>,
+    #[serde(default)]
+    duration_ms: Option<u64>,
+    #[serde(default)]
+    num_turns: Option<u32>,
+}
+
+// ===== src/model/log_entry.rs changes =====
+
+/// Entry type enum - ADD new variants
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntryType {
+    System,      // NEW: init, hook_response, etc.
+    User,
+    Assistant,
+    Result,      // NEW: session completion with stats
+    Summary,     // Keep for compatibility
+}
+
+/// System entry metadata (NEW)
+#[derive(Debug, Clone)]
+pub struct SystemMetadata {
+    pub subtype: String,          // "init", "hook_response", etc.
+    pub cwd: Option<PathBuf>,
+    pub model: Option<String>,
+    pub tools: Vec<String>,
+    pub agents: Vec<String>,
+    pub skills: Vec<String>,
+}
+
+/// Result entry data (NEW)
+#[derive(Debug, Clone)]
+pub struct ResultMetadata {
+    pub subtype: String,          // "success", "error"
+    pub is_error: bool,
+    pub duration_ms: u64,
+    pub num_turns: u32,
+    pub total_cost_usd: f64,
+    pub result_text: Option<String>,
+}
+
+// ===== Update TokenUsage for nested cache_creation =====
+
+#[derive(Debug, Clone)]
+pub struct TokenUsage {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub cache_creation_input_tokens: u64,
+    pub cache_read_input_tokens: u64,
+    // NEW: ephemeral cache breakdown
+    pub ephemeral_5m_input_tokens: u64,
+    pub ephemeral_1h_input_tokens: u64,
+}
+```
+
+### Tasks
+
+| Bead | Task | Description | Priority |
+|------|------|-------------|----------|
+| cclv-07v.11.1 | FMT-001 | Change `sessionId` to `session_id` (snake_case) in RawLogEntry | P0 |
+| cclv-07v.11.2 | FMT-002 | Make `timestamp` optional; use entry order for sequencing | P0 |
+| cclv-07v.11.3 | FMT-003 | Add `System` and `Result` entry type variants | P0 |
+| cclv-07v.11.4 | FMT-004 | Change `parentUuid` to `parent_tool_use_id` | P0 |
+| cclv-07v.11.5 | FMT-005 | Handle nested `usage.cache_creation` structure | P0 |
+| cclv-07v.11.6 | FMT-006 | Add `SystemMetadata` for system entries (cwd, tools, agents) | P1 |
+| cclv-07v.11.7 | FMT-007 | Add `ResultMetadata` for result entries (cost, duration) | P1 |
+| cclv-07v.11.8 | FMT-008 | Update inline test JSON in parser tests to use actual format | P0 |
+| cclv-07v.11.9 | FMT-009 | Add integration test: parse tests/fixtures/cc-session-log.jsonl | P0 |
+| cclv-07v.11.10 | FMT-010 | Update Session to use result entry data for stats | P1 |
+| cclv-07v.11.11 | FMT-011 | Handle system:init entry for session metadata display | P2 |
+| cclv-07v.11.12 | FMT-012 | Update documentation (data-model.md, quickstart.md) | P2 |
+| cclv-07v.11.13 | FMT-013 | Create script to extract ~100 representative lines as trimmed fixtures | P3 |
+
+### Test Fixture Strategy
+
+**Development phase** (now):
+- Full session log at `tests/fixtures/cc-session-log.jsonl` (~180MB, gitignored)
+- Integration tests parse the WHOLE file to ensure comprehensive coverage
+- Inline test JSON in unit tests updated to match actual format
+
+**Post-implementation** (FMT-013):
+- Run extraction script to select ~100 representative lines
+- Replace/trim the fixture file with sanitized subset
+- Tests continue using same path - no test updates needed
+
+### Verification Criteria
+
+1. **Dogfooding test**: `cargo run -- tests/fixtures/cc-session-log.jsonl` displays the session
+2. **Parser test**: Parse entire fixture file without errors (whole file during dev; trimmed later)
+3. **Statistics accurate**: Token counts and costs match result entry values
+4. **All existing tests**: Continue passing with updated inline JSON
+
+**Checkpoint**: Application successfully parses and displays its own session logs (dogfooding).
+
+---
+
 ## Generated Artifacts
 
 | Artifact | Path | Status |
@@ -762,31 +1002,29 @@ pub struct AppConfig {
 | Nix Flake | flake.nix | ✅ Implemented |
 | Dev Shell | nix/devshell.nix | ✅ Implemented |
 | Formatter Config | nix/treefmt.nix | ✅ Implemented |
-| Source Code | src/ | ✅ Core complete, polish in progress |
+| Source Code | src/ | ✅ Complete (pending JSONL format fix) |
 
 ---
 
 ## Next Steps
 
-1. **Complete Section-Level Rendering (cclv-07v.9.20)** - NEW priority from spec clarification:
-   - LW-016.1: Create `ContentSection` enum type
-   - LW-016.2: Implement `parse_entry_sections()` markdown splitter
-   - LW-016.3: Update render loop for per-section Paragraphs
-   - LW-016.4: Update height calculation for section sums
-   - LW-016.5: Apply horizontal offset to code sections only
-   - LW-016.6: Apply wrap indicators to prose sections only
-   - LW-016.7: Update search highlighting for section-level rendering
-   - LW-016.8: Add tests for mixed prose/code entries
+1. **Fix JSONL Format Compatibility (cclv-07v.11)** - **CRITICAL P0** from spec clarification 2025-12-26:
+   - Parser cannot parse actual Claude Code JSONL output (fails dogfooding)
+   - See new "Phase: JSONL Format Fix" section below
 
-2. **Complete Polish phase (cclv-07v.8)** - Remaining tasks:
-   - cclv-07v.8.7: Add theme selection support
-   - cclv-07v.8.9: Add snapshot tests for key views
+2. All other phases complete - see Recently Completed below
 
 ### Recently Completed
 
+- ✅ **Section-Level Rendering** (cclv-07v.9.20): Code blocks don't wrap, prose wraps within same entry
+- ✅ **Theme selection** (cclv-07v.8.7): Theme field in CLI args
+- ✅ **Snapshot tests** (cclv-07v.8.9): Key view component snapshots
 - ✅ **Line Wrapping core** (cclv-07v.9.1–9.13): WrapMode, per-item toggle, wrap indicators, status bar
 - ✅ **Per-entry Paragraph refactor** (cclv-07v.9.14): Architecture supports per-item wrap settings
 - ✅ **Logging Pane** (cclv-07v.9.17): Toggleable bottom panel, ring buffer, severity badges
 - ✅ **Config file loading** (cclv-07v.8.8): TOML config with precedence chain
-- ✅ **Code block exemption** (cclv-07v.9.10): Entry-level (to be refined by cclv-07v.9.20)
+
+### Critical Blocker
+
+⚠️ **JSONL Format Fix (cclv-07v.11)** - The application cannot parse actual Claude Code session logs due to format mismatches between the parser's expected format and actual output. This blocks the primary dogfooding use case.
 

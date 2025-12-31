@@ -32,6 +32,7 @@
 - Q: How should new errors be indicated when logging pane is hidden? → A: Status bar badge with count, color-coded by severity (red for errors)
 - Q: How many log entries should be retained in the logging pane? → A: Ring buffer with configurable capacity (config file); default 1000 entries
 - Q: At what granularity should code block wrap exemption apply? → A: Section-level (multiple Paragraph widgets per entry); each prose block and code block rendered as separate widget, allowing code to never wrap while prose follows wrap setting within the same entry
+- Q: What JSONL format should the parser expect? → A: Match actual Claude Code output format (snake_case `session_id`, no required timestamp, handle system/result entry types, nested usage structure with `cache_creation`)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -176,6 +177,10 @@ A developer is looking for a specific piece of information in a long session. Th
 - **FR-007**: System MUST support following a live JSONL log file (tail -f behavior)
 - **FR-008**: System MUST support viewing completed/closed JSONL log files
 - **FR-009**: System MUST parse Claude Code JSONL format to extract conversations, tool calls, and metadata
+- **FR-009a**: Parser MUST use snake_case field names matching actual Claude Code output (`session_id`, not `sessionId`)
+- **FR-009b**: Parser MUST handle all entry types: `system`, `user`, `assistant`, `result`
+- **FR-009c**: Parser MUST NOT require a `timestamp` field (entries may lack timestamps)
+- **FR-009d**: Parser MUST handle nested `usage.cache_creation` structure for token accounting
 - **FR-010**: System MUST handle malformed JSON lines gracefully without crashing
 - **FR-041**: System MUST accept JSONL input from stdin (piped input) as alternative to file path
 - **FR-042**: When reading from stdin, system MUST support both streaming (live) and complete (EOF) modes
@@ -264,7 +269,14 @@ A developer is looking for a specific piece of information in a long session. Th
 
 ## Assumptions
 
-- Claude Code JSONL format follows a consistent structure with message types, agent identifiers, and token counts
+- Claude Code JSONL format follows actual Claude Code CLI output structure:
+  - Top-level fields: `type`, `message`, `session_id` (snake_case), `uuid`, `parent_tool_use_id`
+  - Entry types: `system`, `user`, `assistant`, `result`
+  - No `timestamp` field at top level (timestamps may exist in nested structures)
+  - `message` object contains: `role`, `content`, `model`, `usage` (when applicable)
+  - `usage` structure includes nested `cache_creation` object with `ephemeral_5m_input_tokens`, `ephemeral_1h_input_tokens`
+  - Content blocks: `text`, `tool_use`, `tool_result`, `thinking` (with optional `signature` field)
+  - System entries have `subtype` field (e.g., `init`, `hook_response`)
 - Token pricing: hardcoded defaults with optional config file override (config file is not required)
 - The application will run in modern terminal emulators with 256-color or true-color support
 - Users have basic familiarity with TUI navigation patterns (vim-like or standard arrow key navigation)
