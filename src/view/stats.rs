@@ -114,16 +114,27 @@ impl<'a> Widget for StatsPanel<'a> {
 
         lines.push(Line::from(""));
 
-        // Cost section - calculate from filtered usage
-        let cost = calculate_cost(&usage, self.pricing, self.model_id);
-        lines.push(
-            Line::from("Estimated Cost:").style(
-                Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-        lines.push(Line::from(format!("  {}", format_cost(cost))));
+        // Cost section - show actual cost from result entry if available, otherwise estimated
+        if let Some(actual_cost) = self.stats.actual_cost_usd {
+            lines.push(
+                Line::from("Actual Cost:").style(
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            lines.push(Line::from(format!("  {}", format_cost(actual_cost))));
+        } else {
+            let cost = calculate_cost(&usage, self.pricing, self.model_id);
+            lines.push(
+                Line::from("Estimated Cost:").style(
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+            lines.push(Line::from(format!("  {}", format_cost(cost))));
+        }
         lines.push(Line::from(""));
 
         // Tool usage section
