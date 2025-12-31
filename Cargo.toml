@@ -23,7 +23,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 notify-debouncer-mini = "0.7.0"
 notify = "8.2.0"
-tui-markdown = "0.3"
+tui-markdown = { version = "0.3", features = ["highlight-code"] }
 
 [dev-dependencies]
 proptest = "1"
