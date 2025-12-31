@@ -72,6 +72,27 @@ pub struct SystemMetadata {
     pub skills: Vec<String>,
 }
 
+// ===== ResultMetadata (FMT-007) =====
+
+/// Result entry metadata for type:result entries.
+///
+/// Contains session completion information including error status, duration,
+/// turn count, total cost, and result text summary.
+/// Only present for EntryType::Result entries.
+#[derive(Debug, Clone)]
+pub struct ResultMetadata {
+    /// Whether the session ended with an error
+    pub is_error: bool,
+    /// Session duration in milliseconds
+    pub duration_ms: u64,
+    /// Number of turns in the session
+    pub num_turns: u32,
+    /// Total session cost in USD
+    pub total_cost_usd: f64,
+    /// Result text content (markdown summary)
+    pub result_text: String,
+}
+
 // ===== LogEntry =====
 
 /// A parsed log entry from the JSONL file.
@@ -87,6 +108,7 @@ pub struct LogEntry {
     message: Message,
     metadata: EntryMetadata,
     system_metadata: Option<SystemMetadata>,
+    result_metadata: Option<ResultMetadata>,
 }
 
 impl LogEntry {
@@ -115,6 +137,7 @@ impl LogEntry {
             message,
             metadata,
             system_metadata: None,
+            result_metadata: None,
         }
     }
 
@@ -144,6 +167,37 @@ impl LogEntry {
             message,
             metadata,
             system_metadata,
+            result_metadata: None,
+        }
+    }
+
+    /// Create a new log entry with result metadata (for Result entries).
+    ///
+    /// This constructor is used by the parser when creating Result entries
+    /// that contain session completion information.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_result_metadata(
+        uuid: EntryUuid,
+        parent_uuid: Option<EntryUuid>,
+        session_id: SessionId,
+        agent_id: Option<AgentId>,
+        timestamp: DateTime<Utc>,
+        entry_type: EntryType,
+        message: Message,
+        metadata: EntryMetadata,
+        result_metadata: Option<ResultMetadata>,
+    ) -> Self {
+        Self {
+            uuid,
+            parent_uuid,
+            session_id,
+            agent_id,
+            timestamp,
+            entry_type,
+            message,
+            metadata,
+            system_metadata: None,
+            result_metadata,
         }
     }
 
@@ -226,6 +280,14 @@ impl LogEntry {
     /// available tools, agents, and skills. Only present for System entries.
     pub fn system_metadata(&self) -> Option<&SystemMetadata> {
         self.system_metadata.as_ref()
+    }
+
+    /// Returns the result metadata if this is a Result entry.
+    ///
+    /// Result metadata contains session completion information like error status,
+    /// duration, turn count, total cost, and result text. Only present for Result entries.
+    pub fn result_metadata(&self) -> Option<&ResultMetadata> {
+        self.result_metadata.as_ref()
     }
 }
 
@@ -729,6 +791,93 @@ mod tests {
         );
 
         assert!(entry.system_metadata().is_none(), "Non-system entry should have no system_metadata");
+    }
+
+    // ===== ResultMetadata Tests (FMT-007) =====
+
+    #[test]
+    fn result_metadata_struct_holds_all_fields() {
+        // RED TEST: ResultMetadata struct with all required fields
+        let metadata = ResultMetadata {
+            is_error: false,
+            duration_ms: 306681,
+            num_turns: 36,
+            total_cost_usd: 1.3874568,
+            result_text: "Session complete".to_string(),
+        };
+
+        assert!(!metadata.is_error);
+        assert_eq!(metadata.duration_ms, 306681);
+        assert_eq!(metadata.num_turns, 36);
+        assert_eq!(metadata.total_cost_usd, 1.3874568);
+        assert_eq!(metadata.result_text, "Session complete");
+    }
+
+    #[test]
+    fn result_metadata_allows_error_status() {
+        // ResultMetadata with is_error=true
+        let metadata = ResultMetadata {
+            is_error: true,
+            duration_ms: 12345,
+            num_turns: 5,
+            total_cost_usd: 0.05,
+            result_text: "Error occurred".to_string(),
+        };
+
+        assert!(metadata.is_error, "is_error should be true");
+        assert_eq!(metadata.result_text, "Error occurred");
+    }
+
+    #[test]
+    fn log_entry_with_result_metadata() {
+        // RED TEST: LogEntry can have result_metadata field
+        let res_meta = ResultMetadata {
+            is_error: false,
+            duration_ms: 306681,
+            num_turns: 36,
+            total_cost_usd: 1.3874568,
+            result_text: "Bead completed successfully".to_string(),
+        };
+
+        let entry = LogEntry::new_with_result_metadata(
+            make_uuid("r1"),
+            None,
+            make_session_id("s1"),
+            None,
+            make_timestamp(),
+            EntryType::Result,
+            make_message(),
+            EntryMetadata::default(),
+            Some(res_meta),
+        );
+
+        let retrieved = entry
+            .result_metadata()
+            .expect("Should have result_metadata");
+        assert!(!retrieved.is_error);
+        assert_eq!(retrieved.duration_ms, 306681);
+        assert_eq!(retrieved.num_turns, 36);
+        assert_eq!(retrieved.total_cost_usd, 1.3874568);
+    }
+
+    #[test]
+    fn log_entry_result_metadata_is_none_for_non_result_entries() {
+        // Result metadata should only exist for Result entries
+        let entry = LogEntry::new(
+            make_uuid("e1"),
+            None,
+            make_session_id("s1"),
+            None,
+            make_timestamp(),
+            EntryType::User,
+            make_message(),
+            EntryMetadata::default(),
+        );
+
+        assert!(
+            entry.result_metadata().is_none(),
+            "Non-result entry should have no result_metadata"
+        );
     }
 
     // ===== LogEntry::parse API Tests =====
