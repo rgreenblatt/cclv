@@ -47,8 +47,8 @@ use ratatui::{
 ///
 /// * `entry` - The conversation entry to render
 /// * `expanded` - Whether the entry is currently expanded
-/// * `wrap_mode` - Effective wrap mode for this entry
-/// * `width` - Viewport width for text wrapping calculations
+/// * `wrap_mode` - Effective wrap mode for this entry (currently unused, deferred to bead 14.6)
+/// * `width` - Viewport width for text wrapping calculations (currently unused, deferred to bead 14.6)
 /// * `collapse_threshold` - Number of lines before collapsing (typically 10)
 /// * `summary_lines` - Number of lines to show when collapsed (typically 3)
 ///
@@ -57,6 +57,12 @@ use ratatui::{
 /// Vector of owned Lines with 'static lifetime, including:
 /// - Entry content (respecting collapse state)
 /// - Separator line at end (blank line between entries)
+///
+/// # Note on Wrapping
+///
+/// The `wrap_mode` and `width` parameters are accepted for forward compatibility but currently
+/// unused. Text wrapping will be integrated in bead 14.6 when view-state connects to the full
+/// rendering pipeline. The signature is stable to avoid breaking changes during integration.
 ///
 /// # Example
 ///
@@ -68,11 +74,12 @@ use ratatui::{
 /// let expanded_lines = compute_entry_lines(&entry, true, WrapMode::Wrap, 80, 10, 3);
 /// // Should return ~100 lines (all content)
 /// ```
+#[allow(unused_variables)] // wrap_mode and width deferred to bead 14.6 integration
 pub fn compute_entry_lines(
     entry: &ConversationEntry,
     expanded: bool,
-    _wrap_mode: WrapMode,
-    _width: u16,
+    wrap_mode: WrapMode,
+    width: u16,
     collapse_threshold: usize,
     summary_lines: usize,
 ) -> Vec<Line<'static>> {
@@ -146,13 +153,80 @@ fn render_block(
 
             lines
         }
-        ContentBlock::ToolUse(_) => {
-            // Minimal: just a placeholder line
-            vec![Line::from("Tool use")]
+        ContentBlock::ToolUse(tool_call) => {
+            let mut lines = Vec::new();
+
+            // Tool name header (always visible)
+            let tool_name = tool_call.name().as_str();
+            let header = format!("Tool: {}", tool_name);
+            lines.push(Line::from(Span::styled(
+                header,
+                Style::default().add_modifier(Modifier::BOLD),
+            )));
+
+            // Tool input/parameters - collapsible
+            let input_json =
+                serde_json::to_string_pretty(tool_call.input()).unwrap_or_default();
+            let input_lines: Vec<_> = input_json.lines().collect();
+            let total_lines = input_lines.len();
+            let should_collapse = total_lines > collapse_threshold && !expanded;
+
+            if should_collapse {
+                // Show summary lines
+                for line in input_lines.iter().take(summary_lines) {
+                    lines.push(Line::from(format!("  {}", line)));
+                }
+                // Add collapse indicator
+                let remaining = total_lines - summary_lines;
+                lines.push(Line::from(Span::styled(
+                    format!("  (+{} more lines)", remaining),
+                    Style::default().add_modifier(Modifier::DIM),
+                )));
+            } else {
+                // Show all lines
+                for line in input_lines {
+                    lines.push(Line::from(format!("  {}", line)));
+                }
+            }
+
+            lines
         }
-        ContentBlock::ToolResult { .. } => {
-            // Minimal: just a placeholder line
-            vec![Line::from("Tool result")]
+        ContentBlock::ToolResult { content, is_error, .. } => {
+            let mut lines = Vec::new();
+            let content_lines: Vec<_> = content.lines().collect();
+            let total_lines = content_lines.len();
+            let should_collapse = total_lines > collapse_threshold && !expanded;
+
+            // Determine which lines to show
+            let lines_to_show = if should_collapse {
+                summary_lines
+            } else {
+                total_lines
+            };
+
+            // Render the visible lines with styling
+            for line in content_lines.iter().take(lines_to_show) {
+                let rendered_line = if *is_error {
+                    Line::from(Span::styled(
+                        line.to_string(),
+                        Style::default().fg(ratatui::style::Color::Red),
+                    ))
+                } else {
+                    Line::from(line.to_string())
+                };
+                lines.push(rendered_line);
+            }
+
+            // Add collapse indicator if collapsed
+            if should_collapse {
+                let remaining = total_lines - summary_lines;
+                lines.push(Line::from(Span::styled(
+                    format!("(+{} more lines)", remaining),
+                    Style::default().add_modifier(Modifier::DIM),
+                )));
+            }
+
+            lines
         }
         ContentBlock::Thinking { thinking } => {
             // THIS IS THE KEY FIX: Thinking blocks now respect collapse state
