@@ -80,16 +80,17 @@ impl ConversationEntry {
         }
     }
 
-    /// Get the token count for this entry.
+    /// Get the input token count for this entry.
     ///
-    /// Returns the total token count from the entry's message usage metadata.
+    /// Returns the total input token count from the entry's message usage metadata.
+    /// Input tokens are what count toward context window limits.
     /// Returns 0 for malformed entries or entries without usage data.
     pub fn token_count(&self) -> usize {
         match self {
             ConversationEntry::Valid(entry) => entry
                 .message()
                 .usage()
-                .map(|usage| usage.total() as usize)
+                .map(|usage| usage.total_input() as usize)
                 .unwrap_or(0),
             ConversationEntry::Malformed(_) => 0,
         }
