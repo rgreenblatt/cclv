@@ -141,16 +141,12 @@ impl AppState {
         self.live_mode && !self.auto_scroll
     }
 
-    /// Cycle focus between Main, Subagent, and Stats panes.
-    /// Skip Search pane in the cycle.
-    /// Order: Main -> Subagent -> Stats -> Main
+    /// Cycle focus between Main, Subagent, Stats, and LogPane (if visible).
+    /// Skip Search and LogPane (when invisible) in the cycle.
+    /// Order when log visible: Main -> Subagent -> Stats -> LogPane -> Main
+    /// Order when log hidden: Main -> Subagent -> Stats -> Main
     pub fn cycle_focus(&mut self) {
-        self.focus = match self.focus {
-            FocusPane::Main => FocusPane::Subagent,
-            FocusPane::Subagent => FocusPane::Stats,
-            FocusPane::Stats => FocusPane::Main,
-            FocusPane::Search => FocusPane::Main,
-        };
+        todo!("cycle_focus: implement conditional LogPane cycling based on log_pane.visible")
     }
 
     /// Set focus to Main pane.
@@ -292,6 +288,10 @@ pub enum FocusPane {
     /// Search input has focus.
     /// User is typing a search query. Entered via `/` or Ctrl+F (FR-004).
     Search,
+
+    /// Internal log pane has focus.
+    /// User can view application logs and diagnostics.
+    LogPane,
 }
 
 // ===== WrapMode =====

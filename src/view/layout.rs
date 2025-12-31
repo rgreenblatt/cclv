@@ -265,6 +265,7 @@ fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u
         FocusPane::Stats => "!: Global | @: Main | #: Current | Tab: Cycle panes",
         FocusPane::Search if search_active => "n: Next | N: Prev | Esc: Exit",
         FocusPane::Search => "Enter: Submit | Esc: Cancel",
+        FocusPane::LogPane => "Tab: Cycle panes | Esc: Close",
     };
 
     // Combine common and context hints
@@ -281,6 +282,7 @@ fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u
                 FocusPane::Stats => "!/@/#: Filter",
                 FocusPane::Search if search_active => "n: Next",
                 FocusPane::Search => "Enter",
+                FocusPane::LogPane => "Esc: Close",
             }
         )
     } else if (full_hints.len() as u16) > terminal_width {
@@ -291,6 +293,7 @@ fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u
             FocusPane::Stats => "q: Quit | !/@/#: Filters | ?: Help",
             FocusPane::Search if search_active => "n/N: Navigate | Esc: Exit",
             FocusPane::Search => "Enter: Submit | Esc: Cancel",
+            FocusPane::LogPane => "q: Quit | Tab: Cycle | Esc: Close | ?: Help",
         };
         abbreviated.to_string()
     } else {

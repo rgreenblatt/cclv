@@ -320,9 +320,13 @@ fn focus_pane_variants_are_distinct() {
     assert_ne!(FocusPane::Main, FocusPane::Subagent);
     assert_ne!(FocusPane::Main, FocusPane::Stats);
     assert_ne!(FocusPane::Main, FocusPane::Search);
+    assert_ne!(FocusPane::Main, FocusPane::LogPane);
     assert_ne!(FocusPane::Subagent, FocusPane::Stats);
     assert_ne!(FocusPane::Subagent, FocusPane::Search);
+    assert_ne!(FocusPane::Subagent, FocusPane::LogPane);
     assert_ne!(FocusPane::Stats, FocusPane::Search);
+    assert_ne!(FocusPane::Stats, FocusPane::LogPane);
+    assert_ne!(FocusPane::Search, FocusPane::LogPane);
 }
 
 #[test]
@@ -331,6 +335,7 @@ fn focus_pane_equality() {
     assert_eq!(FocusPane::Subagent, FocusPane::Subagent);
     assert_eq!(FocusPane::Stats, FocusPane::Stats);
     assert_eq!(FocusPane::Search, FocusPane::Search);
+    assert_eq!(FocusPane::LogPane, FocusPane::LogPane);
 }
 
 // ===== ScrollState::at_bottom Tests =====
@@ -538,10 +543,37 @@ fn cycle_focus_moves_from_subagent_to_stats() {
 }
 
 #[test]
-fn cycle_focus_moves_from_stats_to_main() {
+fn cycle_focus_moves_from_stats_to_main_when_log_pane_hidden() {
     let session = make_test_session();
     let mut state = AppState::new(session);
     state.focus = FocusPane::Stats;
+    // log_pane starts hidden by default
+    assert!(!state.log_pane.is_visible(), "precondition: log pane hidden");
+
+    state.cycle_focus();
+
+    assert_eq!(state.focus, FocusPane::Main, "should skip hidden LogPane");
+}
+
+#[test]
+fn cycle_focus_moves_from_stats_to_logpane_when_log_pane_visible() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Stats;
+    state.log_pane.toggle_visible(); // Make visible
+    assert!(state.log_pane.is_visible(), "precondition: log pane visible");
+
+    state.cycle_focus();
+
+    assert_eq!(state.focus, FocusPane::LogPane, "should cycle to visible LogPane");
+}
+
+#[test]
+fn cycle_focus_moves_from_logpane_to_main() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::LogPane;
+    state.log_pane.toggle_visible(); // Make visible
 
     state.cycle_focus();
 
@@ -561,14 +593,30 @@ fn cycle_focus_skips_search_pane() {
 }
 
 #[test]
-fn cycle_focus_full_cycle_returns_to_start() {
+fn cycle_focus_full_cycle_returns_to_start_when_log_pane_hidden() {
     let session = make_test_session();
     let mut state = AppState::new(session);
     state.focus = FocusPane::Main;
+    // log_pane starts hidden by default
 
     state.cycle_focus(); // Main -> Subagent
     state.cycle_focus(); // Subagent -> Stats
-    state.cycle_focus(); // Stats -> Main
+    state.cycle_focus(); // Stats -> Main (skip hidden LogPane)
+
+    assert_eq!(state.focus, FocusPane::Main);
+}
+
+#[test]
+fn cycle_focus_full_cycle_returns_to_start_when_log_pane_visible() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Main;
+    state.log_pane.toggle_visible(); // Make visible
+
+    state.cycle_focus(); // Main -> Subagent
+    state.cycle_focus(); // Subagent -> Stats
+    state.cycle_focus(); // Stats -> LogPane
+    state.cycle_focus(); // LogPane -> Main
 
     assert_eq!(state.focus, FocusPane::Main);
 }
