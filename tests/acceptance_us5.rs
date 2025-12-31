@@ -240,33 +240,36 @@ fn us5_scenario3_navigate_to_match() {
                         "Pressing 'n' should advance to next match (with wraparound)"
                     );
 
-                    // VERIFY: If match is in a subagent, tab/focus should change appropriately
+                    // VERIFY: Tab and focus auto-switch based on match location
                     let current_match = &new_matches[*new_match_index];
                     if let Some(ref agent_id) = current_match.agent_id {
-                        // Match is in a subagent - verify tab/focus behavior
-                        // The view layer should switch focus to subagent pane and select the right tab
-                        let subagent_index = state_after_n
+                        // Match is in a subagent - verify focus switched to Subagent pane
+                        assert_eq!(
+                            state_after_n.focus,
+                            cclv::state::FocusPane::Subagent,
+                            "Focus should auto-switch to Subagent pane when match is in subagent"
+                        );
+
+                        // Verify the correct tab is selected
+                        let expected_tab_index = state_after_n
                             .session()
                             .subagents()
                             .iter()
-                            .position(|(id, _)| id == agent_id);
+                            .position(|(id, _)| id == agent_id)
+                            .expect("Match agent_id should be a valid subagent");
 
-                        if let Some(_expected_tab) = subagent_index {
-                            // Note: The current implementation might not auto-switch tabs/focus yet
-                            // This test documents the expected behavior per spec
-                            // If this assertion fails, it means tab auto-switching isn't implemented
-
-                            // Expected behavior per spec: "that tab is automatically activated"
-                            // For now, we'll verify the data is correct for the view layer to handle
-                            assert!(
-                                state_after_n.session().subagents().iter().any(|(id, _)| id == agent_id),
-                                "Match agent_id should be a valid subagent: {:?}",
-                                agent_id
-                            );
-
-                            // The view layer should use current_match.agent_id to determine
-                            // which tab to display and scroll to
-                        }
+                        assert_eq!(
+                            state_after_n.selected_tab,
+                            Some(expected_tab_index),
+                            "Tab should auto-switch to the subagent containing the match"
+                        );
+                    } else {
+                        // Match is in main agent - verify focus is on Main pane
+                        assert_eq!(
+                            state_after_n.focus,
+                            cclv::state::FocusPane::Main,
+                            "Focus should be on Main pane when match is in main agent"
+                        );
                     }
                 }
                 _ => panic!("Search should remain active after 'n'"),
@@ -295,9 +298,9 @@ fn us5_scenario3_navigate_to_match() {
         ),
     }
 
-    // RESULT: n/N navigate through matches; match.agent_id provides tab context
-    // MATCHES: Yes - current_match changes, agent_id indicates which tab contains match
-    // THEREFORE: US5 Scenario 3 verified - view layer has data to auto-activate tabs
+    // RESULT: n/N navigate through matches; tab and focus auto-switch to match location
+    // MATCHES: Yes - current_match changes, focus/tab switch to correct location
+    // THEREFORE: US5 Scenario 3 verified - tab auto-activation works correctly
 }
 
 // ===== US5 Scenario 4: Clear Search =====
