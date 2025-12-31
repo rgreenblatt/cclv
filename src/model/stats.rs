@@ -8,19 +8,84 @@ use std::collections::HashMap;
 
 // ===== SessionStats =====
 
-/// Aggregated session statistics.
+/// Aggregated session statistics for display in the statistics panel (FR-018).
 ///
-/// Invariant: Statistics are incrementally recorded as entries are processed.
-/// `total_usage` equals the sum of `main_agent_usage` and all `subagent_usage` values.
+/// Provides comprehensive metrics about token usage, tool invocations, and agent activity
+/// across an entire session. Statistics can be filtered to show global totals, main agent
+/// only, or specific subagents (FR-020).
+///
+/// # Invariants
+///
+/// - Statistics are incrementally recorded as entries are processed via `record_entry`
+/// - `total_usage` equals the sum of `main_agent_usage` and all `subagent_usage` values
+/// - `subagent_count` equals the number of unique keys in `subagent_usage`
+/// - Tool counts are maintained globally and per-agent for filtering
+///
+/// # Cost Calculation
+///
+/// Estimated costs are calculated using `estimated_cost()` which applies pricing
+/// configuration (FR-017, FR-046, FR-047) to token counts:
+/// - Input tokens at model's input rate (FR-015)
+/// - Output tokens at model's output rate (FR-016)
+/// - Cached tokens (creation + read) at cached rate when available
+///
+/// See `PricingConfig` and `ModelPricing` for cost rates.
+///
+/// # Relationship to TokenUsage
+///
+/// All usage fields are `TokenUsage` instances which track four token types:
+/// - `input_tokens`: Standard input tokens
+/// - `output_tokens`: Generated output tokens
+/// - `cache_creation_input_tokens`: Tokens used to create prompt cache
+/// - `cache_read_input_tokens`: Tokens read from prompt cache
 #[derive(Debug, Clone, Default)]
 pub struct SessionStats {
+    /// Total token usage across all agents (main agent + all subagents).
+    ///
+    /// Corresponds to StatsFilter::Global (FR-020). This is the sum of
+    /// `main_agent_usage` and all values in `subagent_usage`.
     pub total_usage: TokenUsage,
+
+    /// Token usage for the main agent only (excludes subagents).
+    ///
+    /// Corresponds to StatsFilter::MainAgent (FR-020). Incremented only
+    /// for log entries where `agent_id` is `None`.
     pub main_agent_usage: TokenUsage,
+
+    /// Token usage per subagent, keyed by AgentId.
+    ///
+    /// Used for StatsFilter::Subagent(id) filtering (FR-020). Each subagent's
+    /// usage is tracked separately. The number of unique keys determines `subagent_count`.
     pub subagent_usage: HashMap<AgentId, TokenUsage>,
+
+    /// Total tool invocation counts across all agents, grouped by tool name (FR-018).
+    ///
+    /// Tracks how many times each tool (Read, Write, Bash, etc.) was invoked across
+    /// the entire session. Corresponds to StatsFilter::Global.
     pub tool_counts: HashMap<ToolName, u32>,
+
+    /// Tool invocation counts for the main agent only (FR-019).
+    ///
+    /// Subset of `tool_counts` containing only tools called by the main agent
+    /// (entries with `agent_id == None`). Used for StatsFilter::MainAgent filtering.
     pub main_agent_tool_counts: HashMap<ToolName, u32>,
+
+    /// Tool invocation counts per subagent, nested by AgentId then ToolName (FR-019).
+    ///
+    /// Tracks tool usage separately for each subagent. Used for StatsFilter::Subagent(id)
+    /// filtering to show which tools a specific subagent invoked.
     pub subagent_tool_counts: HashMap<AgentId, HashMap<ToolName, u32>>,
+
+    /// Number of unique subagents spawned during the session (FR-019).
+    ///
+    /// Derived from the number of unique keys in `subagent_usage`. Updated
+    /// automatically when `record_entry` processes entries from new subagents.
     pub subagent_count: usize,
+
+    /// Total number of log entries processed (not displayed in stats panel).
+    ///
+    /// Incremented once per `record_entry` call. Useful for sanity checking
+    /// and debugging statistics calculations.
     pub entry_count: usize,
 }
 
@@ -236,10 +301,47 @@ impl PricingConfig {
 // ===== ModelPricing =====
 
 /// Pricing for a specific model (per million tokens, in USD).
+///
+/// Used by `SessionStats::estimated_cost` to calculate session costs based on
+/// token usage (FR-017). Pricing is applied to token counts from `TokenUsage`:
+/// - `input_cost_per_million` applies to `input_tokens`
+/// - `output_cost_per_million` applies to `output_tokens`
+/// - `cached_input_cost_per_million` applies to `cache_creation_input_tokens`
+///   and `cache_read_input_tokens` (falls back to `input_cost_per_million` if None)
+///
+/// # Default Pricing (FR-046)
+///
+/// Hardcoded defaults in `PricingConfig::default()`:
+/// - **Claude Opus 4.5**: $15 input / $75 output / $1.50 cached (per million)
+/// - **Claude Sonnet 4**: $3 input / $15 output / $0.30 cached (per million)
+/// - **Claude Haiku 3.5**: $0.80 input / $4 output / $0.08 cached (per million)
+///
+/// # Configuration (FR-047)
+///
+/// Pricing MAY be overridden via configuration file, though this is currently
+/// not implemented. Default pricing is always available as fallback.
 #[derive(Debug, Clone, Copy)]
 pub struct ModelPricing {
+    /// Cost per million input tokens in USD (FR-015, FR-017).
+    ///
+    /// Applied to `TokenUsage::input_tokens`. Standard input tokens are those
+    /// not served from prompt cache.
     pub input_cost_per_million: f64,
+
+    /// Cost per million output tokens in USD (FR-016, FR-017).
+    ///
+    /// Applied to `TokenUsage::output_tokens`. Output tokens are those generated
+    /// by the model in responses.
     pub output_cost_per_million: f64,
+
+    /// Optional cost per million cached input tokens in USD (FR-017).
+    ///
+    /// Applied to both `TokenUsage::cache_creation_input_tokens` and
+    /// `TokenUsage::cache_read_input_tokens`. When None, falls back to
+    /// `input_cost_per_million` for cached token cost calculation.
+    ///
+    /// Cached input is typically cheaper than standard input (e.g., 10x reduction
+    /// for Opus: $1.50 vs $15.00 per million).
     pub cached_input_cost_per_million: Option<f64>,
 }
 

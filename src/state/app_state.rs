@@ -10,21 +10,89 @@ use std::collections::HashSet;
 // ===== AppState =====
 
 /// Application state. Pure data, no side effects.
-/// This is the root state type containing all UI state.
+///
+/// This is the root state type containing all UI state following the Elm Architecture.
+/// All state transitions are pure functions that return new state values.
+///
+/// # State Machine
+///
+/// The UI operates as a state machine with these primary states:
+///
+/// - **Focus**: Which pane has keyboard focus (Main, Subagent, Stats, Search)
+/// - **Live Mode**: Following a log file in real-time vs viewing static content
+/// - **Auto-Scroll**: Automatically scrolling to new content vs manual navigation
+/// - **Search**: Inactive, typing query, or displaying active results
+///
+/// # State Transitions
+///
+/// Valid state transitions (see methods for details):
+///
+/// - Focus: Main ⇄ Subagent ⇄ Stats (via `cycle_focus`, `focus_*` methods)
+/// - Search: Inactive → Typing → Active → Inactive (via SearchState transitions)
+/// - Auto-scroll: On → Off (when user scrolls up in live mode, FR-036)
+/// - Auto-scroll: Off → On (when user returns to bottom, FR-038)
+///
+/// # Functional Requirements
+///
+/// - **FR-001**: Main agent conversation displayed in dedicated pane
+/// - **FR-003**: Subagent conversations in tabbed pane
+/// - **FR-035**: Auto-scroll enabled by default in live mode
+/// - **FR-036**: Auto-scroll pauses when user scrolls away from bottom
+/// - **FR-039**: Toggleable line-wrapping with configurable default
 #[derive(Debug, Clone)]
 pub struct AppState {
+    /// The session data containing all parsed log entries and statistics.
+    /// This is the domain model; all other fields are UI state.
     session: Session,
+
+    /// Which pane currently has keyboard focus.
+    /// Determines which pane receives keyboard input and displays focus indicator.
+    /// See `FocusPane` for valid states and transitions.
     pub focus: FocusPane,
+
+    /// Scroll state for the main agent conversation pane.
+    /// Tracks vertical/horizontal offset, expanded messages, and per-item wrap overrides.
     pub main_scroll: ScrollState,
+
+    /// Scroll state for the currently selected subagent tab.
+    /// Each subagent maintains independent scroll state.
     pub subagent_scroll: ScrollState,
+
+    /// Currently selected subagent tab index (0-based).
+    /// `None` means no tab is selected (e.g., no subagents exist).
+    /// Valid range: `0..session.subagents().len()`.
     pub selected_tab: Option<usize>,
+
+    /// Current search state (inactive, typing, or active with results).
+    /// See `SearchState` for the search state machine.
     pub search: SearchState,
+
+    /// Filter for statistics display (Global, MainAgent, or specific Subagent).
+    /// Controls which agent's statistics are shown in the stats pane.
     pub stats_filter: StatsFilter,
+
+    /// Whether the statistics pane is currently visible.
+    /// Toggled by user action (FR-019).
     pub stats_visible: bool,
+
+    /// Whether the help overlay is currently visible.
+    /// Toggled by user action to show keyboard shortcuts.
     pub help_visible: bool,
+
+    /// Whether the application is following a live log file.
+    /// `true` means new entries are being tailed in real-time (FR-007).
+    /// `false` means viewing a static/completed log file (FR-008).
     pub live_mode: bool,
+
+    /// Whether auto-scroll is active (only meaningful when `live_mode` is true).
+    /// `true` means automatically scroll to new content as it arrives (FR-035).
+    /// `false` means user has scrolled away from bottom; pause auto-scroll (FR-036).
     pub auto_scroll: bool,
-    pub global_wrap: WrapMode, // FR-039: toggleable line-wrapping
+
+    /// Global line-wrapping mode for all panes.
+    /// Individual messages can override via `ScrollState::wrap_overrides` (FR-048).
+    /// Default is `Wrap` when config is unset (FR-039).
+    pub global_wrap: WrapMode,
 }
 
 impl AppState {
@@ -185,37 +253,135 @@ impl AppState {
 // ===== FocusPane =====
 
 /// Which pane has focus. Sum type - exactly one.
+///
+/// Determines which pane receives keyboard input and displays the focus indicator.
+///
+/// # State Transitions
+///
+/// - Main ⇄ Subagent ⇄ Stats (via Tab or explicit focus commands, FR-025)
+/// - Any → Search (when user activates search with `/` or Ctrl+F, FR-004)
+/// - Search → (previous pane) (when search is cancelled or submitted)
+///
+/// # Keyboard Navigation (FR-025)
+///
+/// - Tab: cycle through Main → Subagent → Stats → Main
+/// - Explicit focus keys: focus specific panes directly
+/// - Search activation: temporarily moves to Search pane
+///
+/// Note: Search pane is skipped in the normal focus cycle and is only entered
+/// when the user explicitly activates search mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FocusPane {
+    /// Main agent conversation pane has focus.
+    /// User can scroll, expand/collapse messages, and search within main agent.
     Main,
+
+    /// Subagent conversation pane has focus.
+    /// User can switch tabs, scroll, and interact with selected subagent's messages.
     Subagent,
+
+    /// Statistics panel has focus.
+    /// User can view token usage, costs, and tool counts (FR-015 to FR-020).
     Stats,
+
+    /// Search input has focus.
+    /// User is typing a search query. Entered via `/` or Ctrl+F (FR-004).
     Search,
 }
 
 // ===== WrapMode =====
 
-/// Global line-wrapping mode.
-/// Default: Wrap (FR-039: wrap enabled when config unset)
+/// Global line-wrapping mode for prose text.
+///
+/// Controls whether long lines of prose text wrap to fit the viewport width
+/// or extend horizontally requiring horizontal scrolling.
+///
+/// # Behavior (FR-039, FR-050, FR-053)
+///
+/// - **Prose text**: Follows this global setting (toggleable with `W` key)
+/// - **Code blocks**: NEVER wrap, always use horizontal scroll (FR-053)
+/// - **Per-item override**: Individual messages can override via `ScrollState::wrap_overrides` (FR-048)
+///
+/// # Default (FR-039)
+///
+/// Defaults to `Wrap` when not configured. This ensures readable prose by default
+/// while preserving code formatting.
+///
+/// # State Transitions
+///
+/// - Wrap ⇄ NoWrap (via `AppState::toggle_global_wrap`, bound to `W` key by default)
+///
+/// Note: Wrapping state is global but individual messages can override it per-item.
+/// Per-item overrides are ephemeral and not persisted across sessions (FR-049).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WrapMode {
+    /// Wrap long lines to fit viewport width.
+    /// Prose flows naturally; wrapped lines show continuation indicator (↩) (FR-052).
     #[default]
     Wrap,
+
+    /// Do not wrap lines; use horizontal scrolling instead.
+    /// User must scroll left/right to view content beyond viewport (FR-040).
     NoWrap,
 }
 
 // ===== ScrollState =====
 
-/// Scroll state for a pane.
-/// Tracks vertical/horizontal offsets, which messages are expanded, and focus.
+/// Scroll state for a conversation pane.
+///
+/// Tracks the viewport position, message expansion state, and per-message wrap overrides
+/// for a single conversation pane (either main agent or a subagent).
+///
+/// # Invariants
+///
+/// - `vertical_offset ≤ max_entries` (enforced by `scroll_down`)
+/// - `horizontal_offset ≥ 0` (enforced by `scroll_left` saturation)
+/// - `expanded_messages` contains only valid `EntryUuid`s from the conversation
+/// - `focused_message < conversation.entries().len()` when `Some`
+///
+/// # State Independence (FR-034)
+///
+/// Each conversation pane maintains independent scroll state. Scrolling in the main
+/// pane does not affect subagent panes, and vice versa. This allows users to navigate
+/// different conversations at their own pace.
+///
+/// # Expansion State (FR-031 to FR-033)
+///
+/// Messages longer than the collapse threshold (default 10 lines) are collapsed by
+/// default, showing only the first 3 lines plus "(+N more lines)" indicator.
+/// Users can expand/collapse individual messages via `toggle_expand`.
+///
+/// # Wrap Overrides (FR-048, FR-049)
+///
+/// Individual messages can override the global wrap mode. This is ephemeral state
+/// (not persisted across sessions). Per-item toggle inverts the global setting:
+/// - Global=Wrap, Override present → NoWrap for this message
+/// - Global=NoWrap, Override present → Wrap for this message
 #[derive(Debug, Clone, Default)]
 pub struct ScrollState {
+    /// Vertical scroll offset (number of lines scrolled down from top).
+    /// 0 means viewing from the first line. Clamped to conversation length.
     pub vertical_offset: usize,
+
+    /// Horizontal scroll offset (number of characters scrolled right from left edge).
+    /// Only relevant when line wrapping is disabled (FR-040).
+    /// 0 means viewing from the leftmost column.
     pub horizontal_offset: usize,
+
+    /// Set of message UUIDs that are currently expanded.
+    /// Messages NOT in this set are displayed in collapsed form (if they exceed threshold).
+    /// Toggled via `toggle_expand` (FR-032, FR-033).
     pub expanded_messages: HashSet<EntryUuid>,
+
+    /// Index of the currently focused message within this pane's entry list.
+    /// `None` means no specific message has focus (pane-level focus only).
+    /// Used for keyboard navigation within the conversation.
     pub focused_message: Option<usize>,
-    /// Messages with wrap override (FR-048: per-item toggle overrides global)
-    /// FR-049: ephemeral, not persisted
+
+    /// Set of message UUIDs with per-item wrap mode override.
+    /// Presence in this set inverts the global wrap setting for that message.
+    /// Toggled via `toggle_wrap` with `w` key (FR-048, FR-050).
+    /// EPHEMERAL: Not persisted across sessions (FR-049).
     pub wrap_overrides: HashSet<EntryUuid>,
 }
 

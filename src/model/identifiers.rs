@@ -11,7 +11,18 @@ use std::fmt;
 pub struct EntryUuid(String);
 
 impl EntryUuid {
-    /// Smart constructor: validates non-empty UUID
+    /// Smart constructor: validates non-empty UUID.
+    ///
+    /// # Errors
+    /// Returns `InvalidUuid::Empty` if the input is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// # use cclv::model::identifiers::EntryUuid;
+    /// let uuid = EntryUuid::new("550e8400-e29b-41d4-a716-446655440000")?;
+    /// assert_eq!(uuid.as_str(), "550e8400-e29b-41d4-a716-446655440000");
+    /// # Ok::<(), cclv::model::identifiers::InvalidUuid>(())
+    /// ```
     pub fn new(raw: impl Into<String>) -> Result<Self, InvalidUuid> {
         let s = raw.into();
         if s.is_empty() {
@@ -20,6 +31,10 @@ impl EntryUuid {
         Ok(Self(s))
     }
 
+    /// Returns the underlying string slice.
+    ///
+    /// This is the only way to access the wrapped value after construction,
+    /// ensuring the UUID has been validated via the smart constructor.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -31,12 +46,31 @@ impl fmt::Display for EntryUuid {
     }
 }
 
-/// Session identifier grouping related entries.
+/// Session identifier grouping related log entries.
+///
+/// A session represents a single Claude Code interaction, containing
+/// a main agent and zero or more subagents. All log entries with the
+/// same `SessionId` belong to the same conversation.
+///
+/// # Invariants
+/// - Never empty (enforced by smart constructor)
+/// - Must be constructed via `new()` or `unknown()`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SessionId(String);
 
 impl SessionId {
-    /// Smart constructor: validates non-empty session ID
+    /// Smart constructor: validates non-empty session ID.
+    ///
+    /// # Errors
+    /// Returns `InvalidSessionId::Empty` if the input is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// # use cclv::model::identifiers::SessionId;
+    /// let id = SessionId::new("session-12345")?;
+    /// assert_eq!(id.as_str(), "session-12345");
+    /// # Ok::<(), cclv::model::identifiers::InvalidSessionId>(())
+    /// ```
     pub fn new(raw: impl Into<String>) -> Result<Self, InvalidSessionId> {
         let s = raw.into();
         if s.is_empty() {
@@ -45,13 +79,20 @@ impl SessionId {
         Ok(Self(s))
     }
 
-    /// Return a pre-validated fallback SessionId for unknown sessions.
-    /// This is panic-free and used as a last resort when no valid session ID is found.
+    /// Returns a pre-validated fallback `SessionId` for unknown sessions.
+    ///
+    /// This is panic-free and used as a last resort when parsing encounters
+    /// a log entry with no valid session ID. The returned value is guaranteed
+    /// to be valid (non-empty).
     pub fn unknown() -> Self {
         // SAFETY: "unknown-session" is a valid non-empty string constant
         Self(String::from("unknown-session"))
     }
 
+    /// Returns the underlying string slice.
+    ///
+    /// This is the only way to access the wrapped value after construction,
+    /// ensuring the session ID has been validated via a smart constructor.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -63,12 +104,31 @@ impl fmt::Display for SessionId {
     }
 }
 
-/// Subagent identifier (e.g., "a7b2877").
+/// Subagent identifier identifying a task delegated to a specialized agent.
+///
+/// Subagents are spawned by the main agent to handle specific tasks like
+/// file analysis, test execution, or code review. Each subagent gets a
+/// unique short ID (e.g., "a7b2877") that appears in the log entries.
+///
+/// # Invariants
+/// - Never empty (enforced by smart constructor)
+/// - Uniquely identifies a subagent within a session
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AgentId(String);
 
 impl AgentId {
-    /// Smart constructor: validates non-empty agent ID
+    /// Smart constructor: validates non-empty agent ID.
+    ///
+    /// # Errors
+    /// Returns `InvalidAgentId::Empty` if the input is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// # use cclv::model::identifiers::AgentId;
+    /// let id = AgentId::new("a7b2877")?;
+    /// assert_eq!(id.as_str(), "a7b2877");
+    /// # Ok::<(), cclv::model::identifiers::InvalidAgentId>(())
+    /// ```
     pub fn new(raw: impl Into<String>) -> Result<Self, InvalidAgentId> {
         let s = raw.into();
         if s.is_empty() {
@@ -77,6 +137,10 @@ impl AgentId {
         Ok(Self(s))
     }
 
+    /// Returns the underlying string slice.
+    ///
+    /// This is the only way to access the wrapped value after construction,
+    /// ensuring the agent ID has been validated via the smart constructor.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -88,12 +152,32 @@ impl fmt::Display for AgentId {
     }
 }
 
-/// Tool invocation identifier for linking tool_use to tool_result.
+/// Tool invocation identifier for linking `tool_use` to `tool_result` blocks.
+///
+/// When Claude invokes a tool (e.g., Read, Write, Bash), it generates a
+/// `tool_use` content block with a unique ID. The corresponding result
+/// appears in a `tool_result` block with the same ID, allowing the
+/// viewer to correlate requests with responses.
+///
+/// # Invariants
+/// - Never empty (enforced by smart constructor)
+/// - Uniquely identifies a tool invocation within a message
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ToolUseId(String);
 
 impl ToolUseId {
-    /// Smart constructor: validates non-empty tool use ID
+    /// Smart constructor: validates non-empty tool use ID.
+    ///
+    /// # Errors
+    /// Returns `InvalidToolUseId::Empty` if the input is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// # use cclv::model::identifiers::ToolUseId;
+    /// let id = ToolUseId::new("toolu_01A2B3C4D5E6F")?;
+    /// assert_eq!(id.as_str(), "toolu_01A2B3C4D5E6F");
+    /// # Ok::<(), cclv::model::identifiers::InvalidToolUseId>(())
+    /// ```
     pub fn new(raw: impl Into<String>) -> Result<Self, InvalidToolUseId> {
         let s = raw.into();
         if s.is_empty() {
@@ -102,6 +186,10 @@ impl ToolUseId {
         Ok(Self(s))
     }
 
+    /// Returns the underlying string slice.
+    ///
+    /// This is the only way to access the wrapped value after construction,
+    /// ensuring the tool use ID has been validated via the smart constructor.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -115,26 +203,34 @@ impl fmt::Display for ToolUseId {
 
 // ===== Error Types =====
 
+/// Error returned when constructing an `EntryUuid` from invalid input.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum InvalidUuid {
+    /// The UUID string was empty.
     #[error("UUID cannot be empty")]
     Empty,
 }
 
+/// Error returned when constructing a `SessionId` from invalid input.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum InvalidSessionId {
+    /// The session ID string was empty.
     #[error("Session ID cannot be empty")]
     Empty,
 }
 
+/// Error returned when constructing an `AgentId` from invalid input.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum InvalidAgentId {
+    /// The agent ID string was empty.
     #[error("Agent ID cannot be empty")]
     Empty,
 }
 
+/// Error returned when constructing a `ToolUseId` from invalid input.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum InvalidToolUseId {
+    /// The tool use ID string was empty.
     #[error("Tool Use ID cannot be empty")]
     Empty,
 }

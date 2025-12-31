@@ -4,6 +4,8 @@
 //!
 //! Run with: cargo bench
 
+#![allow(missing_docs)] // criterion macros generate undocumented items
+
 use cclv::model::{
     AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, Message, MessageContent, Role,
     Session, SessionId,

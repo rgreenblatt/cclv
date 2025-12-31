@@ -25,14 +25,7 @@ impl ColorConfig {
     /// 2. `NO_COLOR` env var (any value disables colors)
     /// 3. Default: colors enabled
     pub fn from_env_and_args(no_color_flag: bool) -> Self {
-        let enabled = if no_color_flag {
-            false
-        } else if std::env::var("NO_COLOR").is_ok() {
-            false
-        } else {
-            true
-        };
-
+        let enabled = !no_color_flag && std::env::var("NO_COLOR").is_err();
         Self { enabled }
     }
 

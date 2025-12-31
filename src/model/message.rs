@@ -7,65 +7,99 @@ use crate::model::{ModelInfo, TokenUsage, ToolUseId};
 
 // ===== Role =====
 
-/// Message role: User or Assistant
+/// Message role in a Claude Code conversation.
+///
+/// Identifies who authored a message in the JSONL log.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
+    /// Message authored by the user or system
     User,
+    /// Message authored by Claude assistant
     Assistant,
 }
 
 // ===== MessageContent =====
 
-/// Content of a message - either simple text or structured blocks
+/// Content of a message in the Claude Code log format.
+///
+/// Messages can be either plain text (simple user messages) or structured
+/// blocks (assistant messages containing text, tool calls, results, and thinking).
+/// Sum type ensures exactly one representation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MessageContent {
+    /// Plain text content (typically user messages)
     Text(String),
+    /// Structured content blocks (assistant messages with tool use)
     Blocks(Vec<ContentBlock>),
 }
 
 // ===== ContentBlock =====
 
-/// Individual content block within a message
+/// Individual content block within a structured message.
+///
+/// Assistant messages in Claude Code logs consist of heterogeneous blocks:
+/// text (visible output), tool_use (tool invocations), tool_result (tool outputs),
+/// and thinking (extended reasoning). Each block type has distinct semantics.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContentBlock {
+    /// Text block containing markdown-formatted assistant output
     Text {
+        /// Markdown content visible to the user
         text: String,
     },
+    /// Tool invocation by the assistant
     ToolUse(ToolCall),
+    /// Result returned from a tool execution
     ToolResult {
+        /// ID linking this result to the originating tool_use
         tool_use_id: ToolUseId,
+        /// Tool output (stdout, file contents, etc.)
         content: String,
+        /// Whether the tool execution failed
         is_error: bool,
     },
+    /// Extended thinking block (Claude's internal reasoning)
     Thinking {
+        /// Reasoning content, not shown to user by default
         thinking: String,
     },
 }
 
 // ===== ToolCall =====
 
-/// Represents a tool invocation by the assistant
+/// Tool invocation recorded in a Claude Code log.
+///
+/// Represents the assistant calling a tool (Read, Write, Bash, etc.) with
+/// structured parameters. The id links to a corresponding ToolResult block.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolCall {
+    /// Unique identifier for this tool invocation
     id: ToolUseId,
+    /// Tool being invoked (Read, Bash, Grep, etc.)
     name: ToolName,
+    /// Tool-specific parameters as JSON
     input: serde_json::Value,
 }
 
 impl ToolCall {
-    /// Create a new tool call
+    /// Create a new tool call.
+    ///
+    /// Smart constructor for building tool calls during parsing or testing.
     pub fn new(id: ToolUseId, name: ToolName, input: serde_json::Value) -> Self {
         Self { id, name, input }
     }
 
+    /// Unique identifier linking this call to its result
     pub fn id(&self) -> &ToolUseId {
         &self.id
     }
 
+    /// Tool name (Read, Write, Bash, etc.)
     pub fn name(&self) -> &ToolName {
         &self.name
     }
 
+    /// Tool-specific input parameters
     pub fn input(&self) -> &serde_json::Value {
         &self.input
     }
@@ -73,24 +107,41 @@ impl ToolCall {
 
 // ===== ToolName =====
 
-/// Known tool names with fallback for unknown tools
+/// Tool names recognized in Claude Code logs.
+///
+/// Enumerates known tools provided by Claude Code with a fallback variant
+/// for custom or future tools. Used for statistics aggregation and special
+/// rendering (e.g., syntax highlighting for Bash commands).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ToolName {
+    /// Read files from filesystem
     Read,
+    /// Write files to filesystem
     Write,
+    /// Edit existing files (string replacement)
     Edit,
+    /// Apply multiple edits atomically
     MultiEdit,
+    /// Execute bash commands
     Bash,
+    /// Search file contents with regex
     Grep,
+    /// Find files by glob pattern
     Glob,
+    /// Create or manage subagent tasks
     Task,
+    /// Search the web
     WebSearch,
+    /// Fetch web resources
     WebFetch,
+    /// Unknown or custom tool
     Other(String),
 }
 
 impl ToolName {
-    /// Parse a tool name from a string
+    /// Parse a tool name from the JSONL log.
+    ///
+    /// Recognizes standard Claude Code tools, wrapping unknown names in `Other`.
     pub fn parse(name: &str) -> Self {
         match name {
             "Read" => Self::Read,
@@ -107,7 +158,7 @@ impl ToolName {
         }
     }
 
-    /// Get the string representation
+    /// Get the canonical string representation.
     pub fn as_str(&self) -> &str {
         match self {
             Self::Read => "Read",
@@ -127,17 +178,28 @@ impl ToolName {
 
 // ===== Message =====
 
-/// A complete message in the conversation
+/// Complete message in a Claude Code conversation.
+///
+/// Represents a single turn in the conversation log with role, content,
+/// and optional metadata (model info, token usage). Messages are the primary
+/// unit of interaction displayed in the TUI.
 #[derive(Debug, Clone)]
 pub struct Message {
+    /// Who authored this message (User or Assistant)
     role: Role,
+    /// Message content (text or structured blocks)
     content: MessageContent,
+    /// Model information (e.g., "claude-opus-4-5-20251101")
     model: Option<ModelInfo>,
+    /// Token usage statistics for this turn
     usage: Option<TokenUsage>,
 }
 
 impl Message {
-    /// Create a new message
+    /// Create a new message with role and content.
+    ///
+    /// Smart constructor for building messages during parsing or testing.
+    /// Use `with_model()` and `with_usage()` to add optional metadata.
     pub fn new(role: Role, content: MessageContent) -> Self {
         Self {
             role,
@@ -147,35 +209,42 @@ impl Message {
         }
     }
 
+    /// Message author role
     pub fn role(&self) -> Role {
         self.role
     }
 
+    /// Message content (text or blocks)
     pub fn content(&self) -> &MessageContent {
         &self.content
     }
 
+    /// Model that generated this message (if assistant)
     pub fn model(&self) -> Option<&ModelInfo> {
         self.model.as_ref()
     }
 
+    /// Token usage for this message turn
     pub fn usage(&self) -> Option<&TokenUsage> {
         self.usage.as_ref()
     }
 
-    /// Set usage for this message (for testing and parsing)
+    /// Attach token usage to this message (builder pattern).
     pub fn with_usage(mut self, usage: TokenUsage) -> Self {
         self.usage = Some(usage);
         self
     }
 
-    /// Set model for this message (for testing and parsing)
+    /// Attach model info to this message (builder pattern).
     pub fn with_model(mut self, model: ModelInfo) -> Self {
         self.model = Some(model);
         self
     }
 
-    /// Extract all tool calls from this message
+    /// Extract all tool calls from this message.
+    ///
+    /// Returns empty vector for text-only messages. Used for statistics
+    /// aggregation and tool usage display.
     pub fn tool_calls(&self) -> Vec<&ToolCall> {
         match &self.content {
             MessageContent::Text(_) => vec![],
@@ -189,7 +258,10 @@ impl Message {
         }
     }
 
-    /// Get text content, joining all text blocks
+    /// Get text content, joining all text blocks.
+    ///
+    /// Extracts only Text blocks, ignoring tool use, results, and thinking.
+    /// Returns empty string if no text blocks present.
     pub fn text(&self) -> String {
         match &self.content {
             MessageContent::Text(text) => text.clone(),

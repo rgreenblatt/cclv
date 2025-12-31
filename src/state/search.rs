@@ -1,26 +1,136 @@
-//! Search state machine.
+//! Search state machine for full-text search across conversations.
 //!
-//! SearchState is a sum type representing the three possible search states:
-//! - Inactive: No search active
-//! - Typing: User is entering a query
-//! - Active: Search complete with results
+//! # Overview
+//!
+//! This module implements a type-driven search state machine that enforces exactly one search
+//! state at a time through sum types. The search functionality supports:
+//!
+//! - Case-insensitive full-text search across all conversations (main agent and subagents)
+//! - Searching in text content, thinking blocks, and tool results (FR-011a)
+//! - Explicit exclusion of tool use blocks (FR-011b) - structured metadata is not searchable
+//! - Match highlighting and navigation (FR-012, FR-013)
+//! - Indication of which tabs contain matches (FR-014)
+//!
+//! # State Machine
+//!
+//! `SearchState` is a sum type with three mutually exclusive states:
+//!
+//! ```text
+//! ┌──────────┐
+//! │ Inactive │ ◄─────────────────────────┐
+//! └────┬─────┘                           │
+//!      │ "/" or Ctrl+F (FR-011)          │ Esc
+//!      │                                 │
+//!      ▼                                 │
+//! ┌──────────┐                      ┌────┴─────┐
+//! │  Typing  │─────────────────────►│  Active  │
+//! │  query   │  Enter (FR-012)      │ w/results│
+//! └──────────┘                      └──────────┘
+//!      ▲                                 │
+//!      │                                 │
+//!      └─────────────────────────────────┘
+//!           n/N navigation (FR-013)
+//! ```
+//!
+//! ## State Transitions
+//!
+//! - **Inactive → Typing**: User presses `/` or `Ctrl+F` to activate search input
+//! - **Typing → Active**: User presses `Enter` to execute search with non-empty query
+//! - **Typing → Inactive**: User presses `Esc` to cancel search
+//! - **Active → Inactive**: User presses `Esc` to clear search and remove highlights
+//! - **Active → Active**: User presses `n` (next) or `N` (previous) to navigate between matches
+//!
+//! # Type Design
+//!
+//! ## Smart Constructors
+//!
+//! - `SearchQuery::new()` enforces non-empty query invariant through smart constructor
+//! - Returns `None` if query is empty or whitespace-only
+//! - Private inner `String` prevents construction of invalid queries
+//!
+//! ## Invalid States Unrepresentable
+//!
+//! The sum type design makes these states impossible:
+//! - Active search with empty query (prevented by `SearchQuery` smart constructor)
+//! - Typing with no query buffer (always has `query: String`)
+//! - Multiple states active simultaneously (enum enforces exactly one variant)
+//!
+//! # Match Navigation
+//!
+//! Matches are indexed sequentially across all conversations:
+//! - `current_match` is a 0-based index into the `matches` vector
+//! - Next (`n`) increments with wraparound: `(current + 1) % matches.len()`
+//! - Previous (`N`) decrements with wraparound: `(current + matches.len() - 1) % matches.len()`
+//! - Each match contains full location: agent, entry, block, character offset, and length
+//!
+//! # Search Semantics
+//!
+//! ## What is Searched (FR-011a)
+//!
+//! - Text content blocks (`ContentBlock::Text`)
+//! - Thinking blocks (`ContentBlock::Thinking`)
+//! - Tool result output (`ContentBlock::ToolResult`)
+//!
+//! ## What is NOT Searched (FR-011b)
+//!
+//! - Tool use blocks (`ContentBlock::ToolUse`) - these contain tool names and JSON parameters,
+//!   which are structured metadata rather than conversation content
+//!
+//! ## Match Finding
+//!
+//! - Case-insensitive substring matching (both query and text lowercased)
+//! - Overlapping matches are found (searching "aaa" in "aaaa" finds 2 matches)
+//! - UTF-8 safe character boundary advancement
+//!
+//! # Examples
+//!
+//! ```rust
+//! use cclv::state::search::{SearchState, SearchQuery};
+//!
+//! // Start with inactive search
+//! let state = SearchState::Inactive;
+//!
+//! // User presses "/" - transition to typing
+//! let state = SearchState::Typing {
+//!     query: String::new(),
+//!     cursor: 0,
+//! };
+//!
+//! // User types "error" and presses Enter
+//! let query = SearchQuery::new("error").unwrap();
+//! // Execute search (see execute_search function)
+//! // let matches = execute_search(&session, &query);
+//! // let state = SearchState::Active { query, matches, current_match: 0 };
+//!
+//! // User presses "n" to go to next match
+//! // current_match = (current_match + 1) % matches.len()
+//! ```
 
 use crate::model::{AgentId, EntryUuid, Session};
 
 // ===== SearchState =====
 
 /// Search state machine.
-/// Sum type enforces exactly one state at a time.
+///
+/// Sum type enforces exactly one state at a time. See module documentation for state transitions.
 #[derive(Debug, Clone)]
 pub enum SearchState {
     /// No active search.
     Inactive,
     /// User is typing query.
-    Typing { query: String, cursor: usize },
+    Typing {
+        /// Current query string being typed.
+        query: String,
+        /// Cursor position within query for text editing.
+        cursor: usize,
+    },
     /// Search complete with results.
     Active {
+        /// Validated non-empty search query.
         query: SearchQuery,
+        /// All matches found across all conversations.
         matches: Vec<SearchMatch>,
+        /// Index of currently focused match (0-based).
         current_match: usize,
     },
 }
@@ -44,6 +154,7 @@ impl SearchQuery {
         }
     }
 
+    /// Returns the query string as a string slice.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -52,12 +163,20 @@ impl SearchQuery {
 // ===== SearchMatch =====
 
 /// A search match location.
+///
+/// Contains full location information for a single match, enabling navigation
+/// and highlighting. Matches are ordered by appearance in the session.
 #[derive(Debug, Clone)]
 pub struct SearchMatch {
+    /// Agent containing this match. None = main agent, Some(id) = subagent.
     pub agent_id: Option<AgentId>,
+    /// Log entry UUID containing this match.
     pub entry_uuid: EntryUuid,
+    /// Index of content block within the entry's message (0-based).
     pub block_index: usize,
+    /// Character offset within the block where match starts (0-based, UTF-8 safe).
     pub char_offset: usize,
+    /// Length of the matched text in characters.
     pub length: usize,
 }
 

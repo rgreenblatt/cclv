@@ -1,7 +1,71 @@
-//! Session and conversation types.
+//! Session and conversation aggregates.
 //!
-//! Session is the aggregate root containing main agent and subagents.
-//! All types use smart constructors - raw constructors never exported.
+//! # Overview
+//!
+//! This module provides the core domain aggregates for organizing Claude Code log entries
+//! into coherent conversations:
+//!
+//! - **[`Session`]**: The aggregate root representing a complete Claude Code execution
+//! - **[`AgentConversation`]**: A conversation for a single agent (main or subagent)
+//!
+//! # Domain Model
+//!
+//! A **Session** contains:
+//! - Exactly one main agent conversation (the primary Claude instance)
+//! - Zero or more subagent conversations (spawned for parallel/specialized work)
+//!
+//! Each **AgentConversation** groups entries by agent and tracks:
+//! - Chronological sequence of conversation entries (both valid and malformed)
+//! - The model being used by that agent (extracted from assistant messages)
+//! - Whether the conversation is complete or missing its spawn event
+//!
+//! # Live Tailing
+//!
+//! Sessions are designed for incremental updates during live tailing:
+//!
+//! 1. Entries arrive from the log source (file watcher or stdin)
+//! 2. [`Session::add_entry`] or [`Session::add_conversation_entry`] routes each entry
+//! 3. Main agent entries (no `agent_id`) go to the main conversation
+//! 4. Subagent entries create new conversations on-demand if needed
+//! 5. New entries append to the appropriate conversation's entry list
+//!
+//! # Relationship: Main Agent and Subagents
+//!
+//! The **main agent** is the primary Claude instance orchestrating the session. It:
+//! - Handles the user's initial request
+//! - May spawn subagents for parallel tasks or specialized work
+//! - Continues working while subagents execute
+//!
+//! **Subagents** are isolated Claude instances that:
+//! - Have their own conversation history and model selection
+//! - Execute tasks delegated by the main agent
+//! - Report results back to the main agent when complete
+//! - May be incomplete if their spawn event wasn't logged
+//!
+//! # Usage
+//!
+//! ```
+//! use cclv::model::{Session, SessionId};
+//!
+//! // Create a new session
+//! let session_id = SessionId::new("session-123").unwrap();
+//! let session = Session::new(session_id);
+//!
+//! // Initially empty
+//! assert!(session.main_agent().is_empty());
+//! assert!(session.subagents().is_empty());
+//! ```
+//!
+//! As entries are added via [`Session::add_entry`], they are automatically routed:
+//! - Entries without `agent_id` go to [`Session::main_agent`]
+//! - Entries with `agent_id` go to [`Session::subagents`] (created on-demand)
+//!
+//! # Design Principles
+//!
+//! - **Smart constructors only**: Types cannot be constructed with invalid data
+//! - **Append-only semantics**: Entries are never removed, only added (supports live tailing)
+//! - **Automatic routing**: Session handles routing logic; callers just add entries
+//! - **Graceful degradation**: Malformed entries and incomplete subagents are preserved
 
 use crate::model::{AgentId, ConversationEntry, LogEntry, MalformedEntry, ModelInfo, SessionId};
 use chrono::{DateTime, Utc};
@@ -81,14 +145,28 @@ impl Session {
 
     // ===== Accessors (read-only) =====
 
+    /// Returns the session ID for this session.
+    ///
+    /// The session ID groups all entries (main agent and subagents) that belong to a single
+    /// Claude Code execution.
     pub fn session_id(&self) -> &SessionId {
         &self.session_id
     }
 
+    /// Returns the main agent's conversation.
+    ///
+    /// The main agent is the primary Claude instance that orchestrates the session.
+    /// It may spawn subagents for parallel work or specialized tasks.
     pub fn main_agent(&self) -> &AgentConversation {
         &self.main_agent
     }
 
+    /// Returns all subagent conversations, keyed by agent ID.
+    ///
+    /// Subagents are spawned by the main agent to handle parallel tasks or specialized work.
+    /// Each subagent has its own isolated conversation and may use a different model.
+    ///
+    /// Use [`subagent_ids_ordered`](Self::subagent_ids_ordered) to get IDs sorted by first appearance.
     pub fn subagents(&self) -> &HashMap<AgentId, AgentConversation> {
         &self.subagents
     }
@@ -173,26 +251,46 @@ impl AgentConversation {
 
     // ===== Accessors (read-only) =====
 
+    /// Returns the agent ID for this conversation.
+    ///
+    /// Returns `None` for the main agent, `Some(id)` for subagents.
     pub fn agent_id(&self) -> Option<&AgentId> {
         self.agent_id.as_ref()
     }
 
+    /// Returns all conversation entries (both valid and malformed) in insertion order.
+    ///
+    /// Entries are appended as they arrive during live tailing or as the log file is parsed.
+    /// Malformed entries are preserved to support error visibility in the UI.
     pub fn entries(&self) -> &[ConversationEntry] {
         &self.entries
     }
 
+    /// Returns the model being used by this agent, if known.
+    ///
+    /// The model is extracted from assistant messages and represents the Claude model variant
+    /// (e.g., opus, sonnet, haiku) used by this agent. Returns `None` if no assistant messages
+    /// have been processed yet.
     pub fn model(&self) -> Option<&ModelInfo> {
         self.model.as_ref()
     }
 
+    /// Returns the timestamp of the first entry in this conversation.
+    ///
+    /// Used to determine subagent spawn order when displaying tabs.
+    /// Returns `None` for empty conversations.
     pub fn first_timestamp(&self) -> Option<DateTime<Utc>> {
         self.entries.first().and_then(|e| e.timestamp())
     }
 
+    /// Returns the number of entries in this conversation.
+    ///
+    /// Counts both valid and malformed entries.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
+    /// Returns `true` if this conversation has no entries.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }

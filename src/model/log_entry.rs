@@ -10,21 +10,37 @@ use std::path::PathBuf;
 // ===== EntryType =====
 
 /// Type of log entry - exactly one variant.
+///
+/// Represents the classification of a log entry in the Claude Code JSONL format.
+/// This determines how the entry is visually rendered in the conversation view:
+/// - User entries appear as user prompts/messages
+/// - Assistant entries appear as Claude's responses
+/// - Summary entries contain session metadata and summaries
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntryType {
+    /// User message or prompt
     User,
+    /// Assistant (Claude) response
     Assistant,
+    /// Session summary or metadata entry
     Summary,
 }
 
 // ===== EntryMetadata =====
 
 /// Additional metadata from the log entry.
+///
+/// Contains contextual information about the environment and session state
+/// when the log entry was created. All fields are optional except `is_sidechain`.
 #[derive(Debug, Clone, Default)]
 pub struct EntryMetadata {
+    /// Current working directory when the entry was logged
     pub cwd: Option<PathBuf>,
+    /// Git branch name if in a git repository
     pub git_branch: Option<String>,
+    /// Claude Code version that generated this log entry
     pub version: Option<String>,
+    /// Whether this entry is part of a sidechain conversation
     pub is_sidechain: bool,
 }
 
@@ -91,34 +107,51 @@ impl LogEntry {
 
     // ===== Accessors (read-only) =====
 
+    /// Returns the unique identifier for this log entry.
     pub fn uuid(&self) -> &EntryUuid {
         &self.uuid
     }
 
+    /// Returns the parent entry UUID if this entry is a reply or continuation.
+    ///
+    /// Returns `None` for top-level entries.
     pub fn parent_uuid(&self) -> Option<&EntryUuid> {
         self.parent_uuid.as_ref()
     }
 
+    /// Returns the session identifier grouping related entries together.
+    ///
+    /// All entries from the same Claude Code session share the same session ID.
     pub fn session_id(&self) -> &SessionId {
         &self.session_id
     }
 
+    /// Returns the agent identifier for subagent entries.
+    ///
+    /// Returns `None` for main agent entries, `Some(AgentId)` for subagent entries.
     pub fn agent_id(&self) -> Option<&AgentId> {
         self.agent_id.as_ref()
     }
 
+    /// Returns the UTC timestamp when this entry was created.
     pub fn timestamp(&self) -> DateTime<Utc> {
         self.timestamp
     }
 
+    /// Returns the type of this entry (User, Assistant, or Summary).
+    ///
+    /// The entry type determines how this entry is visually rendered in the
+    /// conversation view.
     pub fn entry_type(&self) -> EntryType {
         self.entry_type
     }
 
+    /// Returns the message content including role, text, and tool calls.
     pub fn message(&self) -> &Message {
         &self.message
     }
 
+    /// Returns the metadata containing environment context (cwd, git branch, etc.).
     pub fn metadata(&self) -> &EntryMetadata {
         &self.metadata
     }

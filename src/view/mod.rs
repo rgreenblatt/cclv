@@ -459,9 +459,44 @@ where
     }
 }
 
-/// CLI arguments (simplified for TUI layer)
+/// CLI arguments for TUI initialization
+///
+/// This struct represents the subset of command-line arguments that affect
+/// the TUI's initial state. It lives in the view module because it configures
+/// the rendering layer (impure shell), not the domain logic.
+///
+/// # Design Notes
+///
+/// Per the Pure Core / Impure Shell architecture (see constitution.md):
+/// - Domain state lives in `AppState` (pure)
+/// - CLI parsing happens in main.rs (impure)
+/// - This struct bridges the gap, carrying configuration from CLI → TUI
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use cclv::view::CliArgs;
+///
+/// let args = CliArgs::new(
+///     true,   // Show stats panel on startup
+///     true,   // Enable live-follow mode
+/// );
+/// ```
 pub struct CliArgs {
+    /// Whether to show the statistics panel on startup
+    ///
+    /// Maps to `--stats` CLI flag. When true, the stats panel
+    /// is visible immediately; when false, user can toggle with 's' key.
     pub stats: bool,
+
+    /// Whether to enable live-follow mode (tail -f behavior)
+    ///
+    /// Maps to `--follow` CLI flag. When true:
+    /// - Auto-scroll is enabled by default (FR-035)
+    /// - New entries trigger scroll to bottom (FR-036)
+    /// - Input source continues polling for new data
+    ///
+    /// When false, the log is treated as static/completed.
     pub follow: bool,
 }
 

@@ -333,6 +333,8 @@ impl<'a> Widget for ConversationView<'a> {
 /// * `styles` - Message styling configuration
 /// * `focused` - Whether this pane currently has focus (affects border color)
 /// * `global_wrap` - Global wrap mode setting (FR-039)
+// TODO(cclv-07v.9): Wire up once per-item rendering refactor complete
+#[allow(dead_code)]
 pub fn render_conversation_view(
     frame: &mut Frame,
     area: Rect,
@@ -527,6 +529,7 @@ pub fn render_conversation_view(
 /// * `styles` - Message styling configuration
 /// * `focused` - Whether this pane currently has focus (affects border color)
 /// * `global_wrap` - Global wrap mode setting (FR-039)
+#[allow(clippy::too_many_arguments)]
 pub fn render_conversation_view_with_search(
     frame: &mut Frame,
     area: Rect,
@@ -783,6 +786,8 @@ fn apply_highlights_to_text(
 /// If offset exceeds line length, returns empty line.
 ///
 /// Uses character-based indexing (not byte-based) for UTF-8 safety.
+// TODO(cclv-07v.9): Wire up once horizontal scroll enabled
+#[allow(dead_code)]
 fn apply_horizontal_offset(line: Line<'static>, offset: usize) -> Line<'static> {
     if offset == 0 {
         return line;
@@ -836,6 +841,8 @@ fn apply_horizontal_offset(line: Line<'static>, offset: usize) -> Line<'static> 
 /// Check if any line in the collection exceeds the viewport width.
 ///
 /// Uses visual width (not byte count) for correct Unicode handling.
+// TODO(cclv-07v.9): Wire up once horizontal scroll enabled
+#[allow(dead_code)]
 fn has_long_lines(lines: &[Line], viewport_width: usize) -> bool {
     lines.iter().any(|line| {
         let width: usize = line.spans.iter().map(|s| s.content.width()).sum();
@@ -849,6 +856,8 @@ fn has_long_lines(lines: &[Line], viewport_width: usize) -> bool {
 /// Appends ▶ if content extends beyond viewport (can scroll right).
 ///
 /// Returns modified title string with indicators.
+// TODO(cclv-07v.9): Wire up once horizontal scroll enabled
+#[allow(dead_code)]
 fn add_scroll_indicators_to_title(base_title: String, has_left: bool, has_right: bool) -> String {
     let mut title = base_title;
 
