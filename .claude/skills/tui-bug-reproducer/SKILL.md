@@ -21,6 +21,48 @@ Systematically reproduce TUI bugs with visual verification, snapshot tests, and 
 - Bugs that don't need snapshot tests
 - When no tmux pane is available
 
+## CRITICAL: Reproduce Only, Do Not Investigate
+
+**Your ONLY job is to create a minimal failing test. Stop there.**
+
+### Guardrails
+
+1. **Stay black-box**: Treat the TUI as an opaque system. You observe inputs and outputs, nothing more.
+
+2. **No source diving**: Do NOT read implementation code to understand *why* the bug happens. That's investigation, not reproduction.
+
+3. **No root cause analysis**: If you catch yourself thinking "this is probably caused by...", STOP. You're off track.
+
+4. **Acceptance test mindset**: Write tests like a user would describe the bug:
+   - "When I scroll down, the screen shows blank lines" ✓
+   - "The scroll_offset calculation has an off-by-one error" ✗
+
+5. **Done means done**: After the test fails for the right reason and the bead is created, you are FINISHED. Do not "quickly check" the cause.
+
+### What You Produce
+
+| Artifact | Purpose |
+|----------|---------|
+| Minimal fixture | Smallest input that triggers bug |
+| Failing snapshot test | Documents buggy behavior |
+| Bead with repro steps | Tracks the issue |
+
+### What You Do NOT Produce
+
+- Root cause analysis
+- Fix suggestions
+- "Investigation hints" beyond file/function names from stack traces
+- Any changes to non-test code
+
+### Why This Matters
+
+Investigation is a separate skill with different constraints. Mixing reproduction with investigation leads to:
+- Premature fixes that don't address root cause
+- Tests that pass for wrong reasons
+- Wasted context chasing theories
+
+**Create the reproducer. File the bead. Stop.**
+
 ## Quick Reference
 
 ```bash
@@ -198,10 +240,7 @@ What actually happens
 - File: tests/view_snapshots.rs
 - Function: bug_NAME
 - Fixture: tests/fixtures/NAME_repro.jsonl
-- Snapshot: tests/snapshots/view_snapshots__bug_NAME.snap
-
-## Investigation Hints
-Where to look in code"
+- Snapshot: tests/snapshots/view_snapshots__bug_NAME.snap"
 ```
 
 ### Phase 6: Mark Test Ignored

@@ -161,6 +161,149 @@ fn bug_initial_screen_blank() {
 - **Quote special characters** in send-keys when needed
 - **Use `C-c` to interrupt** before launching new command
 
+## Mouse Events
+
+Send SGR 1006 mouse escape sequences via `tmux send-keys -l` (literal mode).
+
+### Format
+
+```
+\e[<Btn;X;YM    # Mouse press
+\e[<Btn;X;Ym    # Mouse release (lowercase m)
+```
+
+Coordinates are **1-indexed** (column 1, row 1 = top-left).
+
+### Button Codes
+
+| Code | Event |
+|------|-------|
+| 0 | Left click |
+| 1 | Middle click |
+| 2 | Right click |
+| 64 | Scroll up |
+| 65 | Scroll down |
+| 32+ | Add to base for drag (e.g., 32 = left drag) |
+
+### Tested Working (cclv)
+
+**Entry expand/collapse** - click on entry to toggle:
+```bash
+# Click at (x=50, y=13) to expand/collapse entry
+tmux send-keys -t 5 -l $'\e[<0;50;13M'   # press
+tmux send-keys -t 5 -l $'\e[<0;50;13m'   # release
+sleep 0.3 && tmux capture-pane -t 5 -p
+```
+
+**Scroll in content area**:
+```bash
+# Scroll down at position (50, 20)
+tmux send-keys -t 5 -l $'\e[<65;50;20M'
+sleep 0.2 && tmux capture-pane -t 5 -p
+
+# Scroll up
+tmux send-keys -t 5 -l $'\e[<64;50;20M'
+```
+
+### Known Limitations
+
+- **Tab clicking**: Not working in cclv (needs app-side investigation)
+- Requires app to have mouse capture enabled (`crossterm::event::EnableMouseCapture`)
+- The `-l` flag is critical (literal mode, no tmux key interpretation)
+
+### Finding Click Coordinates
+
+```bash
+# Get pane dimensions
+tmux display -t 5 -p '#{pane_width}x#{pane_height}'
+
+# Capture and count rows to find target
+tmux capture-pane -t 5 -p | head -20 | nl
+```
+
+## Translating to TestBackend Tests
+
+After reproducing a bug via tmux, create a programmatic test.
+
+### Get Terminal Dimensions
+
+```bash
+tmux display -t 5 -p '#{pane_width}x#{pane_height}'
+# Output: 80x24 → TestBackend::new(80, 24)
+```
+
+### Map tmux Capture to Test Assertion
+
+tmux output ≈ `buffer_to_string()` in tests:
+
+```rust
+let buffer = app.terminal().backend().buffer();
+let output = buffer_to_string(buffer);
+
+// Assert expected content visible
+assert!(output.contains("expected text"));
+```
+
+### Map Mouse Events to Test Code
+
+tmux mouse sequences → crossterm `MouseEvent`:
+
+```rust
+use crossterm::event::{MouseEvent, MouseEventKind, MouseButton};
+
+// Click at (x=50, y=13) from tmux → (column=49, row=12) 0-indexed
+let mouse = MouseEvent {
+    kind: MouseEventKind::Down(MouseButton::Left),
+    column: 49,  // x - 1
+    row: 12,     // y - 1
+    modifiers: KeyModifiers::NONE,
+};
+app.handle_mouse_test(mouse);
+
+// Scroll down
+let scroll = MouseEvent {
+    kind: MouseEventKind::ScrollDown,
+    column: 49,
+    row: 19,
+    modifiers: KeyModifiers::NONE,
+};
+```
+
+### Example: Entry Expand Bug
+
+**Observed via tmux**:
+```bash
+# Entry shows "(+50 more lines)" - collapsed
+tmux capture-pane -t 5 -p | grep "more lines"
+
+# Click to expand
+tmux send-keys -t 5 -l $'\e[<0;50;15M' && tmux send-keys -t 5 -l $'\e[<0;50;15m'
+sleep 0.3 && tmux capture-pane -t 5 -p
+
+# Still shows "(+50 more lines)" - BUG!
+```
+
+**Resulting test**:
+```rust
+#[test]
+fn bug_entry_expand_not_working() {
+    // ... setup with fixture ...
+
+    // Simulate click on entry
+    let mouse = MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: 49, row: 14,
+        modifiers: KeyModifiers::NONE,
+    };
+    app.handle_mouse_test(mouse);
+    app.render_test().unwrap();
+
+    let output = buffer_to_string(app.terminal().backend().buffer());
+    // Should NOT contain "more lines" after expand
+    assert!(!output.contains("more lines"), "Entry should be expanded");
+}
+```
+
 ## Cleanup
 
 ```bash
