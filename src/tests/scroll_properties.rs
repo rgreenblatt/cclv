@@ -204,8 +204,144 @@ fn execute_scroll(
 
 // ===== Property Tests =====
 
+// ===== Bug Reproduction: Handler Behavior Simulation =====
+
+/// Simulates the ACTUAL scroll handler behavior (which has the overshoot bug).
+///
+/// Unlike `execute_scroll` which correctly clamps, the real handler creates
+/// `AtLine(offset + 1)` WITHOUT clamping to max_offset. This causes the bug
+/// where k presses are absorbed after overshooting the bottom.
+fn simulate_handler_scroll_down(state: &mut ConversationViewState, viewport: ViewportDimensions) {
+    let total_height = state.total_height();
+
+    match state.scroll() {
+        ScrollPosition::Bottom => {
+            // Handler keeps Bottom as Bottom - no change
+        }
+        ScrollPosition::AtLine(offset) => {
+            // BUG: Handler does saturating_add WITHOUT clamping to max_offset
+            let new_offset = offset.get().saturating_add(1);
+            state.set_scroll(ScrollPosition::at_line(new_offset));
+        }
+        _ => {
+            // Resolve and then add 1 (simulating handler behavior)
+            let offset = state
+                .scroll()
+                .resolve(total_height, viewport.height as usize, |idx| {
+                    state.entry_cumulative_y(idx)
+                });
+            let new_offset = offset.get().saturating_add(1);
+            state.set_scroll(ScrollPosition::at_line(new_offset));
+        }
+    }
+}
+
+/// Simulates the scroll handler's scroll up behavior.
+fn simulate_handler_scroll_up(state: &mut ConversationViewState, viewport: ViewportDimensions) {
+    let total_height = state.total_height();
+
+    match state.scroll() {
+        ScrollPosition::Top => {
+            // Handler keeps Top as Top - no change
+        }
+        ScrollPosition::AtLine(offset) => {
+            let new_offset = offset.get().saturating_sub(1);
+            state.set_scroll(ScrollPosition::at_line(new_offset));
+        }
+        _ => {
+            // Resolve and then subtract 1
+            let offset = state
+                .scroll()
+                .resolve(total_height, viewport.height as usize, |idx| {
+                    state.entry_cumulative_y(idx)
+                });
+            let new_offset = offset.get().saturating_sub(1);
+            state.set_scroll(ScrollPosition::at_line(new_offset));
+        }
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
+
+    /// Property test for bug cclv-5ur.77: scroll k absorbed after overshoot.
+    ///
+    /// Property: After scrolling up from a non-top position, the resolved scroll
+    /// offset should ALWAYS decrease (viewport should change).
+    ///
+    /// Bug behavior: After G → j×n → k → j×m sequence, the internal AtLine offset
+    /// exceeds max_offset. When k is pressed, it decrements but resolved offset
+    /// stays clamped at max_offset, so k appears "absorbed".
+    ///
+    /// Reproduction sequence: Bottom → ScrollDown×n → ScrollUp → ScrollDown×m → ScrollUp
+    /// The final ScrollUp should decrease the resolved offset, but bug causes it to stay same.
+    #[test]
+    #[ignore = "cclv-5ur.77: scroll k absorbed after handler overshoot - demonstrates bug"]
+    fn scroll_up_effective_after_overshoot_sequence(
+        mut state in arb_conversation_view_state(),
+        first_overshoot in 1usize..=10,
+        second_overshoot in 1usize..=10,
+    ) {
+        let viewport = ViewportDimensions::new(80, 24);
+        let total_height = state.total_height();
+
+        // Skip if content too short to scroll
+        if total_height <= viewport.height as usize {
+            return Ok(());
+        }
+
+        // Step 1: Go to bottom
+        state.set_scroll(ScrollPosition::Bottom);
+
+        // Step 2: Overshoot with j presses (simulating handler behavior)
+        for _ in 0..first_overshoot {
+            simulate_handler_scroll_down(&mut state, viewport);
+        }
+
+        // Step 3: Scroll up once (this should work)
+        simulate_handler_scroll_up(&mut state, viewport);
+
+        // Step 4: Overshoot again with j presses
+        for _ in 0..second_overshoot {
+            simulate_handler_scroll_down(&mut state, viewport);
+        }
+
+        // Capture resolved offset BEFORE k press
+        let offset_before_k = state
+            .scroll()
+            .resolve(total_height, viewport.height as usize, |idx| {
+                state.entry_cumulative_y(idx)
+            })
+            .get();
+
+        // Step 5: Scroll up once - THIS IS THE KEY TEST
+        simulate_handler_scroll_up(&mut state, viewport);
+
+        // Capture resolved offset AFTER k press
+        let offset_after_k = state
+            .scroll()
+            .resolve(total_height, viewport.height as usize, |idx| {
+                state.entry_cumulative_y(idx)
+            })
+            .get();
+
+        // PROPERTY: If we weren't at top, offset should have decreased
+        // Bug causes offset_after_k == offset_before_k (k absorbed)
+        if offset_before_k > 0 {
+            prop_assert!(
+                offset_after_k < offset_before_k,
+                "BUG cclv-5ur.77: k was absorbed after overshoot sequence!\n\
+                 Resolved offset before k: {}\n\
+                 Resolved offset after k: {} (should be {})\n\
+                 First overshoot: {}, Second overshoot: {}",
+                offset_before_k,
+                offset_after_k,
+                offset_before_k - 1,
+                first_overshoot,
+                second_overshoot
+            );
+        }
+    }
 
     /// Test that scrolling down shifts lines up consistently.
     ///
