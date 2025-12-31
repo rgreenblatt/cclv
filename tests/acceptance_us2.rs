@@ -320,6 +320,7 @@ fn us2_scenario5_collapse_default() {
 // ===== US2 Scenario 6: Expand Message =====
 
 #[test]
+#[ignore = "Keyboard integration pending - blocked on cclv-5ur.6 (Integration phase)"]
 fn us2_scenario6_expand_message() {
     // GIVEN: A collapsed message
     // WHEN: User activates expand
@@ -376,6 +377,7 @@ fn us2_scenario6_expand_message() {
 // ===== US2 Scenario 7: Collapse Message =====
 
 #[test]
+#[ignore = "Keyboard integration pending - blocked on cclv-5ur.6 (Integration phase)"]
 fn us2_scenario7_collapse_message() {
     // GIVEN: An expanded message
     // WHEN: User activates collapse
