@@ -170,3 +170,7 @@ mod tests;
 #[cfg(test)]
 #[path = "scroll_handler_migration_tests.rs"]
 mod migration_tests;
+
+#[cfg(test)]
+#[path = "scroll_handler_tab_routing_tests.rs"]
+mod tab_routing_tests;
