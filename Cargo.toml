@@ -1,0 +1,24 @@
+[package]
+name = "cclv"
+version = "0.1.0"
+edition = "2021"
+authors = ["Claude Code Log Viewer Contributors"]
+description = "TUI application for viewing Claude Code JSONL session logs"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-org/cclv"
+readme = "README.md"
+keywords = ["tui", "log-viewer", "jsonl", "claude"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+# Core dependencies will be added in implementation phase
+# This is a minimal stub for Phase 0 build validation
+
+[dev-dependencies]
+# Test dependencies will be added in implementation phase
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
