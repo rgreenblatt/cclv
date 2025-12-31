@@ -379,7 +379,6 @@ proptest! {
     ///
     /// BLACK-BOX: Observe rendered lines, detect suspicious blank line patterns.
     #[test]
-    #[ignore = "cclv-07v.12.21.3: pre-existing blank lines bug"]
     fn no_spurious_blank_lines_during_scroll(
         mut state in arb_conversation_view_state(),
         moves in arb_scroll_sequence(12),

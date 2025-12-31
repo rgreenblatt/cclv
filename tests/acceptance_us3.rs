@@ -181,7 +181,6 @@ fn us3_scenario2_filter_main_agent() {
 // ===== US3 Scenario 3: Tool Breakdown =====
 
 #[test]
-#[ignore = "Tool statistics collection not yet implemented - tool_use entries need to be tracked in SessionStats"]
 fn us3_scenario3_tool_breakdown() {
     // US3-SC3
     // GIVEN: Stats are displayed

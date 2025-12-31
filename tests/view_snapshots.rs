@@ -747,7 +747,6 @@ fn snapshot_message_with_thinking_block() {
 // ===== Search Highlighting Snapshot Tests =====
 
 #[test]
-#[ignore = "Search highlighting not yet implemented with view-state"]
 fn snapshot_message_with_search_highlighting() {
     // TODO: Reimplement once search highlighting is integrated with view-state
 }
@@ -874,7 +873,6 @@ fn bug_initial_screen_blank_until_keypress() {
 /// EXPECTED: Content starts immediately after header (0-1 blank lines max).
 /// ACTUAL: 4 blank lines before first content at scroll position 0.
 #[test]
-#[ignore = "cclv-07v.12.21.3: excessive blank lines before/between entries"]
 fn bug_excessive_blank_lines_in_entry_rendering() {
     use cclv::source::FileSource;
     use cclv::state::AppState;
@@ -1751,7 +1749,6 @@ fn bug_jerky_scroll_line_by_line() {
 /// Root cause: Height calculator returns full content height for collapsed entries,
 /// but renderer only shows 3 summary lines + collapse indicator (~4 lines total).
 #[test]
-#[ignore = "cclv-5ur.14: height mismatch bug - tracked by cclv-5ur.14.8"]
 fn bug_collapsed_entry_height_mismatch() {
     use cclv::source::FileSource;
     // calculate_height is now used internally by ConversationViewState

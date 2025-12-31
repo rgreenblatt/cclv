@@ -1677,7 +1677,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Performance test - run manually with: cargo test hit_test_performance -- --ignored --nocapture"]
     fn hit_test_performance_100k_entries() {
         use std::time::Instant;
 
