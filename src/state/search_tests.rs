@@ -412,3 +412,170 @@ fn execute_search_searches_tool_result_blocks() {
     assert_eq!(matches.len(), 1);
     assert_eq!(matches[0].block_index, 0);
 }
+
+// ===== agent_ids_with_matches Tests =====
+
+#[test]
+fn agent_ids_with_matches_returns_empty_for_empty_matches() {
+    let matches: Vec<SearchMatch> = vec![];
+    let agent_ids = agent_ids_with_matches(&matches);
+
+    assert!(agent_ids.is_empty(), "Should return empty set for no matches");
+}
+
+#[test]
+fn agent_ids_with_matches_ignores_main_agent_matches() {
+    let matches = vec![
+        SearchMatch {
+            agent_id: None, // Main agent
+            entry_uuid: make_entry_uuid("entry-1"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: None, // Main agent
+            entry_uuid: make_entry_uuid("entry-2"),
+            block_index: 0,
+            char_offset: 10,
+            length: 5,
+        },
+    ];
+
+    let agent_ids = agent_ids_with_matches(&matches);
+
+    assert!(agent_ids.is_empty(), "Should ignore main agent matches (agent_id = None)");
+}
+
+#[test]
+fn agent_ids_with_matches_returns_single_agent() {
+    let agent = make_agent_id("agent-123");
+    let matches = vec![
+        SearchMatch {
+            agent_id: Some(agent.clone()),
+            entry_uuid: make_entry_uuid("entry-1"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+    ];
+
+    let agent_ids = agent_ids_with_matches(&matches);
+
+    assert_eq!(agent_ids.len(), 1, "Should contain exactly one agent");
+    assert!(agent_ids.contains(&agent), "Should contain agent-123");
+}
+
+#[test]
+fn agent_ids_with_matches_deduplicates_same_agent() {
+    let agent = make_agent_id("agent-abc");
+    let matches = vec![
+        SearchMatch {
+            agent_id: Some(agent.clone()),
+            entry_uuid: make_entry_uuid("entry-1"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: Some(agent.clone()),
+            entry_uuid: make_entry_uuid("entry-2"),
+            block_index: 0,
+            char_offset: 10,
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: Some(agent.clone()),
+            entry_uuid: make_entry_uuid("entry-3"),
+            block_index: 1,
+            char_offset: 20,
+            length: 5,
+        },
+    ];
+
+    let agent_ids = agent_ids_with_matches(&matches);
+
+    assert_eq!(agent_ids.len(), 1, "Should deduplicate to single agent");
+    assert!(agent_ids.contains(&agent), "Should contain agent-abc");
+}
+
+#[test]
+fn agent_ids_with_matches_returns_multiple_agents() {
+    let agent1 = make_agent_id("agent-1");
+    let agent2 = make_agent_id("agent-2");
+    let agent3 = make_agent_id("agent-3");
+
+    let matches = vec![
+        SearchMatch {
+            agent_id: Some(agent1.clone()),
+            entry_uuid: make_entry_uuid("entry-1"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: Some(agent2.clone()),
+            entry_uuid: make_entry_uuid("entry-2"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: Some(agent3.clone()),
+            entry_uuid: make_entry_uuid("entry-3"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+    ];
+
+    let agent_ids = agent_ids_with_matches(&matches);
+
+    assert_eq!(agent_ids.len(), 3, "Should contain all three agents");
+    assert!(agent_ids.contains(&agent1), "Should contain agent-1");
+    assert!(agent_ids.contains(&agent2), "Should contain agent-2");
+    assert!(agent_ids.contains(&agent3), "Should contain agent-3");
+}
+
+#[test]
+fn agent_ids_with_matches_mixed_main_and_subagent_matches() {
+    let agent1 = make_agent_id("agent-sub1");
+    let agent2 = make_agent_id("agent-sub2");
+
+    let matches = vec![
+        SearchMatch {
+            agent_id: None, // Main agent - should be ignored
+            entry_uuid: make_entry_uuid("entry-1"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: Some(agent1.clone()),
+            entry_uuid: make_entry_uuid("entry-2"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: None, // Main agent - should be ignored
+            entry_uuid: make_entry_uuid("entry-3"),
+            block_index: 0,
+            char_offset: 10,
+            length: 5,
+        },
+        SearchMatch {
+            agent_id: Some(agent2.clone()),
+            entry_uuid: make_entry_uuid("entry-4"),
+            block_index: 0,
+            char_offset: 0,
+            length: 5,
+        },
+    ];
+
+    let agent_ids = agent_ids_with_matches(&matches);
+
+    assert_eq!(agent_ids.len(), 2, "Should contain only subagents");
+    assert!(agent_ids.contains(&agent1), "Should contain agent-sub1");
+    assert!(agent_ids.contains(&agent2), "Should contain agent-sub2");
+}

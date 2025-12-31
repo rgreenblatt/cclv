@@ -61,6 +61,17 @@ pub struct SearchMatch {
     pub length: usize,
 }
 
+// ===== Match Extraction =====
+
+/// Extract the set of agent IDs that contain search matches.
+///
+/// Returns a HashSet of AgentIds for all subagents that have matches.
+/// Main agent matches are ignored (agent_id = None).
+/// If no matches exist, returns an empty set.
+pub fn agent_ids_with_matches(matches: &[SearchMatch]) -> std::collections::HashSet<AgentId> {
+    todo!("agent_ids_with_matches: extract set of agent IDs from matches")
+}
+
 // ===== Search Execution =====
 
 /// Execute a search across all conversations in a session.

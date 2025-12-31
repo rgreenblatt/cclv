@@ -3,8 +3,8 @@
 //! Pure layout logic - calculates layout constraints and renders
 //! placeholder widgets for main agent, subagent tabs, and status bar.
 
-use crate::model::PricingConfig;
-use crate::state::{AppState, FocusPane, SearchState};
+use crate::model::{AgentId, PricingConfig};
+use crate::state::{agent_ids_with_matches, AppState, FocusPane, SearchState};
 use crate::view::{message, stats::StatsPanel, tabs, MessageStyles, SearchInput};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -13,6 +13,7 @@ use ratatui::{
     widgets::Paragraph,
     Frame,
 };
+use std::collections::HashSet;
 
 /// Render the split pane layout with main agent (left), subagent tabs (right),
 /// and status bar (bottom).
@@ -146,7 +147,14 @@ fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState, styles:
 
     // Get ordered subagent IDs and render tab bar
     let agent_ids = state.session().subagent_ids_ordered();
-    tabs::render_tab_bar(frame, tab_area, &agent_ids, state.selected_tab);
+
+    // Extract agent IDs with matches from search state
+    let tabs_with_matches: HashSet<AgentId> = match &state.search {
+        SearchState::Active { matches, .. } => agent_ids_with_matches(matches),
+        _ => HashSet::new(), // No search active, no matches
+    };
+
+    tabs::render_tab_bar(frame, tab_area, &agent_ids, state.selected_tab, &tabs_with_matches);
 
     // Determine which conversation to display based on selected_tab
     let selected_conversation = if let Some(idx) = state.selected_tab {
