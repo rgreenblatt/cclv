@@ -214,37 +214,43 @@ fn us1_scenario4_tool_calls_display() {
 }
 
 // ===== US1 Scenario 5: Model Name Header =====
+// Note: Header line removed per cclv-5ur.61. Model name no longer displayed.
+// This test now verifies that the viewer still renders correctly without the header.
 
 #[test]
 fn us1_scenario5_model_name_header() {
     // GIVEN: Viewer is showing a live session
-    // WHEN: Model information is present in the log
-    // THEN: Model name is displayed in the header
+    // WHEN: Session is loaded
+    // THEN: UI renders correctly without header line
 
-    // DOING: Load fixture with model info
-    // EXPECT: Model name visible in header/UI
+    // DOING: Load fixture
+    // EXPECT: UI renders without header
     let mut harness = AcceptanceTestHarness::from_fixture(MINIMAL_FIXTURE)
-        .expect("Should load session with model info");
+        .expect("Should load session");
 
     // IF YES: Session loaded
-    // VERIFY: Render shows model name in header
+    // VERIFY: Render works (no crashes) and does NOT show model name in first line
     let output = harness.render_to_string();
 
-    // The minimal_session.jsonl has "claude-opus-4-5-20251101" in the system:init entry
-    // Check for the actual model name from the fixture
-    // The UI renders model as "Opus" (capitalized family name)
-    let has_exact_model = output.contains("claude-opus-4-5-20251101");
-    let has_model_family = output.contains("Opus") || output.contains("claude-opus");
-
+    // After cclv-5ur.61: Header removed, model name NOT displayed
+    // Verify UI still renders correctly
     assert!(
-        has_exact_model || has_model_family,
-        "Should display model name 'Opus' or full model ID in header. Got:\n{}",
+        output.contains("Conversations") || output.contains("Main Agent"),
+        "Should display conversation UI. Got:\n{}",
         output
     );
 
-    // RESULT: Model name visible in rendered output
-    // MATCHES: Yes - header shows model information
-    // THEREFORE: US1 Scenario 5 verified
+    // Verify model name is NOT in the first line (where header used to be)
+    let first_line = output.lines().next().unwrap_or("");
+    assert!(
+        !first_line.contains("Model:") && !first_line.contains("claude-opus"),
+        "First line should NOT contain model info (header removed). Got: '{}'",
+        first_line
+    );
+
+    // RESULT: UI renders correctly without header
+    // MATCHES: Yes - no crashes, conversation pane visible
+    // THEREFORE: US1 Scenario 5 updated for headerless UI
 }
 
 // ===== US1 Scenario 6: Auto-scroll on New Messages =====

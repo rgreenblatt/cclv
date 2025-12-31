@@ -2,7 +2,6 @@
 source: src/test_harness.rs
 expression: output
 ---
-Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 ┌Conversations─────────────────────────────────────────────────────────────────┐
 │ Main Agent                                                                   │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -17,6 +16,7 @@ Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 ││  5 Of course, I'd be happy to help.                                         │
 │                                                                              │
 ││  6 Thanks                                                                   │
+│                                                                              │
 │                                                                              │
 │                                                                              │
 │                                                                              │

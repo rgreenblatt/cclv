@@ -2,21 +2,21 @@
 source: src/test_harness.rs
 expression: output
 ---
-Model: claude-opus-4-5-20251101 | Main Agent | /workspace/project | 3 tools, 0 a
 ┌Conversations─────────────────────────────────────────────────────────────────┐
-│ Main Agent┌ Keyboard Shortcuts ──────────────────────────────────┐           │
-└───────────│Navigation                                            │───────────┘
-┌Main Agent │  j/↓         Scroll down                             │───────────┐
-│           │  k/↑         Scroll up                               │           │
-││  2 Hello │  h/←         Scroll left (for long lines)            │           │
-│           │  l/→         Scroll right                            │           │
-││  3 Hi the│  Ctrl+d/Page Down Page down                          │           │
-│           │  Ctrl+u/Page Up   Page up                            │           │
-││  4 Can yo│  g/Home      Go to top                               │           │
-│           │  G/End       Go to bottom                            │           │
-││  5 Of cou│                                                      │           │
-│           │Pane Focus                                            │           │
-││  6 Thanks│  Tab         Cycle focus between panes               │           │
+│ Main Agent                                                                   │
+└───────────┌ Keyboard Shortcuts ──────────────────────────────────┐───────────┘
+┌Main Agent │Navigation                                            │───────────┐
+│           │  j/↓         Scroll down                             │           │
+││  2 Hello │  k/↑         Scroll up                               │           │
+│           │  h/←         Scroll left (for long lines)            │           │
+││  3 Hi the│  l/→         Scroll right                            │           │
+│           │  Ctrl+d/Page Down Page down                          │           │
+││  4 Can yo│  Ctrl+u/Page Up   Page up                            │           │
+│           │  g/Home      Go to top                               │           │
+││  5 Of cou│  G/End       Go to bottom                            │           │
+│           │                                                      │           │
+││  6 Thanks│Pane Focus                                            │           │
+│           │  Tab         Cycle focus between panes               │           │
 │           │  1           Focus main agent pane                   │           │
 │           │  2           Focus subagent pane                     │           │
 │           │  3           Focus stats panel                       │           │

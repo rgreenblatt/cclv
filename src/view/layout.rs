@@ -30,11 +30,11 @@ pub fn calculate_tab_area(frame_area: Rect, state: &AppState) -> Option<Rect> {
     );
 
     // Calculate vertical chunks (same as render_layout)
+    // Note: Header line removed per cclv-5ur.61
     let vertical_chunks = if search_visible {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1), // Header
                 Constraint::Min(0),    // Content
                 Constraint::Length(3), // Search
                 Constraint::Length(1), // Status
@@ -44,14 +44,13 @@ pub fn calculate_tab_area(frame_area: Rect, state: &AppState) -> Option<Rect> {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1), // Header
                 Constraint::Min(0),    // Content
                 Constraint::Length(1), // Status
             ])
             .split(frame_area)
     };
 
-    let content_area = vertical_chunks[1];
+    let content_area = vertical_chunks[0];
 
     // Calculate conversation area (accounting for stats panel)
     let conversation_area = if state.stats_visible {
@@ -86,11 +85,11 @@ pub fn calculate_pane_area(frame_area: Rect, state: &AppState) -> Rect {
     );
 
     // Calculate vertical chunks
+    // Note: Header line removed per cclv-5ur.61
     let vertical_chunks = if search_visible {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1), // Header
                 Constraint::Min(0),    // Content
                 Constraint::Length(3), // Search
                 Constraint::Length(1), // Status
@@ -100,14 +99,13 @@ pub fn calculate_pane_area(frame_area: Rect, state: &AppState) -> Rect {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1), // Header
                 Constraint::Min(0),    // Content
                 Constraint::Length(1), // Status
             ])
             .split(frame_area)
     };
 
-    let content_area = vertical_chunks[1];
+    let content_area = vertical_chunks[0];
 
     // Calculate conversation area (accounting for stats panel)
     if state.stats_visible {
@@ -136,12 +134,12 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
         SearchState::Typing { .. } | SearchState::Active { .. }
     );
 
-    // Split screen vertically: header + main content area + optional search + status bar
+    // Split screen vertically: main content area + optional search + status bar
+    // Note: Header line removed per cclv-5ur.61
     let vertical_chunks = if search_visible {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1), // Header bar (1 line)
                 Constraint::Min(0),    // Main content area
                 Constraint::Length(3), // Search input (3 lines for border + text)
                 Constraint::Length(1), // Status bar (1 line)
@@ -151,22 +149,18 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1), // Header bar (1 line)
                 Constraint::Min(0),    // Main content area
                 Constraint::Length(1), // Status bar (1 line)
             ])
             .split(frame.area())
     };
 
-    let header_area = vertical_chunks[0];
-    let content_area = vertical_chunks[1];
+    let content_area = vertical_chunks[0];
     let (search_area, status_area) = if search_visible {
-        (Some(vertical_chunks[2]), vertical_chunks[3])
+        (Some(vertical_chunks[1]), vertical_chunks[2])
     } else {
-        (None, vertical_chunks[2])
+        (None, vertical_chunks[1])
     };
-
-    render_header(frame, header_area, state);
 
     // Split content area vertically: conversation area + stats panel (if visible)
     let (conversation_area, stats_area) = if state.stats_visible {
@@ -424,84 +418,6 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
     frame.render_widget(paragraph, area);
 }
 
-/// Render the header bar showing model name, agent ID, and session metadata.
-///
-/// Displays:
-/// - Model name (from ModelInfo.display_name()) for current conversation
-/// - Session metadata (cwd, tools count, agents count, skills count) from system:init
-/// - [LIVE] indicator when live_mode && auto_scroll are both true
-/// - Agent identifier based on selected tab (Main Agent vs subagent ID)
-fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
-    // Determine which conversation to show based on selected_tab (cclv-5ur.53)
-    // Tab 0 = Main Agent, Tabs 1+ = Subagents
-    let selected_tab_index = state.selected_tab_index().unwrap_or(0);
-
-    let (agent_label, conversation_view) = if selected_tab_index == 0 {
-        // Tab 0: Main Agent
-        ("Main Agent".to_string(), state.session_view().main())
-    } else {
-        // Tabs 1+: Subagents (index - 1 in subagent list)
-        let subagent_index = selected_tab_index - 1;
-        let mut agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
-        agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
-
-        if let Some(&agent_id) = agent_ids.get(subagent_index) {
-            // Try to get initialized subagent, but show subagent label even if pending
-            let conv = state
-                .session_view()
-                .get_subagent(agent_id)
-                .unwrap_or_else(|| state.session_view().main());
-            (format!("Subagent {}", agent_id.as_str()), conv)
-        } else {
-            // subagent_index out of bounds, fallback to main
-            ("Main Agent".to_string(), state.session_view().main())
-        }
-    };
-
-    // Get model name from conversation view-state
-    let model_name = conversation_view.model_name().unwrap_or("Unknown");
-
-    // Show [LIVE] indicator only when both live_mode and auto_scroll are true
-    let live_indicator = if state.live_mode && state.auto_scroll {
-        " [LIVE]"
-    } else {
-        ""
-    };
-
-    // Get session metadata from SessionViewState
-    let metadata_text = if let Some(sys_meta) = state.session_view().system_metadata() {
-        let cwd_display = sys_meta
-            .cwd
-            .as_ref()
-            .and_then(|p| p.to_str())
-            .unwrap_or("?");
-        let tools_count = sys_meta.tools.len();
-        let agents_count = sys_meta.agents.len();
-        let skills_count = sys_meta.skills.len();
-
-        format!(
-            " | {} | {} tools, {} agents, {} skills",
-            cwd_display, tools_count, agents_count, skills_count
-        )
-    } else {
-        String::new()
-    };
-
-    // Format: "Model: Sonnet | Main Agent [LIVE] | /path | 45 tools, 3 agents, 20 skills"
-    let header_text = format!(
-        "Model: {} | {}{}{}",
-        model_name, agent_label, live_indicator, metadata_text
-    );
-
-    let style = if state.live_mode && state.auto_scroll {
-        Style::default().fg(Color::Green)
-    } else {
-        Style::default().fg(Color::Cyan)
-    };
-
-    let paragraph = Paragraph::new(Line::from(header_text)).style(style);
-    frame.render_widget(paragraph, area);
-}
 
 // ===== Tests =====
 

@@ -2,7 +2,6 @@
 source: src/tests/acceptance_scroll.rs
 expression: paged_up_output
 ---
-Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ┌Conversations─────────────────────────────────────────────────────────────────┐
 │ Main Agent                                                                   │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -24,5 +23,6 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │                                                                              │
 ││ 11 Now let me follow the coordinator protocol:                              │
 ││                                                                             │
+││    1. **Setup**: Run the prerequisites check                                │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

@@ -2257,21 +2257,22 @@ fn bug_header_shows_wrong_agent_for_tab_zero() {
     let output = buffer_to_string(app.terminal().backend().buffer());
     insta::assert_snapshot!("bug_header_mismatch_initial", output.clone());
 
-    // The header line is the first line - extract it
-    let header_line = output.lines().next().unwrap_or("");
+    // Note: Header line removed per cclv-5ur.61
+    // This test now verifies the header is NOT present
+    let first_line = output.lines().next().unwrap_or("");
 
-    // BUG: Header shows "Subagent toolu_subagent1" instead of "Main Agent"
-    // When selected_tab = Some(0), header should show Main Agent
+    // After cclv-5ur.61: Header removed
+    // Verify first line is NOT a header (should be tab bar or content)
     assert!(
-        header_line.contains("Main Agent"),
-        "BUG: Header shows wrong agent for tab 0.\n\
-         When selected_tab = Some(0), header should show 'Main Agent'.\n\
-         Expected header to contain: 'Main Agent'\n\
-         Actual header line: {}\n\n\
-         The content pane correctly shows 'Main Agent' but header is wrong.\n\
-         Root cause: render_header() uses agent_ids.get(selected_idx) directly\n\
-         without checking if selected_idx == 0 means Main Agent.",
-        header_line
+        !first_line.contains("Model:") && !first_line.contains("Main Agent | "),
+        "First line should NOT contain header elements (header removed per cclv-5ur.61). Got: '{}'",
+        first_line
+    );
+
+    // Verify UI still renders correctly
+    assert!(
+        output.contains("Conversations") || output.contains("Main Agent"),
+        "UI should still render tab bar and content"
     );
 }
 
@@ -2763,12 +2764,14 @@ fn bug_subagent_mouse_click_expand_not_working() {
         .map(|e| e.is_expanded())
         .unwrap_or(false);
 
-    // Click on entry 0 in the subagent pane (row 6 is roughly where entry 1 starts)
-    // The conversation pane starts at row 5 (after header + tab bar)
+    // Click on entry 0 in the subagent pane
+    // After cclv-5ur.61: Header removed, conversation pane now starts at row 4 (after tab bar only)
+    // Tab bar: rows 0-2 (3 lines)
+    // Conversation content: row 3+ (main pane border) then row 4+ (entries)
     let mouse_event = MouseEvent {
         kind: MouseEventKind::Down(MouseButton::Left),
         column: 10, // Inside the content area
-        row: 6,     // First entry area
+        row: 5,     // First entry area (adjusted for removed header)
         modifiers: KeyModifiers::NONE,
     };
     app.handle_mouse_test(mouse_event);

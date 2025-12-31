@@ -2,7 +2,6 @@
 source: src/tests/view_snapshots.rs
 expression: initial_output.clone()
 ---
-Model: Unknown | Main Agent
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Main Agent │ subagent_alpha │ subagent_beta │ subagent_gamma                                                         │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -11,6 +10,7 @@ Model: Unknown | Main Agent
 │                                                                                                                      │
 ││  2 Main agent response                                                                                              │
 │── 5 in / 10 out / $0.00 | Context: 5 (0%) ──                                                                         │
+│                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │

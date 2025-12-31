@@ -2,7 +2,6 @@
 source: src/tests/view_snapshots.rs
 expression: output.clone()
 ---
-Model: claude-opus-4-5-20251101 | Main Agent | /test | 0 tools, 0 agents, 0 skills
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Main Agent │ toolu_subagent1 │ toolu_subagent2                                                                       │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -10,6 +9,7 @@ Model: claude-opus-4-5-20251101 | Main Agent | /test | 0 tools, 0 agents, 0 skil
 │                                                                                                                      │
 ││  2 Main agent message 1                                                                                             │
 │── 100 in / 50 out / $0.01 | Context: 100 (0%) ──                                                                     │
+│                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │

@@ -2,11 +2,11 @@
 source: src/tests/acceptance_scroll.rs
 expression: bottom_output
 ---
-Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ┌Conversations─────────────────────────────────────────────────────────────────┐
 │ Main Agent                                                                   │
 └──────────────────────────────────────────────────────────────────────────────┘
 ┌Main Agent (20 entries) ▶─────────────────────────────────────────────────────┐
+││        "command": "bd show cclv-07v --json 2>/dev/null | head -100",        │
 ││        "description": "Show epic details"                                   │
 ││      }                                                                      │
 │── 8 in / 1 out / $0.06 | Context: 399.9k (100%) ──                           │

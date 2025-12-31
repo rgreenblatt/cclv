@@ -2,7 +2,6 @@
 source: src/tests/view_snapshots.rs
 expression: output
 ---
-Model: Unknown | Main Agent
 ┌Conversations─────────────────────────────────────────────┐
 │ Main Agent                                               │
 └──────────────────────────────────────────────────────────┘
@@ -15,6 +14,7 @@ Model: Unknown | Main Agent
 ││                                                         │
 ││    Another short line.                                  │
 │── 100 in / 50 out / $0.01 | Context: 100 (0%) ──         │
+│                                                          │
 │                                                          │
 │                                                          │
 │                                                          │

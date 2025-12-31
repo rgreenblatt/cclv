@@ -2,7 +2,6 @@
 source: src/tests/view_snapshots.rs
 expression: output_before
 ---
-Model: Unknown | Subagent toolu_013heDTEdCz8mvrxEGezZteB | ? | 0 tools, 0 agents, 0 skills
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Main Agent │ toolu_013heDTEdCz8mvrxEGezZteB │ toolu_014WRyZPPnVxekx3ACaBtEz8 │ toolu_01UcpbyRyV4mTttzBQZ2tjiX                                                                                        │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -40,5 +39,6 @@ Model: Unknown | Subagent toolu_013heDTEdCz8mvrxEGezZteB | ? | 0 tools, 0 agents
 ││         3→mod help;                                                                                                                                                                                 │
 ││    (+101 more lines)                                                                                                                                                                                │
 │                                                                                                                                                                                                      │
+││  7      1→//! Snapshot tests for key view components                                                                                                                                                │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

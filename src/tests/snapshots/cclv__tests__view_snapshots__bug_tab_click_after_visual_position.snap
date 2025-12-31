@@ -2,13 +2,13 @@
 source: src/tests/view_snapshots.rs
 expression: after_click_output.clone()
 ---
-Model: Unknown | Subagent subagent_alpha
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ Main Agent │ subagent_alpha │ subagent_beta │ subagent_gamma                                                         │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ┌Subagent subagent_alpha [Sonnet] (1 entries)──────────────────────────────────────────────────────────────────────────┐
 ││  1 First subagent response                                                                                          │
 │── 3 in / 8 out / $0.00 | Context: 3 (0%) ──                                                                          │
+│                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │

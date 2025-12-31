@@ -351,243 +351,7 @@ fn render_layout_uses_selected_tab_to_display_correct_subagent() {
 }
 
 // ===== Header Rendering Tests =====
-
-#[test]
-fn render_header_displays_model_name_for_main_agent() {
-    use crate::model::{
-        EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
-        SystemMetadata,
-    };
-    use chrono::Utc;
-
-    let mut terminal = create_test_terminal();
-    let _session_id = SessionId::new("test-session").unwrap();
-    let mut entries = Vec::new();
-
-    // Add system:init entry with model in system metadata
-    // (Current implementation extracts model from system metadata, not message ModelInfo)
-    let sys_meta = SystemMetadata {
-        subtype: "init".to_string(),
-        cwd: None,
-        model: Some("claude-sonnet-4-5-20250929".to_string()),
-        tools: vec![],
-        agents: vec![],
-        skills: vec![],
-    };
-    let entry = LogEntry::new_with_system_metadata(
-        EntryUuid::new("entry-1").unwrap(),
-        None,
-        SessionId::new("test-session").unwrap(),
-        None,
-        Utc::now(),
-        EntryType::System,
-        Message::new(Role::User, MessageContent::Text("init".to_string())),
-        EntryMetadata::default(),
-        Some(sys_meta),
-    );
-    entries.push(crate::model::ConversationEntry::Valid(Box::new(entry)));
-
-    let mut state = AppState::new();
-    state.add_entries(entries);
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer().clone();
-    let content = buffer
-        .content
-        .iter()
-        .map(|c| c.symbol())
-        .collect::<String>();
-
-    // Header should contain model ID (since we use system metadata, not ModelInfo.display_name())
-    assert!(
-        content.contains("sonnet"),
-        "Header should display model ID containing 'sonnet'"
-    );
-}
-
-#[test]
-fn render_header_shows_live_indicator_when_live_mode_and_auto_scroll() {
-    let mut terminal = create_test_terminal();
-    let entries = create_entries_no_subagents();
-    let mut state = AppState::new();
-    state.add_entries(entries);
-    state.live_mode = true;
-    state.auto_scroll = true;
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer().clone();
-    let content = buffer
-        .content
-        .iter()
-        .map(|c| c.symbol())
-        .collect::<String>();
-
-    assert!(
-        content.contains("[LIVE]"),
-        "Header should show [LIVE] indicator when live_mode=true and auto_scroll=true"
-    );
-}
-
-#[test]
-fn render_header_hides_live_indicator_when_live_mode_false() {
-    let mut terminal = create_test_terminal();
-    let entries = create_entries_no_subagents();
-    let mut state = AppState::new();
-    state.add_entries(entries);
-    state.live_mode = false;
-    state.auto_scroll = true;
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer().clone();
-    let _content = buffer
-        .content
-        .iter()
-        .map(|c| c.symbol())
-        .collect::<String>();
-
-    // Should NOT contain [LIVE] in header area
-    // Note: Status bar might still show LIVE, but we're testing header specifically
-    // We'll verify by checking the first line of output
-    let first_line: String = buffer
-        .content
-        .iter()
-        .take(80) // First row (80 cols width)
-        .map(|c| c.symbol())
-        .collect();
-
-    assert!(
-        !first_line.contains("[LIVE]"),
-        "Header (first line) should NOT show [LIVE] when live_mode=false"
-    );
-}
-
-#[test]
-fn render_header_hides_live_indicator_when_auto_scroll_false() {
-    let mut terminal = create_test_terminal();
-    let entries = create_entries_no_subagents();
-    let mut state = AppState::new();
-    state.add_entries(entries);
-    state.live_mode = true;
-    state.auto_scroll = false; // User scrolled away
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer().clone();
-    let first_line: String = buffer.content.iter().take(80).map(|c| c.symbol()).collect();
-
-    assert!(
-        !first_line.contains("[LIVE]"),
-        "Header should NOT show [LIVE] when auto_scroll=false (user scrolled)"
-    );
-}
-
-#[test]
-fn render_header_shows_main_agent_label() {
-    let mut terminal = create_test_terminal();
-    let entries = create_entries_no_subagents();
-    let mut state = AppState::new();
-    state.add_entries(entries);
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer().clone();
-    let first_line: String = buffer.content.iter().take(80).map(|c| c.symbol()).collect();
-
-    assert!(
-        first_line.contains("Main") || first_line.contains("main"),
-        "Header should identify main agent"
-    );
-}
-
-#[test]
-fn render_header_shows_subagent_id_when_subagent_focused() {
-    let mut terminal = create_test_terminal();
-    let entries = create_entries_with_subagents();
-    let mut state = AppState::new();
-    state.add_entries(entries);
-    state.focus = FocusPane::Subagent;
-    state.selected_conversation =
-        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap()); // First subagent
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer().clone();
-    let first_line: String = buffer.content.iter().take(80).map(|c| c.symbol()).collect();
-
-    assert!(
-        first_line.contains("subagent"),
-        "Header should show subagent identifier when subagent pane focused"
-    );
-}
-
-#[test]
-fn render_header_uses_selected_tab_not_focus() {
-    // Bug: render_header() was using state.focus instead of state.selected_tab
-    // to determine agent_label, causing "Main Agent" to always show.
-    // This test verifies header shows correct agent based on selected_tab,
-    // REGARDLESS of which pane has focus.
-
-    let mut terminal = create_test_terminal();
-    let entries = create_entries_with_subagents();
-    let mut state = AppState::new();
-    state.add_entries(entries);
-
-    // Critical: Focus is on Stats pane (not Subagent),
-    // but we've selected a subagent tab.
-    // Header should show "Subagent X", not "Main Agent"
-    state.focus = FocusPane::Stats;
-    state.selected_conversation =
-        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap()); // First subagent tab selected
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer().clone();
-    let first_line: String = buffer.content.iter().take(80).map(|c| c.symbol()).collect();
-
-    // Header should show subagent identifier based on selected_tab,
-    // NOT "Main Agent" based on focus
-    assert!(
-        first_line.contains("subagent"),
-        "Header should show subagent identifier based on selected_tab (got: '{}')",
-        first_line
-    );
-    assert!(
-        !first_line.contains("Main Agent"),
-        "Header should NOT show 'Main Agent' when subagent tab is selected (got: '{}')",
-        first_line
-    );
-}
+// Note: Header line removed per cclv-5ur.61. All header tests removed as obsolete.
 
 // ===== Stats Panel Integration Tests =====
 
@@ -1363,91 +1127,7 @@ fn extract_status_bar(buffer: &ratatui::buffer::Buffer) -> String {
 }
 
 // ===== FMT-011: Session Metadata Display Tests =====
-
-#[test]
-fn render_header_shows_session_metadata_when_available() {
-    use crate::model::{
-        EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
-        SystemMetadata,
-    };
-    use chrono::Utc;
-    use std::path::PathBuf;
-
-    let mut terminal = create_test_terminal();
-    let _session_id = SessionId::new("test-session").unwrap();
-    let mut entries = Vec::new();
-
-    // Add system:init entry with metadata
-    let sys_meta = SystemMetadata {
-        subtype: "init".to_string(),
-        cwd: Some(PathBuf::from("/home/claude/cclv")),
-        model: Some("claude-opus-4-5-20251101".to_string()),
-        tools: vec!["Read".to_string(), "Write".to_string(), "Bash".to_string()],
-        agents: vec!["general-purpose".to_string()],
-        skills: vec!["commit".to_string(), "tdd".to_string()],
-    };
-
-    let entry = LogEntry::new_with_system_metadata(
-        EntryUuid::new("sys-init-1").unwrap(),
-        None,
-        SessionId::new("test-session").unwrap(),
-        None,
-        Utc::now(),
-        EntryType::System,
-        Message::new(Role::User, MessageContent::Text("init".to_string())),
-        EntryMetadata::default(),
-        Some(sys_meta),
-    );
-    entries.push(crate::model::ConversationEntry::Valid(Box::new(entry)));
-
-    let mut app_state = AppState::new();
-    app_state.add_entries(entries);
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &app_state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer();
-    let rendered = buffer_to_string(buffer);
-
-    // Header should contain working directory
-    assert!(
-        rendered.contains("/home/claude/cclv"),
-        "Header should display cwd from system metadata"
-    );
-
-    // Header should contain tool count
-    assert!(
-        rendered.contains("3 tools") || rendered.contains("Tools: 3"),
-        "Header should display tool count"
-    );
-}
-
-#[test]
-fn render_header_shows_fallback_when_no_system_metadata() {
-    let mut terminal = create_test_terminal();
-    let entries = create_entries_no_subagents();
-    let mut app_state = AppState::new();
-    app_state.add_entries(entries);
-
-    terminal
-        .draw(|frame| {
-            render_layout(frame, &app_state);
-        })
-        .unwrap();
-
-    let buffer = terminal.backend().buffer();
-    let rendered = buffer_to_string(buffer);
-
-    // Should still render the header without crashing
-    // Just verify it contains "Model:" text (doesn't crash on None)
-    assert!(
-        rendered.contains("Model:"),
-        "Header should render successfully even without system metadata"
-    );
-}
+// Note: Header line removed per cclv-5ur.61. Session metadata tests removed as obsolete.
 
 // ===== Unified Tab Model Layout Tests (FR-083-088) =====
 
@@ -1633,5 +1313,102 @@ fn unified_tabs_work_with_main_pane_focused() {
     assert!(
         rendered.contains("Main Agent") || rendered.contains("[Main]"),
         "FR-088: Tabs should work when Main pane is focused"
+    );
+}
+
+// ===== Status Line Removal Tests (cclv-5ur.61) =====
+
+/// Test that the status line (header with model/agent info) is NOT rendered.
+/// The status line previously showed "Model: X | Main Agent [LIVE] | /path | N tools, N agents, N skills"
+/// at line 0 of the UI. This test verifies it's been removed.
+#[test]
+fn status_line_not_rendered() {
+    use crate::model::{
+        EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
+        SystemMetadata,
+    };
+    use chrono::Utc;
+    use std::path::PathBuf;
+
+    let mut terminal = create_test_terminal();
+    let mut entries = Vec::new();
+
+    // Add system:init entry with full metadata to maximize what would appear in header
+    let sys_meta = SystemMetadata {
+        subtype: "init".to_string(),
+        cwd: Some(PathBuf::from("/home/claude/cclv")),
+        model: Some("claude-sonnet-4-5-20250929".to_string()),
+        tools: vec!["Read".to_string(), "Write".to_string(), "Bash".to_string()],
+        agents: vec!["general-purpose".to_string()],
+        skills: vec!["commit".to_string(), "tdd".to_string()],
+    };
+
+    let entry = LogEntry::new_with_system_metadata(
+        EntryUuid::new("sys-init-1").unwrap(),
+        None,
+        SessionId::new("test-session").unwrap(),
+        None,
+        Utc::now(),
+        EntryType::System,
+        Message::new(Role::User, MessageContent::Text("init".to_string())),
+        EntryMetadata::default(),
+        Some(sys_meta),
+    );
+    entries.push(crate::model::ConversationEntry::Valid(Box::new(entry)));
+
+    let mut state = AppState::new();
+    state.add_entries(entries);
+    state.live_mode = true;
+    state.auto_scroll = true;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer();
+
+    // Extract first line (where header would be)
+    let first_line: String = buffer
+        .content
+        .iter()
+        .take(80) // First row (80 cols width)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Header line should NOT contain any of the status line elements
+    assert!(
+        !first_line.contains("Model:"),
+        "First line should NOT contain 'Model:' - status line should be removed. Got: '{}'",
+        first_line
+    );
+    assert!(
+        !first_line.contains("Main Agent") && !first_line.contains("Subagent"),
+        "First line should NOT contain agent identifier - status line should be removed. Got: '{}'",
+        first_line
+    );
+    assert!(
+        !first_line.contains("/home/claude"),
+        "First line should NOT contain cwd path - status line should be removed. Got: '{}'",
+        first_line
+    );
+    assert!(
+        !first_line.contains("tools") && !first_line.contains("agents") && !first_line.contains("skills"),
+        "First line should NOT contain metadata counts - status line should be removed. Got: '{}'",
+        first_line
+    );
+
+    // The first line should now be part of the content area (tab bar or conversation)
+    // Tab bar starts with border or "Conversations" title
+    let is_content_area = first_line.contains("Conversations")
+        || first_line.contains("┌")
+        || first_line.contains("─")
+        || first_line.trim().is_empty();
+
+    assert!(
+        is_content_area,
+        "First line should be content area (tab bar or conversation), not status line. Got: '{}'",
+        first_line
     );
 }

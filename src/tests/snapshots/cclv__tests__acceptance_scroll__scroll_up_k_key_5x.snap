@@ -2,7 +2,6 @@
 source: src/tests/acceptance_scroll.rs
 expression: scrolled_up_output
 ---
-Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ┌Conversations─────────────────────────────────────────────────────────────────┐
 │ Main Agent                                                                   │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -24,5 +23,6 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ││ 10 Base directory for this skill: /home/claude/.claude/skills/beads-project-│
 ││    tracking                                                                 │
 ││                                                                             │
+││    (+218 more lines)                                                        │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
