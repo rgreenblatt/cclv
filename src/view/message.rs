@@ -333,10 +333,23 @@ pub fn render_conversation_view(
     if entry_count == 0 {
         lines.push(Line::from("No messages yet..."));
     } else {
+        // Determine if this is a subagent conversation
+        let is_subagent_view = conversation.agent_id().is_some();
+
         // Iterate through all entries and render their content blocks
-        for entry in conversation.entries() {
+        for (entry_index, entry) in conversation.entries().iter().enumerate() {
             let role = entry.message().role();
             let role_style = styles.style_for_role(role);
+
+            // Add "Initial Prompt" label for first message in subagent view
+            if is_subagent_view && entry_index == 0 {
+                lines.push(Line::from(vec![ratatui::text::Span::styled(
+                    "🔷 Initial Prompt",
+                    Style::default()
+                        .fg(Color::Magenta)
+                        .add_modifier(Modifier::BOLD),
+                )]));
+            }
 
             match entry.message().content() {
                 MessageContent::Text(text) => {
@@ -2005,6 +2018,153 @@ mod tests {
         assert!(
             rendered.contains("fn") || rendered.contains("main") || rendered.contains("println"),
             "Code block content should be preserved"
+        );
+    }
+
+    // ===== render_conversation_view Initial Prompt Production Path Test (cclv-07v.4.8) =====
+
+    #[test]
+    fn render_conversation_view_function_shows_initial_prompt_for_subagent() {
+        use crate::model::{
+            AgentConversation, AgentId, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        // Create subagent conversation (has agent_id)
+        let agent_id = AgentId::new("subagent-prod-test").expect("valid agent id");
+        let mut conversation = AgentConversation::new(Some(agent_id));
+
+        // Add first message (initial prompt)
+        let msg1 = Message::new(
+            Role::User,
+            MessageContent::Text("Please analyze this.".to_string()),
+        );
+        let entry1 = LogEntry::new(
+            EntryUuid::new("entry-1").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::User,
+            msg1,
+            EntryMetadata::default(),
+        );
+        conversation.add_entry(entry1);
+
+        // Add second message
+        let msg2 = Message::new(
+            Role::Assistant,
+            MessageContent::Text("Analyzing...".to_string()),
+        );
+        let entry2 = LogEntry::new(
+            EntryUuid::new("entry-2").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            msg2,
+            EntryMetadata::default(),
+        );
+        conversation.add_entry(entry2);
+
+        let scroll_state = ScrollState::default();
+
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                // THIS is the production code path used by layout.rs
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+
+        // BUG: This test will FAIL because render_conversation_view() doesn't have the logic
+        assert!(
+            content.contains("Initial Prompt") || content.contains("🔷"),
+            "render_conversation_view() MUST show initial prompt label for subagent first message"
+        );
+    }
+
+    #[test]
+    fn render_conversation_view_function_does_not_show_initial_prompt_for_main_agent() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        // Create MAIN agent conversation (no agent_id)
+        let mut conversation = AgentConversation::new(None);
+
+        // Add first message
+        let msg = Message::new(
+            Role::User,
+            MessageContent::Text("User message to main agent.".to_string()),
+        );
+        let entry = LogEntry::new(
+            EntryUuid::new("entry-1").expect("valid uuid"),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::User,
+            msg,
+            EntryMetadata::default(),
+        );
+        conversation.add_entry(entry);
+
+        let scroll_state = ScrollState::default();
+
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                );
+            })
+            .expect("Failed to draw");
+
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+
+        // Main agent should NOT have initial prompt label
+        assert!(
+            !content.contains("Initial Prompt"),
+            "Main agent should NOT show initial prompt label"
         );
     }
 
