@@ -4,7 +4,10 @@
 //! as a subtle divider line between entries (FR-XXX).
 
 use crate::model::{stats::PricingConfig, TokenUsage};
-use ratatui::text::Line;
+use ratatui::{
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+};
 
 // ===== ContextWindowTokens =====
 
@@ -94,13 +97,53 @@ impl Default for ContextWindowTokens {
 /// // Returns line: "── 1.2k in / 340 out / $0.02 | Context: 45.2k (23%) ──"
 /// ```
 pub fn render_token_divider(
-    _entry_usage: &TokenUsage,
-    _accumulated_input_tokens: u64,
-    _max_context: ContextWindowTokens,
-    _pricing: &PricingConfig,
-    _model_id: Option<&str>,
+    entry_usage: &TokenUsage,
+    accumulated_input_tokens: u64,
+    max_context: ContextWindowTokens,
+    pricing: &PricingConfig,
+    model_id: Option<&str>,
 ) -> Line<'static> {
-    todo!("render_token_divider: not implemented")
+    // Calculate entry cost using pricing config
+    let model_pricing = pricing.get(model_id.unwrap_or("opus"));
+
+    let input_cost =
+        (entry_usage.input_tokens as f64 / 1_000_000.0) * model_pricing.input_cost_per_million;
+
+    let output_cost =
+        (entry_usage.output_tokens as f64 / 1_000_000.0) * model_pricing.output_cost_per_million;
+
+    // Use cached rate if available, otherwise use standard input rate
+    let cache_rate = model_pricing
+        .cached_input_cost_per_million
+        .unwrap_or(model_pricing.input_cost_per_million);
+
+    let cache_cost = ((entry_usage.cache_creation_input_tokens
+        + entry_usage.cache_read_input_tokens) as f64
+        / 1_000_000.0)
+        * cache_rate;
+
+    let total_cost = input_cost + output_cost + cache_cost;
+
+    // Format token counts
+    let input_str = format_token_count(entry_usage.input_tokens);
+    let output_str = format_token_count(entry_usage.output_tokens);
+    let cost_str = format_cost(total_cost);
+    let context_str = format_token_count(accumulated_input_tokens);
+    let percentage = calculate_context_percentage(accumulated_input_tokens, max_context);
+
+    // Build divider text
+    let divider_text = format!(
+        "── {} in / {} out / {} | Context: {} ({}%) ──",
+        input_str, output_str, cost_str, context_str, percentage
+    );
+
+    // Return line with dim gray styling
+    Line::from(vec![Span::styled(
+        divider_text,
+        Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::DIM),
+    )])
 }
 
 /// Format token count in human-readable form (e.g., 1200 -> "1.2k", 45200 -> "45.2k").
@@ -124,8 +167,19 @@ pub fn render_token_divider(
 /// assert_eq!(format_token_count(1_500_000), "1.5M");
 /// ```
 #[allow(dead_code)]
-fn format_token_count(_tokens: u64) -> String {
-    todo!("format_token_count: not implemented")
+fn format_token_count(tokens: u64) -> String {
+    if tokens < 1_000 {
+        // Less than 1k: show exact count
+        tokens.to_string()
+    } else if tokens < 1_000_000 {
+        // 1k to 1M: show with k suffix, 1 decimal place
+        let k = tokens as f64 / 1000.0;
+        format!("{:.1}k", k)
+    } else {
+        // 1M and above: show with M suffix, 1 decimal place
+        let m = tokens as f64 / 1_000_000.0;
+        format!("{:.1}M", m)
+    }
 }
 
 /// Format cost in USD (e.g., 0.0234 -> "$0.02", 1.234 -> "$1.23").
@@ -147,8 +201,8 @@ fn format_token_count(_tokens: u64) -> String {
 /// assert_eq!(format_cost(0.001), "$0.00");
 /// ```
 #[allow(dead_code)]
-fn format_cost(_cost_usd: f64) -> String {
-    todo!("format_cost: not implemented")
+fn format_cost(cost_usd: f64) -> String {
+    format!("${:.2}", cost_usd)
 }
 
 /// Calculate percentage of context window used.
@@ -171,10 +225,11 @@ fn format_cost(_cost_usd: f64) -> String {
 /// ```
 #[allow(dead_code)]
 fn calculate_context_percentage(
-    _accumulated_input_tokens: u64,
-    _max_context: ContextWindowTokens,
+    accumulated_input_tokens: u64,
+    max_context: ContextWindowTokens,
 ) -> u8 {
-    todo!("calculate_context_percentage: not implemented")
+    let percentage = (accumulated_input_tokens as f64 / max_context.get() as f64) * 100.0;
+    percentage.min(100.0) as u8
 }
 
 #[cfg(test)]
