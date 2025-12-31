@@ -4,6 +4,7 @@
 
 pub mod app_state;
 pub mod expand_handler;
+pub mod log_pane;
 pub mod match_navigation_handler;
 pub mod scroll_handler;
 pub mod search;
@@ -14,6 +15,7 @@ pub mod wrap_handler;
 // Re-export for convenience
 pub use app_state::{AppState, FocusPane, ScrollState, WrapMode};
 pub use expand_handler::handle_expand_action;
+pub use log_pane::{LogPaneEntry, LogPaneState};
 pub use match_navigation_handler::{next_match, prev_match};
 pub use scroll_handler::handle_scroll_action;
 pub use search::{agent_ids_with_matches, execute_search, SearchMatch, SearchQuery, SearchState};
