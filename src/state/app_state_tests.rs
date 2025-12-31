@@ -1276,3 +1276,163 @@ fn toggle_global_wrap_twice_returns_to_original() {
 
     assert_eq!(state.global_wrap, original);
 }
+
+// ===== LogPane Toggle Handler Tests =====
+
+#[test]
+fn toggle_log_pane_makes_visible_when_hidden() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    assert!(!state.log_pane.is_visible(), "precondition: log pane hidden");
+
+    state.log_pane.toggle_visible();
+
+    assert!(state.log_pane.is_visible(), "log pane should become visible");
+}
+
+#[test]
+fn toggle_log_pane_makes_hidden_when_visible() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.log_pane.toggle_visible(); // Make visible first
+    assert!(state.log_pane.is_visible(), "precondition: log pane visible");
+
+    state.log_pane.toggle_visible();
+
+    assert!(!state.log_pane.is_visible(), "log pane should become hidden");
+}
+
+#[test]
+fn toggle_log_pane_clears_unread_count_when_opening() {
+    use crate::state::LogPaneEntry;
+    use chrono::Utc;
+    use tracing::Level;
+
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+
+    // Add some unread entries while hidden
+    let entry1 = LogPaneEntry {
+        timestamp: Utc::now(),
+        level: Level::INFO,
+        message: "Test message 1".to_string(),
+    };
+    let entry2 = LogPaneEntry {
+        timestamp: Utc::now(),
+        level: Level::WARN,
+        message: "Test message 2".to_string(),
+    };
+    state.log_pane.push(entry1);
+    state.log_pane.push(entry2);
+
+    assert_eq!(state.log_pane.unread_count(), 2, "precondition: 2 unread");
+    assert_eq!(
+        state.log_pane.unread_max_level(),
+        Some(Level::WARN),
+        "precondition: max level WARN"
+    );
+
+    state.log_pane.toggle_visible(); // Open pane
+
+    assert_eq!(
+        state.log_pane.unread_count(),
+        0,
+        "unread count should be cleared when opening"
+    );
+    assert_eq!(
+        state.log_pane.unread_max_level(),
+        None,
+        "unread max level should be cleared when opening"
+    );
+}
+
+#[test]
+fn toggle_log_pane_twice_returns_to_hidden() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    assert!(!state.log_pane.is_visible(), "precondition: starts hidden");
+
+    state.log_pane.toggle_visible();
+    state.log_pane.toggle_visible();
+
+    assert!(
+        !state.log_pane.is_visible(),
+        "double toggle should return to hidden"
+    );
+}
+
+// ===== Focus Cycling with LogPane Integration Tests =====
+
+#[test]
+fn focus_cycle_includes_log_pane_when_visible() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.log_pane.toggle_visible(); // Make visible
+    state.focus = FocusPane::Main;
+
+    // Full cycle: Main -> Subagent -> Stats -> LogPane -> Main
+    state.cycle_focus();
+    assert_eq!(state.focus, FocusPane::Subagent, "Main -> Subagent");
+
+    state.cycle_focus();
+    assert_eq!(state.focus, FocusPane::Stats, "Subagent -> Stats");
+
+    state.cycle_focus();
+    assert_eq!(
+        state.focus,
+        FocusPane::LogPane,
+        "Stats -> LogPane (when visible)"
+    );
+
+    state.cycle_focus();
+    assert_eq!(state.focus, FocusPane::Main, "LogPane -> Main");
+}
+
+#[test]
+fn focus_cycle_skips_log_pane_when_hidden() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    assert!(!state.log_pane.is_visible(), "precondition: log pane hidden");
+    state.focus = FocusPane::Main;
+
+    // Cycle: Main -> Subagent -> Stats -> Main (skip hidden LogPane)
+    state.cycle_focus();
+    assert_eq!(state.focus, FocusPane::Subagent, "Main -> Subagent");
+
+    state.cycle_focus();
+    assert_eq!(state.focus, FocusPane::Stats, "Subagent -> Stats");
+
+    state.cycle_focus();
+    assert_eq!(
+        state.focus,
+        FocusPane::Main,
+        "Stats -> Main (skip hidden LogPane)"
+    );
+}
+
+#[test]
+fn toggle_log_pane_visibility_affects_focus_cycle() {
+    let session = make_test_session();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Stats;
+
+    // With log pane hidden, Stats -> Main
+    state.cycle_focus();
+    assert_eq!(
+        state.focus,
+        FocusPane::Main,
+        "Stats -> Main when log pane hidden"
+    );
+
+    // Move to Stats again and make log pane visible
+    state.focus = FocusPane::Stats;
+    state.log_pane.toggle_visible();
+
+    // With log pane visible, Stats -> LogPane
+    state.cycle_focus();
+    assert_eq!(
+        state.focus,
+        FocusPane::LogPane,
+        "Stats -> LogPane when log pane visible"
+    );
+}
