@@ -5776,14 +5776,10 @@ mod tests {
 
     /// Test that wrap continuation indicators appear in rendered output (FR-052).
     ///
-    /// TODO: This test currently FAILS because add_wrap_continuation_indicators()
-    /// is not integrated into the rendering pipeline. The function exists and its
-    /// algorithm is tested, but it's not called in render_conversation_view().
-    ///
-    /// Integration point: Lines 772-794 in render_conversation_view() should call
-    /// add_wrap_continuation_indicators() when effective_wrap == WrapMode::Wrap.
+    /// INTEGRATION STATUS: Complete. add_wrap_continuation_indicators() is called at
+    /// line 1034 in render_conversation_view() when effective_wrap == WrapMode::Wrap,
+    /// and at line 1247 in render_subagent_conversation_view().
     #[test]
-    #[ignore = "TODO: Wrap continuation indicators not yet integrated into rendering (cclv-07v.9.9)"]
     fn test_render_wrap_continuation_indicator_appears_in_output() {
         use crate::model::{
             AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
@@ -5863,9 +5859,9 @@ mod tests {
 
     /// Test that intentional line breaks do NOT show wrap indicators (FR-052).
     ///
-    /// TODO: Same integration gap as above - test is ignored until implementation.
+    /// INTEGRATION STATUS: Complete. This verifies that only WRAPPED lines get indicators,
+    /// not lines that end with intentional line breaks.
     #[test]
-    #[ignore = "TODO: Wrap continuation indicators not yet integrated into rendering (cclv-07v.9.9)"]
     fn test_render_intentional_line_breaks_no_indicator() {
         use crate::model::{
             AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
@@ -6049,9 +6045,11 @@ That was the code."#;
 
     /// Test that prose text DOES wrap with indicators while code blocks don't (FR-052 + FR-053).
     ///
-    /// TODO: Ignored until both wrap indicators and code block exemption are implemented.
+    /// INTEGRATION STATUS: Partial. FR-052 (wrap indicators) is complete, but FR-053 (code block
+    /// exemption from wrapping) is NOT YET IMPLEMENTED. Currently, code blocks wrap just like prose.
+    /// This test will remain ignored until FR-053 is complete.
     #[test]
-    #[ignore = "TODO: Requires both wrap indicators (cclv-07v.9.9) and code exemption (cclv-07v.9.10)"]
+    #[ignore = "TODO: Requires FR-053 code block exemption (cclv-07v.9.10) - not yet implemented"]
     fn test_render_mixed_prose_and_code_wrap_behavior() {
         use crate::model::{
             AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
