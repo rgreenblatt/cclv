@@ -5,11 +5,11 @@ expression: output
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────┐
 │ Main │ toolu_subagent_001 │ toolu_subagent_002                                                   │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
-┌toolu_subagent_002 [Haiku] (2 entries)────────────────────────────────────────────────────────────┐
-││  1 Subagent 2 task                                                                              │
+┌Main [Opus] (2 entries)───────────────────────────────────────────────────────────────────────────┐
+││  1 Help me with this task                                                                       │
 │                                                                                                  │
-││  2 Subagent 2 working on task.                                                                  │
-│── 5 in / 10 out / $0.00 | Context: 5 (0%) ──                                                     │
+││  2 I'll spawn subagents to help.                                                                │
+│── 10 in / 15 out / $0.00 | Context: 10 (0%) ──                                                   │
 │                                                                                                  │
 │                                                                                                  │
 │                                                                                                  │

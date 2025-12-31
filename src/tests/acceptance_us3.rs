@@ -261,19 +261,14 @@ fn us3_scenario4_filter_subagent() {
     );
 
     // WHEN: User selects a subagent tab first (required for filter context)
-    harness.send_key(KeyCode::Tab); // Switch to subagent pane
+    harness.send_key(KeyCode::Tab); // Cycle to first subagent tab (unified tab model)
 
     let state_after_tab = harness.state();
+    // In unified tab model, we switch selected conversation, not focus pane
     assert_eq!(
-        state_after_tab.focus,
-        crate::state::FocusPane::Subagent,
-        "Focus should switch to subagent pane"
-    );
-
-    // Verify a subagent tab is selected
-    assert!(
-        state_after_tab.selected_tab_index().is_some(),
-        "A subagent tab should be selected"
+        state_after_tab.selected_tab_index(),
+        Some(1),
+        "Should switch to first subagent tab (index 1)"
     );
 
     // WHEN: User presses 'S' (Shift+s) to filter to current subagent

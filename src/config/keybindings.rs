@@ -91,22 +91,23 @@ impl Default for KeyBindings {
             KeyAction::PageUp,
         );
 
-        // Focus switching
+        // Tab navigation with Tab key and number keys
+        // Note: Number keys map to 0-indexed tabs (1→0, 2→1, 3→2, etc.)
         bindings.insert(
             KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
-            KeyAction::CycleFocus,
+            KeyAction::NextTab,
         );
         bindings.insert(
             KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE),
-            KeyAction::FocusMain,
+            KeyAction::SelectTab(1),
         );
         bindings.insert(
             KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE),
-            KeyAction::FocusSubagent,
+            KeyAction::SelectTab(2),
         );
         bindings.insert(
             KeyEvent::new(KeyCode::Char('3'), KeyModifiers::NONE),
-            KeyAction::FocusStats,
+            KeyAction::SelectTab(3),
         );
 
         // Tab navigation
@@ -123,7 +124,8 @@ impl Default for KeyBindings {
             KeyAction::PrevTab,
         );
 
-        // Direct tab selection (4-9, since 1-3 are for focus)
+        // Direct tab selection (4-9 continue the pattern)
+        // Note: User presses N to select tab N (1-indexed)
         bindings.insert(
             KeyEvent::new(KeyCode::Char('4'), KeyModifiers::NONE),
             KeyAction::SelectTab(4),

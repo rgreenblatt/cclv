@@ -1123,6 +1123,41 @@ mod tests {
         }
     }
 
+    /// Create test app with multiple tabs (Main + 2 subagents = 3 tabs total)
+    fn create_test_app_with_tabs() -> TuiApp<ratatui::backend::TestBackend> {
+        use crate::model::{
+            AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId, TokenUsage,
+        };
+        use chrono::Utc;
+
+        let mut app = create_test_app();
+
+        // Add two subagent entries to create tabs
+        let agent_id_1 = AgentId::new("agent-1").unwrap();
+        let agent_id_2 = AgentId::new("agent-2").unwrap();
+
+        for (idx, agent_id) in [&agent_id_1, &agent_id_2].iter().enumerate() {
+            let message =
+                Message::new(Role::Assistant, MessageContent::Text(format!("msg{}", idx)))
+                    .with_usage(TokenUsage::default());
+            let entry = LogEntry::new(
+                EntryUuid::new(format!("subagent-uuid-{}", idx)).unwrap(),
+                None,
+                SessionId::new("test-session").unwrap(),
+                Some((*agent_id).clone()),
+                Utc::now(),
+                EntryType::Assistant,
+                message,
+                EntryMetadata::default(),
+            );
+            app.app_state
+                .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
+        }
+
+        app
+    }
+
     #[test]
     fn handle_key_q_returns_true() {
         let mut app = create_test_app();
@@ -1414,14 +1449,14 @@ mod tests {
     // ===== Focus cycling keyboard handler tests =====
 
     #[test]
-    fn handle_key_tab_cycles_focus_main_to_subagent() {
-        let mut app = create_test_app();
+    fn handle_key_tab_cycles_to_next_tab() {
+        let mut app = create_test_app_with_tabs();
 
-        // Verify initial focus is Main
+        // Verify initial tab is 0 (Main)
         assert_eq!(
-            app.app_state.focus,
-            crate::state::FocusPane::Main,
-            "Initial focus should be Main"
+            app.app_state.selected_tab_index(),
+            Some(0),
+            "Initial tab should be Main (0)"
         );
 
         // Press Tab
@@ -1430,104 +1465,88 @@ mod tests {
 
         assert!(!should_quit, "Tab should not trigger quit");
         assert_eq!(
-            app.app_state.focus,
-            crate::state::FocusPane::Subagent,
-            "Tab should cycle focus from Main to Subagent"
+            app.app_state.selected_tab_index(),
+            Some(1),
+            "Tab should cycle to next tab (1)"
         );
     }
 
     #[test]
-    fn handle_key_tab_cycles_focus_subagent_to_stats() {
-        let mut app = create_test_app();
+    fn handle_key_tab_cycles_continuously() {
+        let mut app = create_test_app_with_tabs();
 
-        // Set focus to Subagent
-        app.app_state.focus = crate::state::FocusPane::Subagent;
+        // Start on tab 0
+        assert_eq!(app.app_state.selected_tab_index(), Some(0));
 
-        // Press Tab
+        // Press Tab to go to tab 1
         let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE);
-        let should_quit = app.handle_key(key);
+        app.handle_key(key);
+        assert_eq!(app.app_state.selected_tab_index(), Some(1));
 
-        assert!(!should_quit, "Tab should not trigger quit");
+        // Press Tab again to go to tab 2
+        app.handle_key(key);
         assert_eq!(
-            app.app_state.focus,
-            crate::state::FocusPane::Stats,
-            "Tab should cycle focus from Subagent to Stats"
+            app.app_state.selected_tab_index(),
+            Some(2),
+            "Tab should continue cycling (not stop after first press)"
         );
     }
 
     #[test]
-    fn handle_key_tab_cycles_focus_stats_to_main() {
-        let mut app = create_test_app();
+    fn handle_key_1_selects_tab_0() {
+        let mut app = create_test_app_with_tabs();
 
-        // Set focus to Stats
-        app.app_state.focus = crate::state::FocusPane::Stats;
+        // Move to tab 3 (1-indexed) = index 2 (0-indexed)
+        app.app_state.select_tab(3);
+        assert_eq!(app.app_state.selected_tab_index(), Some(2));
 
-        // Press Tab
-        let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE);
-        let should_quit = app.handle_key(key);
-
-        assert!(!should_quit, "Tab should not trigger quit");
-        assert_eq!(
-            app.app_state.focus,
-            crate::state::FocusPane::Main,
-            "Tab should cycle focus from Stats back to Main"
-        );
-    }
-
-    #[test]
-    fn handle_key_1_sets_focus_main() {
-        let mut app = create_test_app();
-
-        // Start with focus on Stats
-        app.app_state.focus = crate::state::FocusPane::Stats;
-
-        // Press '1'
+        // Press '1' to select tab 0 (Main)
         let key = KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE);
         let should_quit = app.handle_key(key);
 
         assert!(!should_quit, "'1' should not trigger quit");
         assert_eq!(
-            app.app_state.focus,
-            crate::state::FocusPane::Main,
-            "'1' should set focus to Main"
+            app.app_state.selected_tab_index(),
+            Some(0),
+            "'1' should select tab 0 (Main)"
         );
     }
 
     #[test]
-    fn handle_key_2_sets_focus_subagent() {
-        let mut app = create_test_app();
+    fn handle_key_2_selects_tab_1() {
+        let mut app = create_test_app_with_tabs();
 
-        // Start with focus on Main
-        app.app_state.focus = crate::state::FocusPane::Main;
+        // Start on tab 0
+        assert_eq!(app.app_state.selected_tab_index(), Some(0));
 
-        // Press '2'
+        // Press '2' to select tab 1 (first subagent)
         let key = KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE);
         let should_quit = app.handle_key(key);
 
         assert!(!should_quit, "'2' should not trigger quit");
         assert_eq!(
-            app.app_state.focus,
-            crate::state::FocusPane::Subagent,
-            "'2' should set focus to Subagent"
+            app.app_state.selected_tab_index(),
+            Some(1),
+            "'2' should select tab 1 (first subagent)"
         );
     }
 
     #[test]
-    fn handle_key_3_sets_focus_stats() {
-        let mut app = create_test_app();
+    fn handle_key_3_selects_tab_2() {
+        let mut app = create_test_app_with_tabs();
 
-        // Start with focus on Subagent
-        app.app_state.focus = crate::state::FocusPane::Subagent;
+        // Start on tab 0
+        assert_eq!(app.app_state.selected_tab_index(), Some(0));
 
-        // Press '3'
+        // Press '3' to select tab 2 (second subagent)
         let key = KeyEvent::new(KeyCode::Char('3'), KeyModifiers::NONE);
         let should_quit = app.handle_key(key);
 
         assert!(!should_quit, "'3' should not trigger quit");
         assert_eq!(
-            app.app_state.focus,
-            crate::state::FocusPane::Stats,
-            "'3' should set focus to Stats"
+            app.app_state.selected_tab_index(),
+            Some(2),
+            "'3' should select tab 2 (second subagent)"
         );
     }
 

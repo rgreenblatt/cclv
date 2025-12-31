@@ -141,29 +141,29 @@ fn test_default_bindings_page_navigation() {
     );
 }
 
-/// Test that default bindings include focus switching.
+/// Test that default bindings include tab navigation.
 #[test]
 fn test_default_bindings_focus() {
     let kb = KeyBindings::default();
 
-    // Tab for cycle focus
+    // Tab for next tab (cycling through conversation tabs)
     assert_eq!(
         kb.get(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE)),
-        Some(KeyAction::CycleFocus)
+        Some(KeyAction::NextTab)
     );
 
-    // Number keys for direct focus
+    // Number keys for direct tab selection (1→tab 1, 2→tab 2, 3→tab 3)
     assert_eq!(
         kb.get(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE)),
-        Some(KeyAction::FocusMain)
+        Some(KeyAction::SelectTab(1))
     );
     assert_eq!(
         kb.get(KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE)),
-        Some(KeyAction::FocusSubagent)
+        Some(KeyAction::SelectTab(2))
     );
     assert_eq!(
         kb.get(KeyEvent::new(KeyCode::Char('3'), KeyModifiers::NONE)),
-        Some(KeyAction::FocusStats)
+        Some(KeyAction::SelectTab(3))
     );
 }
 
@@ -440,19 +440,17 @@ fn test_all_actions_have_default_bindings() {
         ("PageDown", KeyAction::PageDown),
         ("ScrollToTop", KeyAction::ScrollToTop),
         ("ScrollToBottom", KeyAction::ScrollToBottom),
-        // Focus navigation
-        ("FocusMain", KeyAction::FocusMain),
-        ("FocusSubagent", KeyAction::FocusSubagent),
-        ("FocusStats", KeyAction::FocusStats),
-        ("CycleFocus", KeyAction::CycleFocus),
-        // Tab navigation
+        // Tab navigation (replaces old Focus* and CycleFocus)
         ("NextTab", KeyAction::NextTab),
         ("PrevTab", KeyAction::PrevTab),
-        ("SelectTab", KeyAction::SelectTab(1)), // Representative
+        ("SelectTab", KeyAction::SelectTab(0)), // Representative
         // Message interaction
         ("ExpandMessage", KeyAction::ExpandMessage),
         ("CollapseMessage", KeyAction::CollapseMessage),
         ("ToggleExpand", KeyAction::ToggleExpand),
+        // Entry navigation
+        ("NextEntry", KeyAction::NextEntry),
+        ("PrevEntry", KeyAction::PrevEntry),
         // Search
         ("StartSearch", KeyAction::StartSearch),
         ("SubmitSearch", KeyAction::SubmitSearch),
@@ -464,6 +462,9 @@ fn test_all_actions_have_default_bindings() {
         ("FilterGlobal", KeyAction::FilterGlobal),
         ("FilterMainAgent", KeyAction::FilterMainAgent),
         ("FilterSubagent", KeyAction::FilterSubagent),
+        // Line wrapping
+        ("ToggleWrap", KeyAction::ToggleWrap),
+        ("ToggleGlobalWrap", KeyAction::ToggleGlobalWrap),
         // Auto-scroll
         ("ToggleAutoScroll", KeyAction::ToggleAutoScroll),
         ("ScrollToLatest", KeyAction::ScrollToLatest),

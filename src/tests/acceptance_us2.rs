@@ -89,20 +89,15 @@ fn us2_scenario2_switch_subagent_tabs() {
         "Should detect subagents from fixture (parent_tool_use_id entries)"
     );
 
-    // VERIFY: Can switch to subagent pane
-    harness.send_key(KeyCode::Tab); // Switch to subagent pane
+    // VERIFY: Can switch to subagent tab (unified tab model)
+    harness.send_key(KeyCode::Tab); // Cycle to first subagent tab
 
     let state_after_tab = harness.state();
+    // In unified tab model, we switch selected conversation, not focus pane
     assert_eq!(
-        state_after_tab.focus,
-        crate::state::FocusPane::Subagent,
-        "Should switch focus to subagent pane"
-    );
-
-    // VERIFY: Subagent tab is selected
-    assert!(
-        state_after_tab.selected_tab_index().is_some(),
-        "Should have a subagent tab selected"
+        state_after_tab.selected_tab_index(),
+        Some(1),
+        "Should switch to first subagent tab (index 1)"
     );
 
     // VERIFY: Can render subagent conversation
