@@ -89,8 +89,18 @@ pub fn compute_entry_lines(
     styles: &MessageStyles,
     entry_index: Option<usize>,
     is_subagent_view: bool,
-    _search_state: &crate::state::SearchState,
+    search_state: &crate::state::SearchState,
 ) -> Vec<Line<'static>> {
+    // Extract match information if search is active
+    let match_info = match search_state {
+        crate::state::SearchState::Active {
+            matches,
+            current_match,
+            ..
+        } => Some((matches, *current_match)),
+        _ => None,
+    };
+
     let mut lines = Vec::new();
 
     // Only handle Valid entries for now (minimal implementation)
@@ -122,36 +132,95 @@ pub fn compute_entry_lines(
     // Handle message content
     match message.content() {
         MessageContent::Text(text) => {
+            // Check if we have search matches for this entry
+            let entry_matches: Vec<_> = match &match_info {
+                Some((matches, current_idx)) => matches
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, m)| {
+                        if m.entry_uuid == *valid_entry.uuid() && m.block_index == 0 {
+                            Some((m.char_offset, m.length, idx == *current_idx))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+                None => vec![],
+            };
+
             // Split into lines and wrap BEFORE markdown rendering
             // This ensures rendered line count matches height calculation
             let text_lines: Vec<_> = text.lines().collect();
             let wrapped_lines = wrap_lines(&text_lines, wrap_mode, width);
 
-            // Rejoin wrapped lines for markdown parsing
-            // Each wrapped line becomes a separate paragraph in markdown
-            let wrapped_text = wrapped_lines.join("\n");
+            // If we have search matches AND are expanded, apply highlighting
+            // (Don't highlight collapsed view for simplicity)
+            if !entry_matches.is_empty() && expanded {
+                // Apply highlighting to wrapped text (skip markdown for now)
+                // Track cumulative offset for multi-line text
+                let mut cumulative_offset: usize = 0;
+                for line_text in wrapped_lines {
+                    let line_start = cumulative_offset;
+                    let line_end = line_start.saturating_add(line_text.len());
 
-            // Parse markdown and render with role-based styling
-            let markdown_lines = render_markdown_with_style(&wrapped_text, role_style);
+                    // Filter matches that overlap this line
+                    let line_matches: Vec<(usize, usize, bool)> = entry_matches
+                        .iter()
+                        .filter_map(|(offset, length, is_current)| {
+                            let match_start = *offset;
+                            let match_end = match_start.saturating_add(*length);
 
-            // Apply collapse logic to markdown-rendered lines
-            let total_lines = markdown_lines.len();
-            let should_collapse = total_lines > collapse_threshold && !expanded;
+                            // Check if match overlaps this line
+                            if match_start < line_end && match_end > line_start {
+                                // Convert to line-relative offset
+                                let line_relative_start = match_start.saturating_sub(line_start);
+                                let line_relative_end = (match_end - line_start).min(line_text.len());
+                                let line_relative_length =
+                                    line_relative_end.saturating_sub(line_relative_start);
 
-            if should_collapse {
-                // Show summary lines (already markdown-rendered)
-                for line in markdown_lines.iter().take(summary_lines) {
-                    lines.push(line.clone());
+                                if line_relative_length > 0 {
+                                    Some((line_relative_start, line_relative_length, *is_current))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    // Render line with highlights
+                    let highlighted_line =
+                        apply_highlights_to_text(&line_text, &line_matches, role_style);
+                    lines.push(highlighted_line);
+
+                    // Update cumulative offset (add line length + newline char)
+                    cumulative_offset = line_end.saturating_add(1);
                 }
-                // Add collapse indicator
-                let remaining = total_lines - summary_lines;
-                lines.push(Line::from(Span::styled(
-                    format!("(+{} more lines)", remaining),
-                    Style::default().add_modifier(Modifier::DIM),
-                )));
             } else {
-                // Show all lines (already markdown-rendered)
-                lines.extend(markdown_lines);
+                // No search matches or collapsed - render as markdown normally
+                let wrapped_text = wrapped_lines.join("\n");
+                let markdown_lines = render_markdown_with_style(&wrapped_text, role_style);
+
+                // Apply collapse logic to markdown-rendered lines
+                let total_lines = markdown_lines.len();
+                let should_collapse = total_lines > collapse_threshold && !expanded;
+
+                if should_collapse {
+                    // Show summary lines (already markdown-rendered)
+                    for line in markdown_lines.iter().take(summary_lines) {
+                        lines.push(line.clone());
+                    }
+                    // Add collapse indicator
+                    let remaining = total_lines - summary_lines;
+                    lines.push(Line::from(Span::styled(
+                        format!("(+{} more lines)", remaining),
+                        Style::default().add_modifier(Modifier::DIM),
+                    )));
+                } else {
+                    // Show all lines (already markdown-rendered)
+                    lines.extend(markdown_lines);
+                }
             }
 
             // Add separator line at end
@@ -495,6 +564,64 @@ fn prepend_index_to_line(line: Line<'static>, entry_index: usize) -> Line<'stati
     new_spans.extend(line.spans);
 
     Line::from(new_spans)
+}
+
+/// Apply search highlighting to plain text.
+///
+/// Takes plain text and a list of matches (offset, length, is_current) and returns
+/// a Line with spans that have yellow background for matches and REVERSED modifier
+/// for the current match.
+///
+/// This function splits the text into spans:
+/// - Unhighlighted text: base_style
+/// - Other matches: base_style + yellow background
+/// - Current match: base_style + yellow background + REVERSED
+fn apply_highlights_to_text(
+    text: &str,
+    matches: &[(usize, usize, bool)], // (offset, length, is_current)
+    base_style: Style,
+) -> Line<'static> {
+    if matches.is_empty() {
+        return Line::from(vec![Span::styled(text.to_string(), base_style)]);
+    }
+
+    let mut spans = Vec::new();
+    let mut last_pos = 0;
+
+    // Sort matches by offset
+    let mut sorted_matches = matches.to_vec();
+    sorted_matches.sort_by_key(|(offset, _, _)| *offset);
+
+    for (offset, length, is_current) in sorted_matches {
+        // Add text before match
+        if offset > last_pos {
+            spans.push(Span::styled(text[last_pos..offset].to_string(), base_style));
+        }
+
+        // Add highlighted match
+        let end = offset + length;
+        if end <= text.len() {
+            let match_style = if is_current {
+                // Current match: reversed/inverted
+                base_style
+                    .bg(Color::Yellow)
+                    .add_modifier(Modifier::REVERSED)
+            } else {
+                // Other matches: yellow background
+                base_style.bg(Color::Yellow)
+            };
+
+            spans.push(Span::styled(text[offset..end].to_string(), match_style));
+            last_pos = end;
+        }
+    }
+
+    // Add remaining text after last match
+    if last_pos < text.len() {
+        spans.push(Span::styled(text[last_pos..].to_string(), base_style));
+    }
+
+    Line::from(spans)
 }
 
 #[cfg(test)]
