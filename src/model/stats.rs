@@ -49,14 +49,10 @@ impl SessionStats {
                 let agent_usage = self.subagent_usage.entry(agent_id.clone()).or_default();
                 agent_usage.input_tokens += usage.input_tokens;
                 agent_usage.output_tokens += usage.output_tokens;
-                agent_usage.cache_creation_input_tokens += usage.cache_creation_input_tokens;
-                agent_usage.cache_read_input_tokens += usage.cache_read_input_tokens;
             } else {
                 // Main agent usage
                 self.main_agent_usage.input_tokens += usage.input_tokens;
                 self.main_agent_usage.output_tokens += usage.output_tokens;
-                self.main_agent_usage.cache_creation_input_tokens += usage.cache_creation_input_tokens;
-                self.main_agent_usage.cache_read_input_tokens += usage.cache_read_input_tokens;
             }
         }
 
