@@ -2,6 +2,7 @@
 
 mod help;
 mod layout;
+mod log_pane;
 mod message;
 mod search_input;
 mod stats;
@@ -9,6 +10,7 @@ mod styles;
 pub mod tabs;
 
 pub use help::render_help_overlay;
+pub use log_pane::LogPaneView;
 pub use message::ConversationView;
 pub use search_input::SearchInput;
 pub use stats::StatsPanel;
