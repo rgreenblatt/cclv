@@ -107,9 +107,9 @@ fn char_input_inserts_at_cursor_position() {
         query: "test".to_string(),
         cursor: 2, // Between 'e' and 's'
     };
-    let result = handle_char_input(state, 'X');
+    let state = handle_char_input(state, 'X');
 
-    match result {
+    match state {
         SearchState::Typing { query, cursor } => {
             assert_eq!(query, "teXst", "Should insert 'X' at position 2");
             assert_eq!(cursor, 3, "Cursor should advance to 3");
@@ -124,9 +124,9 @@ fn char_input_appends_when_cursor_at_end() {
         query: "hello".to_string(),
         cursor: 5,
     };
-    let result = handle_char_input(state, '!');
+    let state = handle_char_input(state, '!');
 
-    match result {
+    match state {
         SearchState::Typing { query, cursor } => {
             assert_eq!(query, "hello!", "Should append '!'");
             assert_eq!(cursor, 6, "Cursor should advance to 6");
@@ -141,9 +141,9 @@ fn char_input_inserts_at_beginning_when_cursor_zero() {
         query: "world".to_string(),
         cursor: 0,
     };
-    let result = handle_char_input(state, 'H');
+    let state = handle_char_input(state, 'H');
 
-    match result {
+    match state {
         SearchState::Typing { query, cursor } => {
             assert_eq!(query, "Hworld", "Should prepend 'H'");
             assert_eq!(cursor, 1, "Cursor should advance to 1");
@@ -158,9 +158,9 @@ fn char_input_works_on_empty_query() {
         query: String::new(),
         cursor: 0,
     };
-    let result = handle_char_input(state, 'a');
+    let state = handle_char_input(state, 'a');
 
-    match result {
+    match state {
         SearchState::Typing { query, cursor } => {
             assert_eq!(query, "a", "Should create query with 'a'");
             assert_eq!(cursor, 1, "Cursor should advance to 1");
@@ -172,10 +172,10 @@ fn char_input_works_on_empty_query() {
 #[test]
 fn char_input_noop_when_inactive() {
     let state = SearchState::Inactive;
-    let result = handle_char_input(state, 'x');
+    let state = handle_char_input(state, 'x');
 
     assert!(
-        matches!(result, SearchState::Inactive),
+        matches!(state, SearchState::Inactive),
         "Should remain Inactive when not in Typing state"
     );
 }
@@ -188,10 +188,10 @@ fn char_input_noop_when_active() {
         matches: vec![],
         current_match: 0,
     };
-    let result = handle_char_input(state, 'x');
+    let state = handle_char_input(state, 'x');
 
     assert!(
-        matches!(result, SearchState::Active { .. }),
+        matches!(state, SearchState::Active { .. }),
         "Should remain Active when not in Typing state"
     );
 }

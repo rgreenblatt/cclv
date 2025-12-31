@@ -97,10 +97,10 @@ fn scroll_routes_to_selected_tab_0_main_agent() {
 
     // Scroll down should target MAIN agent (selected_tab=0), NOT subagent (focus)
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Verify: Main agent scroll position changed
-    let main_scroll = new_state
+    let main_scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -143,10 +143,10 @@ fn scroll_routes_to_selected_tab_1_subagent() {
 
     // Scroll down should target FIRST subagent (selected_tab=1), NOT main (focus)
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Verify: First subagent scroll position changed
-    let subagent_scroll = new_state
+    let subagent_scroll = state
         .session_view()
         .get_subagent(&first_subagent_id)
         .unwrap()
@@ -188,10 +188,10 @@ fn scroll_routes_to_selected_tab_2_second_subagent() {
 
     // Scroll down should target SECOND subagent (selected_tab=2)
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Verify: Second subagent scroll position changed
-    let subagent_scroll = new_state
+    let subagent_scroll = state
         .session_view()
         .get_subagent(&second_subagent_id)
         .unwrap()
@@ -240,10 +240,10 @@ fn scrolling_tab_0_does_not_affect_tab_1() {
 
     // Scroll main agent (tab 0)
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Verify: Main agent scrolled
-    let main_scroll = new_state
+    let main_scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -257,7 +257,7 @@ fn scrolling_tab_0_does_not_affect_tab_1() {
     }
 
     // Verify: Subagent 1 scroll unchanged
-    let sub1_scroll = new_state
+    let sub1_scroll = state
         .session_view()
         .get_subagent(&first_subagent_id)
         .unwrap()
@@ -304,10 +304,10 @@ fn scrolling_tab_1_does_not_affect_tab_0() {
 
     // Scroll first subagent (tab 1)
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Verify: Subagent scrolled
-    let sub1_scroll = new_state
+    let sub1_scroll = state
         .session_view()
         .get_subagent(&first_subagent_id)
         .unwrap()
@@ -320,7 +320,7 @@ fn scrolling_tab_1_does_not_affect_tab_0() {
     }
 
     // Verify: Main agent scroll unchanged
-    let main_scroll = new_state
+    let main_scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -357,7 +357,7 @@ fn scroll_position_preserved_when_switching_tabs() {
 
     // Scroll main agent
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Verify main scrolled to 11
     let main_scroll = state.log_view().current_session().unwrap().main().scroll();
@@ -369,16 +369,14 @@ fn scroll_position_preserved_when_switching_tabs() {
     }
 
     // Switch to tab 1 (simulate user pressing Tab key)
-    let mut state = state;
     state.selected_conversation =
         ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap());
 
     // Scroll tab 1
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Switch back to tab 0
-    let mut state = state;
     state.selected_conversation = ConversationSelection::Main;
 
     // Verify: Main agent scroll position is STILL 11 (preserved)
@@ -416,10 +414,10 @@ fn scroll_defaults_to_main_when_selected_tab_is_none() {
 
     // Scroll down
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Verify: Main agent scroll changed (default behavior)
-    let main_scroll = new_state
+    let main_scroll = state
         .log_view()
         .current_session()
         .unwrap()

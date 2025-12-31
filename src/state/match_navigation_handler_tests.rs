@@ -41,13 +41,13 @@ fn next_match_when_inactive_does_nothing() {
     state.search = SearchState::Inactive;
     state.focus = FocusPane::Main;
 
-    let result = next_match(state.clone());
+    next_match(&mut state);
 
     assert!(
-        matches!(result.search, SearchState::Inactive),
+        matches!(state.search, SearchState::Inactive),
         "Search should remain Inactive"
     );
-    assert_eq!(result.focus, FocusPane::Main, "Focus should be unchanged");
+    assert_eq!(state.focus, FocusPane::Main, "Focus should be unchanged");
 }
 
 #[test]
@@ -61,9 +61,9 @@ fn next_match_when_typing_does_nothing() {
     };
     state.focus = FocusPane::Search;
 
-    let result = next_match(state.clone());
+    next_match(&mut state);
 
-    match result.search {
+    match state.search {
         SearchState::Typing { query, cursor } => {
             assert_eq!(query, "test", "Query should be unchanged");
             assert_eq!(cursor, 2, "Cursor should be unchanged");
@@ -87,9 +87,9 @@ fn next_match_increments_current_match() {
         current_match: 0,
     };
 
-    let result = next_match(state);
+    next_match(&mut state);
 
-    match result.search {
+    match state.search {
         SearchState::Active { current_match, .. } => {
             assert_eq!(current_match, 1, "Should increment from 0 to 1");
         }
@@ -112,9 +112,9 @@ fn next_match_wraps_from_last_to_first() {
         current_match: 2, // Last match (index 2)
     };
 
-    let result = next_match(state);
+    next_match(&mut state);
 
-    match result.search {
+    match state.search {
         SearchState::Active { current_match, .. } => {
             assert_eq!(current_match, 0, "Should wrap from 2 to 0");
         }
@@ -133,9 +133,9 @@ fn next_match_with_single_match_stays_at_zero() {
         current_match: 0,
     };
 
-    let result = next_match(state);
+    next_match(&mut state);
 
-    match result.search {
+    match state.search {
         SearchState::Active { current_match, .. } => {
             assert_eq!(current_match, 0, "Single match should wrap to 0");
         }
@@ -157,10 +157,10 @@ fn next_match_switches_to_main_pane_when_match_in_main_agent() {
     };
     state.focus = FocusPane::Stats; // Start in different pane
 
-    let result = next_match(state);
+    next_match(&mut state);
 
     assert_eq!(
-        result.focus,
+        state.focus,
         FocusPane::Main,
         "Should switch to Main pane when match is in main agent"
     );
@@ -201,10 +201,10 @@ fn next_match_switches_to_subagent_pane_when_match_in_subagent() {
     };
     state.focus = FocusPane::Main; // Start in Main pane
 
-    let result = next_match(state);
+    next_match(&mut state);
 
     assert_eq!(
-        result.focus,
+        state.focus,
         FocusPane::Subagent,
         "Should switch to Subagent pane when match is in subagent"
     );
@@ -250,12 +250,12 @@ fn next_match_selects_correct_subagent_tab() {
     state.focus = FocusPane::Main;
     state.selected_conversation = ConversationSelection::Main; // Start at main conversation
 
-    let result = next_match(state);
+    next_match(&mut state);
 
     // Agent order in tabs is sorted alphabetically
     // Unified tab model (FR-086): tab 0 = main, tab 1+ = subagents
     // So first subagent is at tab 1, second at tab 2, etc.
-    let mut agent_ids: Vec<_> = result.session_view().subagent_ids().collect();
+    let mut agent_ids: Vec<_> = state.session_view().subagent_ids().collect();
     agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
     let subagent_position = agent_ids
         .iter()
@@ -266,7 +266,7 @@ fn next_match_selects_correct_subagent_tab() {
     let expected_tab = subagent_position + 1; // Convert to global tab index
 
     assert_eq!(
-        result.selected_tab_index(),
+        state.selected_tab_index(),
         Some(expected_tab),
         "Should select tab for agent2 (unified tab model: tab 0 = main)"
     );
@@ -282,13 +282,13 @@ fn prev_match_when_inactive_does_nothing() {
     state.search = SearchState::Inactive;
     state.focus = FocusPane::Main;
 
-    let result = prev_match(state.clone());
+    prev_match(&mut state);
 
     assert!(
-        matches!(result.search, SearchState::Inactive),
+        matches!(state.search, SearchState::Inactive),
         "Search should remain Inactive"
     );
-    assert_eq!(result.focus, FocusPane::Main, "Focus should be unchanged");
+    assert_eq!(state.focus, FocusPane::Main, "Focus should be unchanged");
 }
 
 #[test]
@@ -302,9 +302,9 @@ fn prev_match_when_typing_does_nothing() {
     };
     state.focus = FocusPane::Search;
 
-    let result = prev_match(state.clone());
+    prev_match(&mut state);
 
-    match result.search {
+    match state.search {
         SearchState::Typing { query, cursor } => {
             assert_eq!(query, "test", "Query should be unchanged");
             assert_eq!(cursor, 2, "Cursor should be unchanged");
@@ -328,9 +328,9 @@ fn prev_match_decrements_current_match() {
         current_match: 2, // Start at third match
     };
 
-    let result = prev_match(state);
+    prev_match(&mut state);
 
-    match result.search {
+    match state.search {
         SearchState::Active { current_match, .. } => {
             assert_eq!(current_match, 1, "Should decrement from 2 to 1");
         }
@@ -353,9 +353,9 @@ fn prev_match_wraps_from_first_to_last() {
         current_match: 0, // First match
     };
 
-    let result = prev_match(state);
+    prev_match(&mut state);
 
-    match result.search {
+    match state.search {
         SearchState::Active { current_match, .. } => {
             assert_eq!(current_match, 2, "Should wrap from 0 to 2 (last)");
         }
@@ -374,9 +374,9 @@ fn prev_match_with_single_match_stays_at_zero() {
         current_match: 0,
     };
 
-    let result = prev_match(state);
+    prev_match(&mut state);
 
-    match result.search {
+    match state.search {
         SearchState::Active { current_match, .. } => {
             assert_eq!(current_match, 0, "Single match should wrap to 0");
         }
@@ -398,10 +398,10 @@ fn prev_match_switches_to_main_pane_when_match_in_main_agent() {
     };
     state.focus = FocusPane::Stats; // Start in different pane
 
-    let result = prev_match(state);
+    prev_match(&mut state);
 
     assert_eq!(
-        result.focus,
+        state.focus,
         FocusPane::Main,
         "Should switch to Main pane when match is in main agent"
     );
@@ -442,10 +442,10 @@ fn prev_match_switches_to_subagent_pane_when_match_in_subagent() {
     };
     state.focus = FocusPane::Main; // Start in Main pane
 
-    let result = prev_match(state);
+    prev_match(&mut state);
 
     assert_eq!(
-        result.focus,
+        state.focus,
         FocusPane::Subagent,
         "Should switch to Subagent pane when match is in subagent"
     );
@@ -500,10 +500,10 @@ fn next_match_scrolls_to_match_entry_in_main_conversation() {
     };
     state.focus = FocusPane::Main;
 
-    let result = next_match(state);
+    next_match(&mut state);
 
     // Verify scroll position updated to show entry 3
-    let main_conv = result.main_conversation_view().expect("should have main conversation");
+    let main_conv = state.main_conversation_view().expect("should have main conversation");
     match main_conv.scroll() {
         ScrollPosition::AtEntry { entry_index, .. } => {
             assert_eq!(
@@ -564,10 +564,10 @@ fn prev_match_scrolls_to_match_entry_in_main_conversation() {
     };
     state.focus = FocusPane::Main;
 
-    let result = prev_match(state);
+    prev_match(&mut state);
 
     // Verify scroll position updated to show entry 1 (prev match)
-    let main_conv = result.main_conversation_view().expect("should have main conversation");
+    let main_conv = state.main_conversation_view().expect("should have main conversation");
     match main_conv.scroll() {
         ScrollPosition::AtEntry { entry_index, .. } => {
             assert_eq!(

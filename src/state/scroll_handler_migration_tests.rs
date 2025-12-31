@@ -77,10 +77,10 @@ fn scroll_up_uses_scroll_position_at_line() {
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(10)));
 
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollUp, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollUp, viewport);
 
     // Should scroll up by 1 line (10 -> 9)
-    let scroll = new_state
+    let scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -109,10 +109,10 @@ fn scroll_up_saturates_at_top() {
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(0)));
 
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollUp, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollUp, viewport);
 
     // Should stay at line 0
-    let scroll = new_state
+    let scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -143,10 +143,10 @@ fn scroll_down_uses_scroll_position_at_line() {
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(5)));
 
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Should scroll down by 1 line (5 -> 6)
-    let scroll = new_state
+    let scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -177,10 +177,10 @@ fn page_down_uses_scroll_position_with_viewport_offset() {
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(5)));
 
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 20);
-    let new_state = handle_scroll_action(state, KeyAction::PageDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::PageDown, viewport);
 
     // Should move by viewport_height (5 + 20 = 25)
-    let scroll = new_state
+    let scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -211,10 +211,10 @@ fn page_up_uses_scroll_position_with_viewport_offset() {
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(25)));
 
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 20);
-    let new_state = handle_scroll_action(state, KeyAction::PageUp, viewport);
+    handle_scroll_action(&mut state, KeyAction::PageUp, viewport);
 
     // Should move by viewport_height (25 - 20 = 5)
-    let scroll = new_state
+    let scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -245,10 +245,10 @@ fn scroll_to_top_uses_scroll_position_top() {
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(15)));
 
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollToTop, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollToTop, viewport);
 
     // Should use ScrollPosition::Top
-    let scroll = new_state
+    let scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -278,10 +278,10 @@ fn scroll_to_bottom_uses_scroll_position_bottom() {
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(5)));
 
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollToBottom, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollToBottom, viewport);
 
     // Should use ScrollPosition::Bottom
-    let scroll = new_state
+    let scroll = state
         .log_view()
         .current_session()
         .unwrap()
@@ -312,10 +312,10 @@ fn scroll_position_not_bounded_by_entry_count() {
         .set_scroll(ScrollPosition::AtLine(LineOffset::new(100)));
 
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
-    let new_state = handle_scroll_action(state, KeyAction::ScrollDown, viewport);
+    handle_scroll_action(&mut state, KeyAction::ScrollDown, viewport);
 
     // Should still use line-based offset, NOT clamped to entry count
-    let scroll = new_state
+    let scroll = state
         .log_view()
         .current_session()
         .unwrap()

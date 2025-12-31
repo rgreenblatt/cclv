@@ -59,10 +59,10 @@ fn next_tab_moves_to_next_tab() {
     // Tab 0 = main, tabs 1-3 = subagents
     state.selected_conversation = ConversationSelection::Main; // main agent
 
-    let new_state = handle_tab_action(state, KeyAction::NextTab);
+    let state = handle_tab_action(state, KeyAction::NextTab);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(1),
         "NextTab should move from tab 0 (main) to tab 1 (agent-1)"
     );
@@ -80,10 +80,10 @@ fn next_tab_wraps_from_last_to_first() {
     // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
     state.selected_conversation = ConversationSelection::Subagent(AgentId::new("agent-2").unwrap()); // Last tab (agent-2)
 
-    let new_state = handle_tab_action(state, KeyAction::NextTab);
+    let state = handle_tab_action(state, KeyAction::NextTab);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "NextTab should wrap from tab 2 (last) to tab 0 (main)"
     );
@@ -101,10 +101,10 @@ fn next_tab_works_regardless_of_focus() {
     state.focus = FocusPane::Main; // Different focus
     state.selected_conversation = ConversationSelection::Main;
 
-    let new_state = handle_tab_action(state, KeyAction::NextTab);
+    let state = handle_tab_action(state, KeyAction::NextTab);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(1),
         "NextTab should work even when focus is on Main pane (FR-088)"
     );
@@ -115,10 +115,10 @@ fn next_tab_does_nothing_when_no_session() {
     let state = AppState::new(); // No entries = no session
                                  // AppState::new() initializes to Some(0) per FR-083
 
-    let new_state = handle_tab_action(state, KeyAction::NextTab);
+    let state = handle_tab_action(state, KeyAction::NextTab);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "NextTab should be no-op when no session (stays at tab 0)"
     );
@@ -139,10 +139,10 @@ fn prev_tab_moves_to_previous_tab() {
     // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2, tab 3 = agent-3
     state.selected_conversation = ConversationSelection::Subagent(AgentId::new("agent-3").unwrap()); // Last tab (agent-3)
 
-    let new_state = handle_tab_action(state, KeyAction::PrevTab);
+    let state = handle_tab_action(state, KeyAction::PrevTab);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(2),
         "PrevTab should move from tab 3 (agent-3) to tab 2 (agent-2)"
     );
@@ -161,10 +161,10 @@ fn prev_tab_wraps_from_first_to_last() {
     // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2, tab 3 = agent-3
     state.selected_conversation = ConversationSelection::Main; // First tab (main)
 
-    let new_state = handle_tab_action(state, KeyAction::PrevTab);
+    let state = handle_tab_action(state, KeyAction::PrevTab);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(3),
         "PrevTab should wrap from tab 0 (main) to tab 3 (agent-3)"
     );
@@ -183,10 +183,10 @@ fn prev_tab_works_regardless_of_focus() {
                                     // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
     state.selected_conversation = ConversationSelection::Subagent(AgentId::new("agent-2").unwrap());
 
-    let new_state = handle_tab_action(state, KeyAction::PrevTab);
+    let state = handle_tab_action(state, KeyAction::PrevTab);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(1),
         "PrevTab should work even when focus is on Stats pane (FR-088)"
     );
@@ -197,10 +197,10 @@ fn prev_tab_does_nothing_when_no_session() {
     let state = AppState::new(); // No entries = no session
                                  // AppState::new() initializes to Some(0) per FR-083
 
-    let new_state = handle_tab_action(state, KeyAction::PrevTab);
+    let state = handle_tab_action(state, KeyAction::PrevTab);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "PrevTab should be no-op when no session (stays at tab 0)"
     );
@@ -221,10 +221,10 @@ fn select_tab_sets_tab_by_one_indexed_number() {
     // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2, tab 3 = agent-3
     state.selected_conversation = ConversationSelection::Main;
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(3));
+    let state = handle_tab_action(state, KeyAction::SelectTab(3));
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(2),
         "SelectTab(3) should select third tab (agent-2, 0-indexed as 2)"
     );
@@ -239,10 +239,10 @@ fn select_tab_handles_tab_1_as_main() {
     // Default is Main
     // state.selected_conversation = ConversationSelection::Main;
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(1));
+    let state = handle_tab_action(state, KeyAction::SelectTab(1));
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "SelectTab(1) should select tab 0 (main agent)"
     );
@@ -260,10 +260,10 @@ fn select_tab_clamps_to_last_when_too_high() {
     // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
     state.selected_conversation = ConversationSelection::Main;
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(9));
+    let state = handle_tab_action(state, KeyAction::SelectTab(9));
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(2),
         "SelectTab(9) should clamp to last tab (agent-2, index 2)"
     );
@@ -280,10 +280,10 @@ fn select_tab_ignores_zero() {
     state.add_entries(entries);
     state.selected_conversation = ConversationSelection::Subagent(AgentId::new("agent-1").unwrap());
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(0));
+    let state = handle_tab_action(state, KeyAction::SelectTab(0));
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(1),
         "SelectTab(0) should be ignored (invalid 1-indexed input)"
     );
@@ -302,10 +302,10 @@ fn select_tab_works_regardless_of_focus() {
                                    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
     state.selected_conversation = ConversationSelection::Main;
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(3));
+    let state = handle_tab_action(state, KeyAction::SelectTab(3));
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(2),
         "SelectTab should work even when focus is on Main pane (FR-088)"
     );
@@ -316,10 +316,10 @@ fn select_tab_does_nothing_when_no_session() {
     let state = AppState::new(); // No entries = no session
                                  // AppState::new() initializes to Some(0) per FR-083
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(1));
+    let state = handle_tab_action(state, KeyAction::SelectTab(1));
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "SelectTab should be no-op when no session (stays at tab 0)"
     );
@@ -339,10 +339,10 @@ fn non_tab_actions_return_state_unchanged() {
     state.focus = FocusPane::Subagent;
     state.selected_conversation = ConversationSelection::Subagent(AgentId::new("agent-1").unwrap());
 
-    let new_state = handle_tab_action(state, KeyAction::ScrollDown);
+    let state = handle_tab_action(state, KeyAction::ScrollDown);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(1),
         "Non-tab actions should return state unchanged"
     );
@@ -357,10 +357,10 @@ fn non_tab_actions_like_quit_return_state_unchanged() {
     state.focus = FocusPane::Subagent;
     state.selected_conversation = ConversationSelection::Main;
 
-    let new_state = handle_tab_action(state, KeyAction::Quit);
+    let state = handle_tab_action(state, KeyAction::Quit);
 
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "Quit action should return state unchanged"
     );
@@ -430,11 +430,11 @@ fn next_tab_uses_active_session_subagents_when_scrolled_to_first_session() {
     // because alpha doesn't exist in session-2's subagent list
     state.selected_conversation = ConversationSelection::Subagent(AgentId::new("alpha").unwrap());
 
-    let new_state = handle_tab_action(state, KeyAction::NextTab);
+    let state = handle_tab_action(state, KeyAction::NextTab);
 
     // Current behavior: alpha not in session-2, wraps to Main
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "NextTab from alpha (not in current session) wraps to Main"
     );
@@ -457,11 +457,11 @@ fn next_tab_wraps_within_active_session_tabs() {
     // When at last tab (beta = index 2)
     state.selected_conversation = ConversationSelection::Subagent(AgentId::new("agent-2").unwrap());
 
-    let new_state = handle_tab_action(state, KeyAction::NextTab);
+    let state = handle_tab_action(state, KeyAction::NextTab);
 
     // Should wrap back to first tab (main = index 0)
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "NextTab from last tab should wrap to first tab (main)"
     );
@@ -488,11 +488,11 @@ fn prev_tab_uses_active_session_tabs() {
     // Session 1 tabs: main (0), alpha (1), beta (2)
     state.selected_conversation = ConversationSelection::Main; // main
 
-    let new_state = handle_tab_action(state, KeyAction::PrevTab);
+    let state = handle_tab_action(state, KeyAction::PrevTab);
 
     // Should wrap to last tab in session 1 (beta = index 2)
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(2),
         "PrevTab from main should wrap to beta (last tab in session 1)"
     );
@@ -512,11 +512,11 @@ fn select_tab_clamps_to_active_session_tab_count() {
     // Tabs: main (0), alpha (1), beta (2)
     state.selected_conversation = ConversationSelection::Main;
 
-    let new_state = handle_tab_action(state, KeyAction::SelectTab(5));
+    let state = handle_tab_action(state, KeyAction::SelectTab(5));
 
     // Should clamp to last tab (beta = index 2)
     assert_eq!(
-        new_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(2),
         "SelectTab(5) with 3 tabs should clamp to index 2 (beta)"
     );

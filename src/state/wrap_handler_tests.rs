@@ -22,11 +22,11 @@ fn handle_toggle_wrap_returns_unchanged_state_when_no_focused_message() {
         view.set_focused_message(None);
     }
 
-    let result = handle_toggle_wrap(state.clone(), 80);
+    handle_toggle_wrap(&mut state, 80);
 
     // Verify no wrap override was added (should be no-op)
     // Since there's no entry, there's nothing to check - just verify no panic
-    assert_eq!(result.focus, FocusPane::Main);
+    assert_eq!(state.focus, FocusPane::Main);
 }
 
 #[test]
@@ -66,10 +66,10 @@ fn handle_toggle_wrap_adds_override_on_first_toggle() {
     );
 
     // First toggle
-    let result = handle_toggle_wrap(state, 80);
+    handle_toggle_wrap(&mut state, 80);
 
     // Should have override set to opposite of global (global is Wrap by default, so NoWrap)
-    let final_override = result
+    let final_override = state
         .main_conversation_view()
         .and_then(|view| view.get(EntryIndex::new(0)))
         .and_then(|e| e.wrap_override());
@@ -107,7 +107,7 @@ fn handle_toggle_wrap_clears_override_on_second_toggle() {
     }
 
     // First toggle - sets override
-    let state = handle_toggle_wrap(state, 80);
+    handle_toggle_wrap(&mut state, 80);
     let after_first = state
         .main_conversation_view()
         .and_then(|view| view.get(EntryIndex::new(0)))
@@ -119,8 +119,8 @@ fn handle_toggle_wrap_clears_override_on_second_toggle() {
     );
 
     // Second toggle - clears override
-    let result = handle_toggle_wrap(state, 80);
-    let after_second = result
+    handle_toggle_wrap(&mut state, 80);
+    let after_second = state
         .main_conversation_view()
         .and_then(|view| view.get(EntryIndex::new(0)))
         .and_then(|e| e.wrap_override());
@@ -179,10 +179,10 @@ fn test_toggle_wrap_maintains_height_index_invariant() {
     }
 
     // Toggle wrap
-    let result = handle_toggle_wrap(state, 80);
+    handle_toggle_wrap(&mut state, 80);
 
     // Verify HeightIndex invariant: height_index[i] == entries[i].rendered_lines.len()
-    if let Some(view) = result.main_conversation_view() {
+    if let Some(view) = state.main_conversation_view() {
         for i in 0..view.len() {
             let entry = view.get(EntryIndex::new(i)).expect("entry exists");
             let entry_height = entry.height().get() as usize;
@@ -287,14 +287,14 @@ fn test_toggle_wrap_subagent_correct_indexing() {
     );
 
     // Toggle wrap on selected tab (tab 1 = should target subagent index 0 = "alpha")
-    let mut result = handle_toggle_wrap(state, 80);
+    handle_toggle_wrap(&mut state, 80);
 
     // ASSERTION: Wrap override should be set on "alpha" (subagent index 0), NOT "beta"
-    let alpha_after = result
+    let alpha_after = state
         .subagent_conversation_view_mut(0)
         .and_then(|view| view.get(EntryIndex::new(0)))
         .and_then(|e| e.wrap_override());
-    let beta_after = result
+    let beta_after = state
         .subagent_conversation_view_mut(1)
         .and_then(|view| view.get(EntryIndex::new(0)))
         .and_then(|e| e.wrap_override());

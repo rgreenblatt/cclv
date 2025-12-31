@@ -290,10 +290,10 @@ fn handle_mouse_click_switches_to_clicked_tab() {
     // Tab 2 (agent-2) spans 23-32
     // Tab 3 (agent-3) spans 33-42
     // Click on tab 1 (agent-1) at x=15
-    let updated_state = handle_mouse_click(state, 15, 1, tab_area);
+    handle_mouse_click(&mut state, 15, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(1),
         "Clicking second tab (agent-1) should switch selection to index 1"
     );
@@ -308,29 +308,32 @@ fn handle_mouse_click_preserves_state_when_clicking_outside_tabs() {
 
     let tab_area = Rect::new(0, 0, 40, 3);
 
+    // Remember initial selection
+    let initial_selection = state.selected_tab_index();
+
     // Click outside the tab area
-    let updated_state = handle_mouse_click(state.clone(), 100, 1, tab_area);
+    handle_mouse_click(&mut state, 100, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab_index(),
         state.selected_tab_index(),
+        initial_selection,
         "Clicking outside tabs should preserve selection"
     );
 }
 
 #[test]
 fn handle_mouse_click_switches_from_none_to_first_tab() {
-    let state = create_app_state_with_tabs(vec!["agent-1", "agent-2"]);
+    let mut state = create_app_state_with_tabs(vec!["agent-1", "agent-2"]);
 
     // Start with main selected (default)
 
     let tab_area = Rect::new(0, 0, 40, 3);
 
     // Click on first tab
-    let updated_state = handle_mouse_click(state, 5, 1, tab_area);
+    handle_mouse_click(&mut state, 5, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(0),
         "Clicking first tab when none selected should select it"
     );
@@ -350,10 +353,10 @@ fn handle_mouse_click_can_switch_to_last_tab() {
     // Tab 2 (agent-2) spans 23-32
     // Tab 3 (agent-3) spans 33-42
     // Click on last tab (agent-3) at x=35
-    let updated_state = handle_mouse_click(state, 35, 1, tab_area);
+    handle_mouse_click(&mut state, 35, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(3),
         "Should switch to fourth tab (agent-3, index 3)"
     );
@@ -361,16 +364,19 @@ fn handle_mouse_click_can_switch_to_last_tab() {
 
 #[test]
 fn handle_mouse_click_with_no_tabs_preserves_state() {
-    let state = create_app_state_with_tabs(vec![]);
+    let mut state = create_app_state_with_tabs(vec![]);
 
     let tab_area = Rect::new(0, 0, 40, 3);
 
+    // Remember initial selection
+    let initial_selection = state.selected_tab_index();
+
     // Click anywhere
-    let updated_state = handle_mouse_click(state.clone(), 20, 1, tab_area);
+    handle_mouse_click(&mut state, 20, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab_index(),
         state.selected_tab_index(),
+        initial_selection,
         "With no tabs, state should be unchanged"
     );
 }
@@ -390,10 +396,10 @@ fn handle_mouse_click_clicking_same_tab_is_idempotent() {
     // Tab 1 (agent-1) spans 13-22
     // Tab 2 (agent-2) spans 23-32
     // Click on the already-selected tab 1 (agent-1) at x=15
-    let updated_state = handle_mouse_click(state.clone(), 15, 1, tab_area);
+    handle_mouse_click(&mut state, 15, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab_index(),
+        state.selected_tab_index(),
         Some(1),
         "Clicking already-selected tab should keep it selected"
     );
@@ -881,10 +887,10 @@ fn test_mouse_expand_maintains_height_index_invariant() {
 
     // Simulate mouse click on entry 0 to toggle expand
     let entry_click = EntryClickResult::MainPaneEntry(0);
-    let result = handle_entry_click(state, entry_click, 80);
+    handle_entry_click(&mut state, entry_click, 80);
 
     // Verify HeightIndex invariant holds
-    if let Some(view) = result.main_conversation_view() {
+    if let Some(view) = state.main_conversation_view() {
         for i in 0..view.len() {
             let entry = view
                 .get(crate::view_state::types::EntryIndex::new(i))
