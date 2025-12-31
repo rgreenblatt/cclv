@@ -4,7 +4,7 @@
 //! All state transitions are pure functions following Elm architecture.
 
 use crate::model::{EntryUuid, Session, StatsFilter};
-use crate::state::{LogPaneState, SearchState};
+use crate::state::SearchState;
 use std::collections::HashSet;
 
 // ===== InputMode =====
@@ -49,7 +49,7 @@ pub enum InputMode {
 ///
 /// The UI operates as a state machine with these primary states:
 ///
-/// - **Focus**: Which pane has keyboard focus (Main, Subagent, Stats, Search, LogPane)
+/// - **Focus**: Which pane has keyboard focus (Main, Subagent, Stats, Search)
 /// - **Live Mode**: Following a log file in real-time vs viewing static content
 /// - **Auto-Scroll**: Automatically scrolling to new content vs manual navigation
 /// - **Search**: Inactive, typing query, or displaying active results
@@ -58,7 +58,7 @@ pub enum InputMode {
 ///
 /// Valid state transitions (see methods for details):
 ///
-/// - Focus: Main ⇄ Subagent ⇄ Stats ⇄ LogPane (when visible) (via `cycle_focus`, `focus_*` methods)
+/// - Focus: Main ⇄ Subagent ⇄ Stats (via `cycle_focus`, `focus_*` methods)
 /// - Search: Inactive → Typing → Active → Inactive (via SearchState transitions)
 /// - Auto-scroll: On → Off (when user scrolls up in live mode, FR-036)
 /// - Auto-scroll: Off → On (when user returns to bottom, FR-038)
@@ -125,10 +125,6 @@ pub struct AppState {
     /// Default is `Wrap` when config is unset (FR-039).
     pub global_wrap: WrapMode,
 
-    /// Toggleable internal logging pane state.
-    /// Maintains a ring buffer of log entries with unread tracking.
-    pub log_pane: LogPaneState,
-
     /// Input mode for LIVE indicator display (FR-042b).
     /// Indicates whether reading from static file, actively streaming, or EOF.
     pub input_mode: InputMode,
@@ -155,7 +151,6 @@ impl AppState {
             live_mode: false,
             auto_scroll: true,
             global_wrap: WrapMode::default(),
-            log_pane: LogPaneState::new(1000),
             input_mode: InputMode::default(),
             blink_on: true, // Start with indicator visible
         }
@@ -195,24 +190,14 @@ impl AppState {
         self.live_mode && !self.auto_scroll
     }
 
-    /// Cycle focus between Main, Subagent, Stats, and LogPane (if visible).
-    /// Skip Search and LogPane (when invisible) in the cycle.
-    /// Order when log visible: Main -> Subagent -> Stats -> LogPane -> Main
-    /// Order when log hidden: Main -> Subagent -> Stats -> Main
+    /// Cycle focus between Main, Subagent, and Stats.
+    /// Skip Search in the cycle.
+    /// Order: Main -> Subagent -> Stats -> Main
     pub fn cycle_focus(&mut self) {
-        let log_pane_visible = self.log_pane.is_visible();
-
         self.focus = match self.focus {
             FocusPane::Main => FocusPane::Subagent,
             FocusPane::Subagent => FocusPane::Stats,
-            FocusPane::Stats => {
-                if log_pane_visible {
-                    FocusPane::LogPane
-                } else {
-                    FocusPane::Main
-                }
-            }
-            FocusPane::LogPane => FocusPane::Main,
+            FocusPane::Stats => FocusPane::Main,
             FocusPane::Search => FocusPane::Main,
         };
     }
@@ -327,20 +312,18 @@ impl AppState {
 ///
 /// # State Transitions
 ///
-/// - Main ⇄ Subagent ⇄ Stats ⇄ LogPane (when visible) (via Tab or explicit focus commands, FR-025)
+/// - Main ⇄ Subagent ⇄ Stats (via Tab or explicit focus commands, FR-025)
 /// - Any → Search (when user activates search with `/` or Ctrl+F, FR-004)
 /// - Search → (previous pane) (when search is cancelled or submitted)
 ///
 /// # Keyboard Navigation (FR-025)
 ///
-/// - Tab (LogPane visible): cycle through Main → Subagent → Stats → LogPane → Main
-/// - Tab (LogPane hidden): cycle through Main → Subagent → Stats → Main
+/// - Tab: cycle through Main → Subagent → Stats → Main
 /// - Explicit focus keys: focus specific panes directly
 /// - Search activation: temporarily moves to Search pane
 ///
 /// Note: Search pane is skipped in the normal focus cycle and is only entered
-/// when the user explicitly activates search mode. LogPane is conditionally included
-/// in the focus cycle when visible (controlled by `LogPaneState::is_visible()`).
+/// when the user explicitly activates search mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FocusPane {
     /// Main agent conversation pane has focus.
@@ -358,10 +341,6 @@ pub enum FocusPane {
     /// Search input has focus.
     /// User is typing a search query. Entered via `/` or Ctrl+F (FR-004).
     Search,
-
-    /// Internal log pane has focus.
-    /// User can view application logs and diagnostics.
-    LogPane,
 }
 
 // ===== WrapMode =====

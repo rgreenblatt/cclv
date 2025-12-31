@@ -3,7 +3,6 @@
 mod help;
 mod layout;
 pub mod live_indicator;
-mod log_pane;
 mod message;
 mod search_input;
 mod stats;
@@ -12,7 +11,6 @@ pub mod tabs;
 
 pub use help::render_help_overlay;
 pub use live_indicator::LiveIndicator;
-pub use log_pane::LogPaneView;
 pub use message::{
     extract_entry_text, has_code_blocks, render_conversation_view_with_search, ConversationView,
 };
@@ -71,8 +69,6 @@ where
     key_bindings: KeyBindings,
     /// Pending entries accumulated between renders
     pending_entries: Vec<crate::model::ConversationEntry>,
-    /// Receiver for log entries from tracing subscriber
-    log_receiver: std::sync::mpsc::Receiver<crate::state::log_pane::LogPaneEntry>,
     /// Last rendered tab area (for mouse click detection)
     last_tab_area: Option<ratatui::layout::Rect>,
     /// Last rendered main pane area (for entry click detection)
@@ -88,7 +84,6 @@ impl TuiApp<CrosstermBackend<Stdout>> {
     pub fn new(
         mut input_source: InputSource,
         session_id: SessionId,
-        log_receiver: std::sync::mpsc::Receiver<crate::state::log_pane::LogPaneEntry>,
     ) -> Result<Self, TuiError> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
@@ -128,7 +123,6 @@ impl TuiApp<CrosstermBackend<Stdout>> {
             line_counter,
             key_bindings,
             pending_entries: Vec::new(),
-            log_receiver,
             last_tab_area: None,
             last_main_area: None,
             last_subagent_area: None,
@@ -177,9 +171,6 @@ impl TuiApp<CrosstermBackend<Stdout>> {
                 // Poll for new stdin data (only on timer tick, not on every event)
                 self.poll_input()?;
 
-                // Poll for log pane entries from tracing subscriber
-                self.poll_log_entries();
-
                 // Check if we have new data to render
                 let has_new_data = !self.pending_entries.is_empty();
 
@@ -218,7 +209,6 @@ where
         input_source: InputSource,
         line_counter: usize,
         key_bindings: KeyBindings,
-        log_receiver: std::sync::mpsc::Receiver<crate::state::log_pane::LogPaneEntry>,
     ) -> Self {
         Self {
             terminal,
@@ -227,7 +217,6 @@ where
             line_counter,
             key_bindings,
             pending_entries: Vec::new(),
-            log_receiver,
             last_tab_area: None,
             last_main_area: None,
             last_subagent_area: None,
@@ -315,15 +304,6 @@ where
         }
 
         Ok(())
-    }
-
-    /// Poll log receiver and push entries to log pane state
-    ///
-    /// Non-blocking poll using try_recv(). All available entries are consumed.
-    fn poll_log_entries(&mut self) {
-        while let Ok(entry) = self.log_receiver.try_recv() {
-            self.app_state.log_pane.push(entry);
-        }
     }
 
     /// Handle a single keyboard event
@@ -524,11 +504,6 @@ where
             // Line wrapping - global toggle (W key)
             KeyAction::ToggleGlobalWrap => {
                 self.app_state.toggle_global_wrap();
-            }
-
-            // Log pane toggle (L key)
-            KeyAction::ToggleLogPane => {
-                self.app_state.log_pane.toggle_visible();
             }
 
             // Not yet implemented
@@ -742,9 +717,8 @@ impl CliArgs {
 /// This is the main entry point for the TUI. It handles terminal
 /// setup, runs the event loop, and ensures cleanup on exit.
 pub fn run_with_source(input_source: InputSource, args: CliArgs) -> Result<(), TuiError> {
-    // Initialize logging with log pane integration
-    let (log_tx, log_rx) = std::sync::mpsc::channel();
-    crate::logging::init_with_log_pane(log_tx).map_err(|e| TuiError::Io(io::Error::other(e)))?;
+    // Initialize logging to file
+    crate::logging::init().map_err(|e| TuiError::Io(io::Error::other(e)))?;
 
     // Extract or create session ID
     // For now, use a default session ID. In the future, this could be
@@ -756,7 +730,7 @@ pub fn run_with_source(input_source: InputSource, args: CliArgs) -> Result<(), T
         ))
     })?;
 
-    let mut app = TuiApp::new(input_source, session_id, log_rx)?;
+    let mut app = TuiApp::new(input_source, session_id)?;
 
     // Apply initial args (stats visible, search query, etc.)
     app.app_state.stats_visible = args.stats;
@@ -819,9 +793,6 @@ mod tests {
         let app_state = AppState::new(session);
         let key_bindings = KeyBindings::default();
 
-        // Create a dummy log receiver for tests
-        let (_log_tx, log_rx) = std::sync::mpsc::channel();
-
         TuiApp {
             terminal,
             app_state,
@@ -829,7 +800,6 @@ mod tests {
             line_counter: 0,
             key_bindings,
             pending_entries: Vec::new(),
-            log_receiver: log_rx,
             last_tab_area: None,
             last_main_area: None,
             last_subagent_area: None,
@@ -1915,84 +1885,6 @@ mod tests {
             app.app_state.global_wrap,
             WrapMode::NoWrap,
             "'W' should work when focused on Search"
-        );
-    }
-
-    // ===== Log Pane Integration Tests =====
-
-    #[test]
-    fn poll_log_entries_consumes_all_available_entries() {
-        let mut app = create_test_app();
-
-        // Send some log entries
-        let (tx, rx) = std::sync::mpsc::channel();
-        let entry1 = crate::state::log_pane::LogPaneEntry {
-            timestamp: chrono::Utc::now(),
-            level: tracing::Level::INFO,
-            message: "test message 1".to_string(),
-        };
-        let entry2 = crate::state::log_pane::LogPaneEntry {
-            timestamp: chrono::Utc::now(),
-            level: tracing::Level::WARN,
-            message: "test message 2".to_string(),
-        };
-
-        tx.send(entry1.clone()).unwrap();
-        tx.send(entry2.clone()).unwrap();
-
-        // Replace app's receiver with our test receiver
-        app.log_receiver = rx;
-
-        // Initially log pane should be empty
-        assert_eq!(app.app_state.log_pane.entries().len(), 0);
-
-        // Poll log entries
-        app.poll_log_entries();
-
-        // Verify entries were consumed and pushed to log pane
-        assert_eq!(
-            app.app_state.log_pane.entries().len(),
-            2,
-            "Should have consumed both log entries"
-        );
-        assert_eq!(
-            app.app_state.log_pane.entries()[0].message,
-            "test message 1"
-        );
-        assert_eq!(
-            app.app_state.log_pane.entries()[1].message,
-            "test message 2"
-        );
-    }
-
-    #[test]
-    fn poll_log_entries_handles_empty_receiver() {
-        let mut app = create_test_app();
-
-        // Receiver is empty
-        assert_eq!(app.app_state.log_pane.entries().len(), 0);
-
-        // Poll should not panic or error
-        app.poll_log_entries();
-
-        // Log pane should still be empty
-        assert_eq!(app.app_state.log_pane.entries().len(), 0);
-    }
-
-    #[test]
-    fn poll_log_entries_is_non_blocking() {
-        let mut app = create_test_app();
-
-        // Empty receiver - should return immediately, not block
-        let start = std::time::Instant::now();
-        app.poll_log_entries();
-        let elapsed = start.elapsed();
-
-        // Should complete almost instantly (< 10ms)
-        assert!(
-            elapsed < std::time::Duration::from_millis(10),
-            "poll_log_entries should be non-blocking, took {:?}",
-            elapsed
         );
     }
 

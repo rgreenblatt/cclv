@@ -933,38 +933,3 @@ fn handle_mouse_scroll_ignores_scroll_when_search_focused() {
         "Mouse scroll should not affect subagent pane when Search is focused"
     );
 }
-
-#[test]
-fn handle_mouse_scroll_ignores_scroll_when_logpane_focused() {
-    let session = Session::new(make_session_id("test-session"));
-    let mut state = AppState::new(session);
-
-    // Focus on LogPane
-    state.focus = FocusPane::LogPane;
-    state.main_scroll.vertical_offset = 5;
-    state.subagent_scroll.vertical_offset = 3;
-
-    // Try to scroll up
-    let updated_state = handle_mouse_scroll(state.clone(), true, 20);
-
-    assert_eq!(
-        updated_state.main_scroll.vertical_offset, 5,
-        "Mouse scroll should not affect main pane when LogPane is focused"
-    );
-    assert_eq!(
-        updated_state.subagent_scroll.vertical_offset, 3,
-        "Mouse scroll should not affect subagent pane when LogPane is focused"
-    );
-
-    // Try to scroll down
-    let updated_state = handle_mouse_scroll(state, false, 20);
-
-    assert_eq!(
-        updated_state.main_scroll.vertical_offset, 5,
-        "Mouse scroll should not affect main pane when LogPane is focused"
-    );
-    assert_eq!(
-        updated_state.subagent_scroll.vertical_offset, 3,
-        "Mouse scroll should not affect subagent pane when LogPane is focused"
-    );
-}

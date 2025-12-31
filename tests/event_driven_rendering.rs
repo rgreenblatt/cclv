@@ -26,9 +26,7 @@ fn create_test_app() -> TuiApp<TestBackend> {
     let app_state = AppState::new(session);
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
 
-    let (_log_tx, log_rx) = std::sync::mpsc::channel();
-
-    TuiApp::new_for_test(terminal, app_state, input_source, 0, key_bindings, log_rx)
+    TuiApp::new_for_test(terminal, app_state, input_source, 0, key_bindings)
 }
 
 /// Test: No frame budget field exists in TuiApp

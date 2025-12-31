@@ -86,10 +86,6 @@ pub enum KeyAction {
     /// Toggle global line wrapping for all items (FR-039, FR-050, FR-051). Default: W/Shift+w
     ToggleGlobalWrap,
 
-    // Logging
-    /// Toggle visibility of logging pane (FR-054, FR-060). Default: L
-    ToggleLogPane,
-
     // Application
     /// Exit the application (FR-025). Default: q/Ctrl+c
     Quit,
@@ -196,42 +192,5 @@ mod tests {
             toggle_wrap, toggle_global,
             "ToggleWrap should not equal ToggleGlobalWrap"
         );
-    }
-
-    // ===== ToggleLogPane Tests =====
-
-    #[test]
-    fn toggle_log_pane_pattern_match_discriminates_correctly() {
-        let action = KeyAction::ToggleLogPane;
-        match action {
-            KeyAction::ToggleLogPane => {
-                // Correct variant matched
-            }
-            _ => panic!("ToggleLogPane should match ToggleLogPane variant"),
-        }
-    }
-
-    #[test]
-    fn toggle_log_pane_equals_itself() {
-        let action1 = KeyAction::ToggleLogPane;
-        let action2 = KeyAction::ToggleLogPane;
-        assert_eq!(
-            action1, action2,
-            "ToggleLogPane should equal another ToggleLogPane"
-        );
-    }
-
-    #[test]
-    fn toggle_log_pane_not_equals_other_variant() {
-        let toggle_log = KeyAction::ToggleLogPane;
-        let quit = KeyAction::Quit;
-        assert_ne!(toggle_log, quit, "ToggleLogPane should not equal Quit");
-    }
-
-    #[test]
-    fn toggle_log_pane_clone_equals_original() {
-        let action = KeyAction::ToggleLogPane;
-        let cloned = action;
-        assert_eq!(action, cloned, "Cloned ToggleLogPane should equal original");
     }
 }

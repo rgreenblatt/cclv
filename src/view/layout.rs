@@ -5,9 +5,7 @@
 
 use crate::model::{AgentId, PricingConfig};
 use crate::state::{agent_ids_with_matches, AppState, FocusPane, SearchState, WrapMode};
-use crate::view::{
-    log_pane::LogPaneView, message, stats::StatsPanel, tabs, MessageStyles, SearchInput,
-};
+use crate::view::{message, stats::StatsPanel, tabs, MessageStyles, SearchInput};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -68,22 +66,11 @@ pub fn calculate_tab_area(frame_area: Rect, state: &AppState) -> Option<Rect> {
         content_area
     };
 
-    // Calculate main conversation area (accounting for log pane)
-    let main_conversation_area = if state.log_pane.is_visible() {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(8)])
-            .split(conversation_area);
-        chunks[0]
-    } else {
-        conversation_area
-    };
-
     // Calculate horizontal split (main + subagent)
     let horizontal_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-        .split(main_conversation_area);
+        .split(conversation_area);
 
     let subagent_area = horizontal_chunks[1];
 
@@ -144,27 +131,16 @@ pub fn calculate_pane_areas(frame_area: Rect, state: &AppState) -> (Rect, Option
         content_area
     };
 
-    // Calculate main conversation area (accounting for log pane)
-    let main_conversation_area = if state.log_pane.is_visible() {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(8)])
-            .split(conversation_area);
-        chunks[0]
-    } else {
-        conversation_area
-    };
-
     // Calculate horizontal split (main + subagent)
     if has_subagents {
         let horizontal_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-            .split(main_conversation_area);
+            .split(conversation_area);
 
         (horizontal_chunks[0], Some(horizontal_chunks[1]))
     } else {
-        (main_conversation_area, None)
+        (conversation_area, None)
     }
 }
 
@@ -230,26 +206,12 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
         (content_area, None)
     };
 
-    // Split conversation area vertically: main conversation + log pane (if visible)
-    let (main_conversation_area, log_pane_area) = if state.log_pane.is_visible() {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Min(0),    // Main conversation area (flexible)
-                Constraint::Length(8), // Log pane (fixed ~8 lines)
-            ])
-            .split(conversation_area);
-        (chunks[0], Some(chunks[1]))
-    } else {
-        (conversation_area, None)
-    };
-
-    // Split main conversation area horizontally based on subagent presence
+    // Split conversation area horizontally based on subagent presence
     let (main_constraint, subagent_constraint) = calculate_horizontal_constraints(has_subagents);
     let horizontal_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([main_constraint, subagent_constraint])
-        .split(main_conversation_area);
+        .split(conversation_area);
 
     // Render panes
     render_main_pane(frame, horizontal_chunks[0], state, &styles);
@@ -261,11 +223,6 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
     // Render stats panel if visible
     if let Some(stats_area_rect) = stats_area {
         render_stats_panel(frame, stats_area_rect, state);
-    }
-
-    // Render log pane if visible
-    if let Some(log_area_rect) = log_pane_area {
-        render_log_pane(frame, log_area_rect, state);
     }
 
     // Render search input if visible
@@ -437,7 +394,6 @@ fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u
         FocusPane::Stats => "!: Global | @: Main | #: Current | Tab: Cycle panes",
         FocusPane::Search if search_active => "n: Next | N: Prev | Esc: Exit",
         FocusPane::Search => "Enter: Submit | Esc: Cancel",
-        FocusPane::LogPane => "Tab: Cycle panes | Esc: Close",
     };
 
     // Combine common and context hints
@@ -454,7 +410,6 @@ fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u
                 FocusPane::Stats => "!/@/#: Filter",
                 FocusPane::Search if search_active => "n: Next",
                 FocusPane::Search => "Enter",
-                FocusPane::LogPane => "Esc: Close",
             }
         )
     } else if (full_hints.len() as u16) > terminal_width {
@@ -465,54 +420,11 @@ fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u
             FocusPane::Stats => "q: Quit | !/@/#: Filters | ?: Help",
             FocusPane::Search if search_active => "n/N: Navigate | Esc: Exit",
             FocusPane::Search => "Enter: Submit | Esc: Cancel",
-            FocusPane::LogPane => "q: Quit | Tab: Cycle | Esc: Close | ?: Help",
         };
         abbreviated.to_string()
     } else {
         // Wide enough - show full hints
         full_hints
-    }
-}
-
-/// Get the color for a log severity level.
-///
-/// Maps tracing::Level to ratatui Color for badge styling:
-/// - ERROR -> Red
-/// - WARN -> Yellow
-/// - INFO -> Cyan
-/// - DEBUG/TRACE -> Gray
-fn severity_color(level: tracing::Level) -> Color {
-    match level {
-        tracing::Level::ERROR => Color::Red,
-        tracing::Level::WARN => Color::Yellow,
-        tracing::Level::INFO => Color::Cyan,
-        tracing::Level::DEBUG | tracing::Level::TRACE => Color::Gray,
-    }
-}
-
-/// Format the unread badge for the status bar based on count and severity.
-///
-/// Returns an empty string if count is 0, otherwise returns a formatted badge
-/// showing the count and severity level.
-///
-/// # Arguments
-/// * `count` - Number of unread log entries
-/// * `max_level` - Highest severity level among unread entries
-///
-/// # Returns
-/// A formatted badge string (e.g., "[2 ERROR]" or "[5 WARN]"), or empty string if count is 0.
-fn format_unread_badge(count: usize, max_level: Option<tracing::Level>) -> String {
-    if count == 0 {
-        return String::new();
-    }
-
-    match max_level {
-        Some(tracing::Level::ERROR) => format!("[{} ERROR]", count),
-        Some(tracing::Level::WARN) => format!("[{} WARN]", count),
-        Some(tracing::Level::INFO) => format!("[{} INFO]", count),
-        Some(tracing::Level::DEBUG) => format!("[{} DEBUG]", count),
-        Some(tracing::Level::TRACE) => format!("[{} TRACE]", count),
-        None => format!("[{}]", count),
     }
 }
 
@@ -523,16 +435,6 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
     // LIVE indicator using LiveIndicator widget (FR-042b)
     let live_indicator = crate::view::LiveIndicator::new(state.input_mode, state.blink_on);
     spans.push(live_indicator.render());
-
-    // Unread badge (color-coded by severity - FR-057)
-    let count = state.log_pane.unread_count();
-    let max_level = state.log_pane.unread_max_level();
-    if count > 0 {
-        let badge_text = format_unread_badge(count, max_level);
-        let badge_color = max_level.map(severity_color).unwrap_or(Color::Gray);
-        spans.push(Span::styled(badge_text, Style::default().fg(badge_color)));
-        spans.push(Span::styled(" | ", Style::default().fg(Color::Gray)));
-    }
 
     // Wrap indicator
     let wrap_text = match state.global_wrap {
@@ -628,21 +530,6 @@ fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
 
     let paragraph = Paragraph::new(Line::from(header_text)).style(style);
     frame.render_widget(paragraph, area);
-}
-
-/// Render the log pane showing internal application logs.
-///
-/// The log pane displays captured tracing events with timestamps and severity levels.
-/// Border is highlighted when FocusPane::LogPane is active.
-fn render_log_pane(frame: &mut Frame, area: Rect, state: &AppState) {
-    let log_widget = LogPaneView::new(
-        state.log_pane.entries(),
-        state.log_pane.unread_count(),
-        0, // TODO: Add scroll support for log pane
-        state.focus == FocusPane::LogPane,
-    );
-
-    frame.render_widget(log_widget, area);
 }
 
 // ===== Tests =====

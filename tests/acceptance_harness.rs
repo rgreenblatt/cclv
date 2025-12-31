@@ -99,9 +99,6 @@ impl AcceptanceTestHarness {
         let app_state = AppState::new(session);
         let key_bindings = KeyBindings::default();
 
-        // Create dummy log receiver
-        let (_log_tx, log_rx) = std::sync::mpsc::channel();
-
         // Create dummy stdin source (won't be used for testing, but required by TuiApp)
         // Use empty buffer for stdin
         let data = b"";
@@ -115,7 +112,6 @@ impl AcceptanceTestHarness {
             input_source,
             entry_count,
             key_bindings,
-            log_rx,
         );
 
         Ok(Self {
