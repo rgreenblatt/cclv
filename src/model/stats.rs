@@ -31,8 +31,42 @@ impl SessionStats {
     /// - Routes usage to main_agent_usage or subagent_usage based on agent_id
     /// - Counts tool calls from the message
     /// - Updates subagent_count from unique subagents
-    pub fn record_entry(&mut self, _entry: &LogEntry) {
-        todo!("record_entry")
+    pub fn record_entry(&mut self, entry: &LogEntry) {
+        // Increment entry count
+        self.entry_count += 1;
+
+        // Extract and accumulate usage if present
+        if let Some(usage) = entry.message().usage() {
+            // Accumulate to total
+            self.total_usage.input_tokens += usage.input_tokens;
+            self.total_usage.output_tokens += usage.output_tokens;
+            self.total_usage.cache_creation_input_tokens += usage.cache_creation_input_tokens;
+            self.total_usage.cache_read_input_tokens += usage.cache_read_input_tokens;
+
+            // Route to main agent or subagent
+            if let Some(agent_id) = entry.agent_id() {
+                // Subagent usage
+                let agent_usage = self.subagent_usage.entry(agent_id.clone()).or_default();
+                agent_usage.input_tokens += usage.input_tokens;
+                agent_usage.output_tokens += usage.output_tokens;
+                agent_usage.cache_creation_input_tokens += usage.cache_creation_input_tokens;
+                agent_usage.cache_read_input_tokens += usage.cache_read_input_tokens;
+            } else {
+                // Main agent usage
+                self.main_agent_usage.input_tokens += usage.input_tokens;
+                self.main_agent_usage.output_tokens += usage.output_tokens;
+                self.main_agent_usage.cache_creation_input_tokens += usage.cache_creation_input_tokens;
+                self.main_agent_usage.cache_read_input_tokens += usage.cache_read_input_tokens;
+            }
+        }
+
+        // Count tool calls
+        for tool in entry.message().tool_calls() {
+            *self.tool_counts.entry(tool.name().clone()).or_default() += 1;
+        }
+
+        // Update subagent count (unique count)
+        self.subagent_count = self.subagent_usage.len();
     }
 
     /// Calculate estimated cost in USD using the provided pricing configuration.
@@ -43,8 +77,26 @@ impl SessionStats {
     /// - Cached tokens (cache_creation + cache_read) at cached rate (or input rate if not specified)
     ///
     /// Model pricing is determined by matching the model_id string (e.g., "opus", "sonnet").
-    pub fn estimated_cost(&self, _pricing: &PricingConfig, _model_id: Option<&str>) -> f64 {
-        todo!("estimated_cost")
+    pub fn estimated_cost(&self, pricing: &PricingConfig, model_id: Option<&str>) -> f64 {
+        let model_pricing = pricing.get(model_id.unwrap_or("opus"));
+
+        let input_cost = (self.total_usage.input_tokens as f64 / 1_000_000.0)
+            * model_pricing.input_cost_per_million;
+
+        let output_cost = (self.total_usage.output_tokens as f64 / 1_000_000.0)
+            * model_pricing.output_cost_per_million;
+
+        // Use cached rate if available, otherwise use standard input rate
+        let cache_rate = model_pricing
+            .cached_input_cost_per_million
+            .unwrap_or(model_pricing.input_cost_per_million);
+
+        let cache_cost = ((self.total_usage.cache_creation_input_tokens
+            + self.total_usage.cache_read_input_tokens) as f64
+            / 1_000_000.0)
+            * cache_rate;
+
+        input_cost + output_cost + cache_cost
     }
 }
 
@@ -108,8 +160,23 @@ impl PricingConfig {
     /// 1. Exact match on model_id
     /// 2. Model family match (contains "opus", "sonnet", or "haiku")
     /// 3. Default pricing as fallback
-    pub fn get(&self, _model_id: &str) -> &ModelPricing {
-        todo!("PricingConfig::get")
+    pub fn get(&self, model_id: &str) -> &ModelPricing {
+        // Try exact match
+        if let Some(pricing) = self.models.get(model_id) {
+            return pricing;
+        }
+
+        // Try model family match
+        let normalized = model_id.to_lowercase();
+        for family in ["opus", "sonnet", "haiku"] {
+            if normalized.contains(family) {
+                if let Some(pricing) = self.models.get(family) {
+                    return pricing;
+                }
+            }
+        }
+
+        &self.default_pricing
     }
 
     /// Merge pricing from a file configuration section.
