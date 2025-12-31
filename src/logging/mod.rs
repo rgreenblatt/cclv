@@ -13,11 +13,30 @@ use tracing_subscriber::Layer;
 #[path = "logging_tests.rs"]
 mod tests;
 
+/// Visitor for extracting the message from a tracing event.
+#[derive(Default)]
+struct MessageVisitor {
+    message: String,
+}
+
+impl tracing::field::Visit for MessageVisitor {
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        if field.name() == "message" {
+            self.message = format!("{:?}", value);
+            // Remove surrounding quotes from Debug formatting
+            if self.message.starts_with('"') && self.message.ends_with('"') {
+                self.message = self.message[1..self.message.len() - 1].to_string();
+                // Unescape common escape sequences
+                self.message = self.message.replace("\\n", "\n");
+            }
+        }
+    }
+}
+
 /// A tracing Layer that sends log entries to the UI via a channel.
 ///
 /// This allows tracing output (e.g., `tracing::info!`, `tracing::error!`)
 /// to appear in the log pane without blocking the logging thread.
-#[allow(dead_code)] // sender used in implementation, not stubs
 pub struct LogPaneLayer {
     /// Sender for log entries to the UI thread
     sender: mpsc::Sender<LogPaneEntry>,
@@ -31,8 +50,8 @@ impl LogPaneLayer {
     ///
     /// # Returns
     /// A new `LogPaneLayer` that will send entries via the provided sender.
-    pub fn new(_sender: mpsc::Sender<LogPaneEntry>) -> Self {
-        todo!("LogPaneLayer::new")
+    pub fn new(sender: mpsc::Sender<LogPaneEntry>) -> Self {
+        Self { sender }
     }
 }
 
@@ -46,10 +65,22 @@ where
     /// to satisfy FR-059: errors in logging must not break the main UI flow.
     fn on_event(
         &self,
-        _event: &tracing::Event<'_>,
+        event: &tracing::Event<'_>,
         _ctx: Context<'_, S>,
     ) {
-        todo!("LogPaneLayer::on_event")
+        // Extract message from the event
+        let mut visitor = MessageVisitor::default();
+        event.record(&mut visitor);
+
+        // Create log pane entry
+        let entry = LogPaneEntry {
+            timestamp: chrono::Utc::now(),
+            level: *event.metadata().level(),
+            message: visitor.message,
+        };
+
+        // Send to UI thread, ignoring errors (receiver may be dropped)
+        let _ = self.sender.send(entry);
     }
 }
 
@@ -63,6 +94,12 @@ where
 /// # Returns
 /// * `Ok(())` if initialization succeeded
 /// * `Err(msg)` if the subscriber was already initialized
-pub fn init_with_log_pane(_sender: mpsc::Sender<LogPaneEntry>) -> Result<(), String> {
-    todo!("init_with_log_pane")
+pub fn init_with_log_pane(sender: mpsc::Sender<LogPaneEntry>) -> Result<(), String> {
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let layer = LogPaneLayer::new(sender);
+    let subscriber = tracing_subscriber::registry().with(layer);
+
+    tracing::subscriber::set_global_default(subscriber)
+        .map_err(|e| format!("Failed to set global subscriber: {}", e))
 }
