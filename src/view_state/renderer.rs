@@ -163,7 +163,7 @@ pub fn compute_entry_lines(
             // Split into lines and wrap BEFORE markdown rendering
             // This ensures rendered line count matches height calculation
             let text_lines: Vec<_> = text.lines().collect();
-            let wrapped_lines = wrap_lines(&text_lines, wrap_ctx.mode, width);
+            let wrapped_lines = wrap_lines(&text_lines, wrap_ctx.mode, width, entry_index.is_some());
 
             // If we have search matches AND are expanded, apply highlighting
             // (Don't highlight collapsed view for simplicity)
@@ -268,6 +268,7 @@ pub fn compute_entry_lines(
                     summary_lines,
                     role_style,
                     styles,
+                    entry_index.is_some(),
                 );
                 lines.extend(block_lines);
             }
@@ -383,19 +384,33 @@ fn render_markdown_with_style(markdown_text: &str, base_style: Style) -> Vec<Lin
 /// * `source_lines` - Original lines from content (split on '\n')
 /// * `wrap_mode` - Whether to wrap or not
 /// * `width` - Viewport width for wrapping (terminal width, will adjust for borders)
+/// * `has_entry_prefix` - Whether an entry index prefix will be added (affects wrap width)
 ///
 /// # Returns
 /// Vector of wrapped lines (String, not Line<'static>) ready for styling
-fn wrap_lines(source_lines: &[&str], wrap_mode: WrapMode, width: u16) -> Vec<String> {
+fn wrap_lines(
+    source_lines: &[&str],
+    wrap_mode: WrapMode,
+    width: u16,
+    has_entry_prefix: bool,
+) -> Vec<String> {
     match wrap_mode {
         WrapMode::NoWrap => {
             // No wrapping: one output line per source line
             source_lines.iter().map(|&s| s.to_string()).collect()
         }
         WrapMode::Wrap => {
-            // Adjust width for borders (ConversationView uses `area.width.saturating_sub(2)`)
-            // The width parameter is terminal width, but content area is 2 chars narrower
-            let content_width = width.saturating_sub(2).max(1) as usize;
+            // Adjust width for borders (always) AND entry index prefix (if present)
+            // The width parameter is terminal width, but content area is narrower by:
+            // - 2 chars for left/right borders (ConversationView border)
+            // - 6 chars for entry index prefix "│NNNN " if has_entry_prefix=true (cclv-5ur.45)
+            // Without accounting for prefix, wrapped lines overflow viewport horizontally
+            let prefix_width = if has_entry_prefix {
+                INDEX_PREFIX_WIDTH as u16
+            } else {
+                0
+            };
+            let content_width = width.saturating_sub(2 + prefix_width).max(1) as usize;
             let mut wrapped = Vec::new();
 
             for &line in source_lines {
@@ -434,6 +449,7 @@ fn render_block(
     summary_lines: usize,
     role_style: Style,
     styles: &MessageStyles,
+    has_entry_prefix: bool,
 ) -> Vec<Line<'static>> {
     // For ToolUse and ToolResult blocks: default to NoWrap unless explicit override
     let effective_wrap = match block {
@@ -454,7 +470,7 @@ fn render_block(
             // Split into lines and wrap BEFORE markdown rendering
             // This ensures rendered line count matches height calculation
             let text_lines: Vec<_> = text.lines().collect();
-            let wrapped_lines = wrap_lines(&text_lines, effective_wrap, width);
+            let wrapped_lines = wrap_lines(&text_lines, effective_wrap, width, has_entry_prefix);
 
             // Rejoin wrapped lines for markdown parsing
             // Each wrapped line becomes a separate paragraph in markdown
@@ -503,7 +519,7 @@ fn render_block(
             let input_lines: Vec<_> = input_json.lines().collect();
 
             // Wrap lines to match height calculation
-            let wrapped_lines = wrap_lines(&input_lines, effective_wrap, width);
+            let wrapped_lines = wrap_lines(&input_lines, effective_wrap, width, has_entry_prefix);
             let total_lines = wrapped_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
 
@@ -532,7 +548,7 @@ fn render_block(
             let content_lines: Vec<_> = content.lines().collect();
 
             // Wrap lines to match height calculation
-            let wrapped_lines = wrap_lines(&content_lines, effective_wrap, width);
+            let wrapped_lines = wrap_lines(&content_lines, effective_wrap, width, has_entry_prefix);
             let total_lines = wrapped_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
 
@@ -565,7 +581,7 @@ fn render_block(
             let thinking_lines: Vec<_> = thinking.lines().collect();
 
             // Wrap lines to match height calculation
-            let wrapped_lines = wrap_lines(&thinking_lines, effective_wrap, width);
+            let wrapped_lines = wrap_lines(&thinking_lines, effective_wrap, width, has_entry_prefix);
             let total_lines = wrapped_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
 
@@ -603,6 +619,19 @@ fn render_block(
         }
     }
 }
+
+/// Width of the entry index prefix in characters.
+///
+/// The entry index prefix format is "│NNNN " where:
+/// - "│" = 1 char (separator)
+/// - "NNNN" = 4 chars (right-aligned number)
+/// - " " = 1 char (trailing space)
+///
+/// Total = 6 characters
+///
+/// This constant is used by wrap_lines() to account for the prefix width
+/// when calculating content width, preventing horizontal overflow.
+const INDEX_PREFIX_WIDTH: usize = 6;
 
 /// Format entry index for the first line of an entry.
 ///
