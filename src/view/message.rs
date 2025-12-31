@@ -634,7 +634,11 @@ fn render_entry_paragraph(
 /// * `styles` - Message styling configuration
 /// * `focused` - Whether this pane currently has focus (affects border color)
 /// * `global_wrap` - Global wrap mode setting (FR-039)
-// TODO(cclv-07v.9): Wire up once per-item rendering refactor complete
+///
+/// # Implementation
+/// Uses per-entry rendering with individual wrap modes (FR-048).
+/// Each entry renders as a separate Paragraph widget with effective_wrap
+/// (global_wrap + per-entry override).
 #[allow(dead_code)]
 pub fn render_conversation_view(
     frame: &mut Frame,
@@ -670,70 +674,135 @@ pub fn render_conversation_view(
     // Style based on focus
     let border_color = if focused { Color::Cyan } else { Color::Gray };
 
-    // Calculate viewport width (subtract borders)
-    let viewport_width = area.width.saturating_sub(2) as usize;
-
-    // Render content: collect all lines from all entries
-    let mut lines = Vec::new();
-
+    // Handle empty conversation
     if entry_count == 0 {
-        lines.push(Line::from("No messages yet..."));
-    } else {
-        // Determine if this is a subagent conversation
-        let is_subagent_view = conversation.agent_id().is_some();
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .style(Style::default().fg(border_color));
+        let inner_area = block.inner(area);
+        frame.render_widget(block, area);
+        let empty_msg = Paragraph::new(vec![Line::from("No messages yet...")]);
+        frame.render_widget(empty_msg, inner_area);
+        return;
+    }
 
-        // Iterate through all entries and render their content blocks
-        for (entry_index, entry) in conversation.entries().iter().enumerate() {
+    // Calculate viewport dimensions (need to compute before rendering block)
+    let viewport_width = area.width.saturating_sub(2) as usize;
+    let viewport_height = area.height.saturating_sub(2) as usize;
+
+    // Determine if this is a subagent conversation
+    let is_subagent_view = conversation.agent_id().is_some();
+
+    // Get all entries for rendering
+    let all_entries = conversation.entries();
+
+    // Create temporary ConversationView to use helper methods
+    let temp_view = ConversationView::new(conversation, scroll, styles, focused)
+        .global_wrap(global_wrap);
+
+    // Calculate visible entry range
+    let (start_idx, end_idx) = temp_view.calculate_visible_range(
+        viewport_height,
+        viewport_width,
+        global_wrap,
+    );
+
+    let visible_entries = &all_entries[start_idx..end_idx];
+
+    // Determine scroll indicators and horizontal offset (FR-040)
+    let horizontal_offset = scroll.horizontal_offset;
+    let title_with_indicators = if global_wrap == WrapMode::NoWrap {
+        // Need to check if any visible entry has long lines
+        // Collect all lines temporarily to check
+        let mut all_lines = Vec::new();
+        for (idx, entry) in visible_entries.iter().enumerate() {
+            let actual_entry_index = start_idx + idx;
             let entry_lines = render_entry_lines(
                 entry,
-                entry_index,
+                actual_entry_index,
                 is_subagent_view,
                 scroll,
                 styles,
-                10, // Default collapse threshold
-                3,  // Default summary lines
+                10,
+                3,
             );
-            lines.extend(entry_lines);
+            all_lines.extend(entry_lines);
         }
-    }
 
-    // Determine scroll indicators and apply horizontal scrolling only when wrap is disabled (FR-040)
-    let title_with_indicators = if global_wrap == WrapMode::NoWrap {
-        let horizontal_offset = scroll.horizontal_offset;
         let has_left_indicator = horizontal_offset > 0;
-        let has_right_indicator = has_long_lines(&lines, viewport_width + horizontal_offset);
+        let has_right_indicator = has_long_lines(&all_lines, viewport_width + horizontal_offset);
 
-        // Apply horizontal scrolling offset to all lines (FR-040)
-        if horizontal_offset > 0 {
-            lines = lines
+        add_scroll_indicators_to_title(title, has_left_indicator, has_right_indicator)
+    } else {
+        title
+    };
+
+    // Render border with title (including scroll indicators)
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(title_with_indicators)
+        .style(Style::default().fg(border_color));
+
+    let inner_area = block.inner(area);
+    frame.render_widget(block, area);
+
+    // Calculate layouts for visible entries
+    let layouts = temp_view.calculate_entry_layouts(
+        visible_entries,
+        scroll.vertical_offset,
+        viewport_width,
+        viewport_height,
+        global_wrap,
+    );
+
+    // Render each visible entry as a separate Paragraph
+    for (layout_idx, layout) in layouts.iter().enumerate() {
+        let entry = &visible_entries[layout_idx];
+        let actual_entry_index = start_idx + layout_idx;
+
+        // Get per-entry effective wrap mode
+        let effective_wrap = if let ConversationEntry::Valid(log_entry) = entry {
+            scroll.effective_wrap(log_entry.uuid(), global_wrap)
+        } else {
+            global_wrap
+        };
+
+        // Get entry lines
+        let mut entry_lines = render_entry_lines(
+            entry,
+            actual_entry_index,
+            is_subagent_view,
+            scroll,
+            styles,
+            10, // Default collapse threshold
+            3,  // Default summary lines
+        );
+
+        // Apply horizontal offset if NoWrap mode and offset > 0 (FR-040)
+        if global_wrap == WrapMode::NoWrap && horizontal_offset > 0 {
+            entry_lines = entry_lines
                 .into_iter()
                 .map(|line| apply_horizontal_offset(line, horizontal_offset))
                 .collect();
         }
 
-        // Update title with scroll indicators
-        add_scroll_indicators_to_title(title, has_left_indicator, has_right_indicator)
-    } else {
-        // Wrap enabled - no scroll indicators needed
-        title
-    };
+        // Create Paragraph with appropriate wrap setting
+        let entry_paragraph = match effective_wrap {
+            WrapMode::Wrap => Paragraph::new(entry_lines).wrap(Wrap { trim: false }),
+            WrapMode::NoWrap => Paragraph::new(entry_lines),
+        };
 
-    // Rebuild block with updated title
-    let block_with_indicators = Block::default()
-        .borders(Borders::ALL)
-        .title(title_with_indicators)
-        .style(Style::default().fg(border_color));
+        // Calculate entry area within viewport
+        let entry_area = Rect {
+            x: inner_area.x,
+            y: inner_area.y + layout.y_offset,
+            width: inner_area.width,
+            height: layout.height,
+        };
 
-    // Apply wrap mode (FR-039)
-    let paragraph = if global_wrap == WrapMode::Wrap {
-        Paragraph::new(lines)
-            .block(block_with_indicators)
-            .wrap(Wrap { trim: false })
-    } else {
-        Paragraph::new(lines).block(block_with_indicators)
-    };
-
-    frame.render_widget(paragraph, area);
+        frame.render_widget(entry_paragraph, entry_area);
+    }
 }
 
 /// Render a conversation view with search match highlighting.
@@ -4853,5 +4922,88 @@ mod tests {
             assert_eq!(layouts[1].y_offset, 5, "Second visible entry should start at y=5");
             assert_eq!(layouts[1].height, 5, "Second entry should be 5 lines");
         }
+    }
+
+    // ===== Horizontal Scrolling with Per-Entry Wrap Override Tests (FR-040 + FR-048) =====
+
+    #[test]
+    fn render_conversation_view_applies_horizontal_scroll_with_per_entry_nowrap_override() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        // Create a conversation with a message containing long text
+        let mut conversation = AgentConversation::new(None);
+
+        let long_text = "This is a very long line that should be horizontally scrolled when in NoWrap mode";
+        let message = Message::new(Role::Assistant, MessageContent::Text(long_text.to_string()));
+
+        let uuid = EntryUuid::new("entry-scroll-test").expect("valid uuid");
+        let entry = LogEntry::new(
+            uuid.clone(),
+            None,
+            SessionId::new("session-1").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message,
+            EntryMetadata::default(),
+        );
+
+        conversation.add_entry(entry);
+
+        // Create scroll state with:
+        // - Global wrap mode: Wrap
+        // - Per-entry override: toggles to NoWrap
+        // - Horizontal offset: 10 characters
+        let mut scroll_state = ScrollState::default();
+        scroll_state.toggle_wrap(&uuid); // Override global Wrap -> NoWrap for this entry
+        scroll_state.horizontal_offset = 10;
+
+        // Create a test terminal and render
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll_state,
+                    &create_test_styles(),
+                    false,
+                    WrapMode::Wrap, // Global is Wrap, but entry overrides to NoWrap
+                );
+            })
+            .expect("Failed to draw");
+
+        // Get the rendered buffer
+        let buffer = terminal.backend().buffer().clone();
+        let content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
+
+        // CRITICAL TEST: When effective_wrap is NoWrap (due to override),
+        // horizontal scrolling should apply even though global_wrap is Wrap.
+        //
+        // The first 10 characters "This is a " should be scrolled off-screen.
+        // Should NOT see "This is a " at the start of the line.
+        assert!(
+            !content.contains("This is a "),
+            "BUG: Horizontal scroll should apply when effective_wrap is NoWrap (per-entry override). \
+             Line 783 likely uses global_wrap instead of effective_wrap. Content: {}",
+            content.chars().take(200).collect::<String>()
+        );
+
+        // Should see text starting from offset 10: "very long line..."
+        assert!(
+            content.contains("very long line"),
+            "Should see horizontally scrolled content starting from offset 10. Content: {}",
+            content.chars().take(200).collect::<String>()
+        );
     }
 }
