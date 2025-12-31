@@ -48,6 +48,11 @@ pub enum ScrollPosition {
     Fraction(f64),
 }
 
+/// Manual Default implementation for documentation clarity.
+/// Per spec (data-model.md Section 4), this explicit impl documents
+/// that Top is the default scroll position. Using #[derive(Default)]
+/// would obscure this design decision.
+#[allow(clippy::derivable_impls)]
 impl Default for ScrollPosition {
     fn default() -> Self {
         Self::Top
@@ -65,7 +70,12 @@ impl ScrollPosition {
     /// # Returns
     /// Absolute line offset from top, clamped to valid range.
     /// Never returns an offset that would cause a blank viewport.
-    pub fn resolve<F>(&self, total_height: usize, viewport_height: usize, entry_lookup: F) -> LineOffset
+    pub fn resolve<F>(
+        &self,
+        total_height: usize,
+        viewport_height: usize,
+        entry_lookup: F,
+    ) -> LineOffset
     where
         F: Fn(EntryIndex) -> Option<LineOffset>,
     {

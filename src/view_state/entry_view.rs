@@ -1,9 +1,9 @@
 //! Entry view with per-entry state and layout.
 
-use crate::model::ConversationEntry;
-use crate::state::WrapMode;
 use super::layout::EntryLayout;
 use super::types::EntryIndex;
+use crate::model::ConversationEntry;
+use crate::state::WrapMode;
 
 /// A conversation entry with its computed layout and presentation state.
 ///
@@ -134,7 +134,10 @@ impl EntryView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry, Message, MessageContent, Role, SessionId};
+    use crate::model::{
+        EntryMetadata, EntryType, EntryUuid, LogEntry, MalformedEntry, Message, MessageContent,
+        Role, SessionId,
+    };
     use crate::view_state::types::LineHeight;
     use crate::view_state::types::LineOffset;
 
@@ -189,8 +192,15 @@ mod tests {
         let view = EntryView::new(entry, index);
 
         assert_eq!(view.index(), index);
-        assert!(!view.is_expanded(), "Default state should be collapsed (not expanded)");
-        assert_eq!(view.wrap_override(), None, "Default should have no wrap override");
+        assert!(
+            !view.is_expanded(),
+            "Default state should be collapsed (not expanded)"
+        );
+        assert_eq!(
+            view.wrap_override(),
+            None,
+            "Default should have no wrap override"
+        );
     }
 
     #[test]
@@ -236,7 +246,10 @@ mod tests {
 
         let view = EntryView::with_layout(entry, index, layout);
 
-        assert!(!view.is_expanded(), "Should default to collapsed even with custom layout");
+        assert!(
+            !view.is_expanded(),
+            "Should default to collapsed even with custom layout"
+        );
         assert_eq!(view.wrap_override(), None, "Should have no wrap override");
     }
 
@@ -344,7 +357,11 @@ mod tests {
 
         let new_state = view.toggle_expanded();
         assert!(new_state, "Should toggle from false to true");
-        assert_eq!(view.is_expanded(), new_state, "Returned state should match stored state");
+        assert_eq!(
+            view.is_expanded(),
+            new_state,
+            "Returned state should match stored state"
+        );
     }
 
     #[test]
@@ -356,7 +373,11 @@ mod tests {
         view.toggle_expanded();
         view.toggle_expanded();
 
-        assert_eq!(view.is_expanded(), initial, "Double toggle should return to original state");
+        assert_eq!(
+            view.is_expanded(),
+            initial,
+            "Double toggle should return to original state"
+        );
     }
 
     #[test]
@@ -414,7 +435,11 @@ mod tests {
         view.set_wrap_override(Some(WrapMode::NoWrap));
 
         let effective = view.effective_wrap(WrapMode::Wrap);
-        assert_eq!(effective, WrapMode::NoWrap, "Should use override, not global");
+        assert_eq!(
+            effective,
+            WrapMode::NoWrap,
+            "Should use override, not global"
+        );
     }
 
     #[test]
@@ -423,7 +448,11 @@ mod tests {
         let view = EntryView::new(entry, EntryIndex::new(0));
 
         let effective = view.effective_wrap(WrapMode::Wrap);
-        assert_eq!(effective, WrapMode::Wrap, "Should use global when no override");
+        assert_eq!(
+            effective,
+            WrapMode::Wrap,
+            "Should use global when no override"
+        );
     }
 
     #[test]
@@ -434,10 +463,18 @@ mod tests {
         view.set_wrap_override(Some(WrapMode::Wrap));
 
         let effective1 = view.effective_wrap(WrapMode::NoWrap);
-        assert_eq!(effective1, WrapMode::Wrap, "Override Wrap beats global NoWrap");
+        assert_eq!(
+            effective1,
+            WrapMode::Wrap,
+            "Override Wrap beats global NoWrap"
+        );
 
         view.set_wrap_override(Some(WrapMode::NoWrap));
         let effective2 = view.effective_wrap(WrapMode::Wrap);
-        assert_eq!(effective2, WrapMode::NoWrap, "Override NoWrap beats global Wrap");
+        assert_eq!(
+            effective2,
+            WrapMode::NoWrap,
+            "Override NoWrap beats global Wrap"
+        );
     }
 }

@@ -901,7 +901,10 @@ impl<'a> Widget for ConversationView<'a> {
 
             // Calculate absolute Y position of first visible entry
             let mut first_entry_absolute_y = 0_usize;
-            for (idx, entry) in self.conversation.entries()[..start_index].iter().enumerate() {
+            for (idx, entry) in self.conversation.entries()[..start_index]
+                .iter()
+                .enumerate()
+            {
                 first_entry_absolute_y += self.calculate_entry_height(
                     entry,
                     idx,
@@ -959,10 +962,9 @@ impl<'a> Widget for ConversationView<'a> {
                             MessageContent::Text(text) => {
                                 // Simple text message - render each line with role-based styling
                                 for line in text.lines() {
-                                    entry_lines.push(Line::from(vec![ratatui::text::Span::styled(
-                                        line.to_string(),
-                                        role_style,
-                                    )]));
+                                    entry_lines.push(Line::from(vec![
+                                        ratatui::text::Span::styled(line.to_string(), role_style),
+                                    ]));
                                 }
                             }
                             MessageContent::Blocks(blocks) => {
