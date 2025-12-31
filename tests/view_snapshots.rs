@@ -1204,3 +1204,82 @@ fn us1_rapid_scroll_updates_within_60fps() {
         total_duration.as_millis()
     );
 }
+
+/// Bug reproduction: Thinking blocks don't wrap like prose blocks
+///
+/// EXPECTED: Thinking block content wraps at terminal width, just like
+///           regular prose Text blocks. Long lines should continue on
+///           the next line, not be truncated.
+///
+/// ACTUAL: Thinking blocks are truncated at terminal width boundary.
+///         The word "window" in the long line is cut off as "windo"
+///         instead of wrapping to the next line.
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/thinking_wrap_repro.jsonl
+/// 2. Resize terminal to narrow width (~60 chars)
+/// 3. Observe the long thinking block line is truncated, not wrapped
+///
+/// The status bar shows "Wrap: On" but thinking blocks ignore this setting.
+#[test]
+#[ignore = "cclv-5ur.9: thinking blocks truncated instead of wrapped"]
+fn bug_thinking_blocks_not_wrapped_like_prose() {
+    use cclv::source::FileSource;
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+    use std::path::PathBuf;
+
+    // Load minimal fixture with long thinking block line
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/thinking_wrap_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    // Convert to ConversationEntry
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create app with NARROW terminal to force wrapping
+    // Width 60 is narrower than the long line in the fixture
+    let backend = TestBackend::new(60, 20);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = cclv::config::keybindings::KeyBindings::default();
+    let input_source =
+        cclv::source::InputSource::Stdin(cclv::source::StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Render with wrap mode enabled (default)
+    app.render_test().expect("Initial render should succeed");
+
+    // Capture output
+    let buffer = app.terminal().backend().buffer();
+    let output = buffer_to_string(buffer);
+
+    // Snapshot captures the bug: truncated line instead of wrapped
+    insta::assert_snapshot!("bug_thinking_blocks_not_wrapped", output);
+
+    // The long line from fixture is:
+    // "This is a very long line that should definitely wrap when displayed in a narrow terminal window..."
+    // If wrapping works correctly, "window" should appear on a continuation line
+    // If truncated, it will be cut off (e.g., "windo" or earlier)
+
+    // Check that the word "window" appears (it should if wrapping works)
+    // This assertion will FAIL because the bug truncates the line
+    assert!(
+        output.contains("window"),
+        "BUG: Thinking block content is truncated instead of wrapped.\n\
+         The word 'window' from the long line should appear in the output,\n\
+         but the line is being cut off at the terminal width.\n\
+         Thinking blocks should wrap like prose Text blocks when Wrap mode is enabled.\n\n\
+         Actual output:\n{output}"
+    );
+}

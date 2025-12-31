@@ -1,0 +1,25 @@
+---
+source: tests/view_snapshots.rs
+assertion_line: 1267
+expression: output
+---
+Model: Unknown | Main Agent
+┌Main Agent (1 entries)────────────────────────────────────┐
+│This is a short line.                                     │
+│                                                          │
+│This is a very long line that should definitely wrap when │
+│                                                          │
+│Another short line.                                       │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+[LIVE] Wrap: On | q: Quit | ?: Help | /: Search
