@@ -14,6 +14,7 @@ mod view_state_us3_mouse_hit_testing;
 
 // Harness-based acceptance tests
 mod acceptance_scroll;
+mod acceptance_stats_session_mismatch;
 mod acceptance_us1;
 mod acceptance_us2;
 mod acceptance_us3;
