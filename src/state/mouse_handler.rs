@@ -230,7 +230,7 @@ pub fn detect_entry_click(
 /// # Arguments
 /// * `state` - Current application state
 /// * `entry_click` - Result from detect_entry_click indicating which entry was clicked
-/// * `viewport_width` - Viewport width in characters for layout calculations
+/// * `_viewport_width` - Unused (kept for API compatibility)
 ///
 /// # Returns
 /// Updated AppState with entry expansion toggled if an entry was clicked.
@@ -240,28 +240,18 @@ pub fn detect_entry_click(
 /// - Main pane entries toggle via main ConversationViewState
 /// - Subagent pane entries toggle via selected subagent's ConversationViewState
 /// - If click was outside entries, state is unchanged
+/// - Uses HeightIndex-aware toggle_entry_expanded for O(log n) updates
 pub fn handle_entry_click(
     mut state: AppState,
     entry_click: EntryClickResult,
-    viewport_width: u16,
+    _viewport_width: u16,
 ) -> AppState {
-    use crate::view_state::layout_params::LayoutParams;
-    use crate::view_state::types::{EntryIndex, ViewportDimensions};
-
-    // Layout params and viewport for relayout
-    let params = LayoutParams::new(viewport_width, state.global_wrap);
-    let viewport = ViewportDimensions::new(viewport_width, 24); // Height not used for expand
-
-    // Use the real height calculator from view layer
-    let height_calc = crate::view::calculate_entry_height;
-
     match entry_click {
         EntryClickResult::MainPaneEntry(index) => {
             // Toggle expand via ConversationViewState
             if let Some(session_view) = state.log_view_mut().current_session_mut() {
                 let conv_view = session_view.main_mut();
-                let idx = EntryIndex::new(index);
-                conv_view.toggle_expand(idx, params, viewport, height_calc);
+                conv_view.toggle_entry_expanded(index);
             }
             state
         }
@@ -276,8 +266,7 @@ pub fn handle_entry_click(
                     (agent_id_opt, state.log_view_mut().current_session_mut())
                 {
                     let conv_view = session_view.subagent_mut(&agent_id);
-                    let idx = EntryIndex::new(index);
-                    conv_view.toggle_expand(idx, params, viewport, height_calc);
+                    conv_view.toggle_entry_expanded(index);
                 }
             }
             state
