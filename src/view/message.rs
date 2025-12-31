@@ -287,9 +287,33 @@ pub fn render_conversation_view(
         for entry in conversation.entries() {
             match entry.message().content() {
                 MessageContent::Text(text) => {
-                    // Simple text message - render each line
-                    for line in text.lines() {
-                        lines.push(Line::from(line.to_string()));
+                    // Simple text message - apply collapse/expand logic
+                    let text_lines: Vec<_> = text.lines().collect();
+                    let total_lines = text_lines.len();
+                    let collapse_threshold = 10;
+                    let summary_lines = 3;
+
+                    let is_expanded = scroll.is_expanded(entry.uuid());
+                    let should_collapse = total_lines > collapse_threshold && !is_expanded;
+
+                    if should_collapse {
+                        // Show summary lines
+                        for line in text_lines.iter().take(summary_lines) {
+                            lines.push(Line::from(line.to_string()));
+                        }
+                        // Add collapse indicator
+                        let remaining = total_lines - summary_lines;
+                        lines.push(Line::from(vec![ratatui::text::Span::styled(
+                            format!("(+{} more lines)", remaining),
+                            Style::default()
+                                .fg(Color::DarkGray)
+                                .add_modifier(Modifier::DIM),
+                        )]));
+                    } else {
+                        // Show all lines
+                        for line in text_lines {
+                            lines.push(Line::from(line.to_string()));
+                        }
                     }
                 }
                 MessageContent::Blocks(blocks) => {
