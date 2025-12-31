@@ -457,7 +457,7 @@ pub enum FocusPane {
 ///
 /// Note: Wrapping state is global but individual messages can override it per-item.
 /// Per-item overrides are ephemeral and not persisted across sessions (FR-049).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum WrapMode {
     /// Wrap long lines to fit viewport width.
     /// Prose flows naturally; wrapped lines show continuation indicator (↩) (FR-052).
