@@ -30,9 +30,7 @@ fn on_event_sends_info_level_entry() {
     });
 
     // THEN a LogPaneEntry is received
-    let entry = rx
-        .try_recv()
-        .expect("should receive entry from channel");
+    let entry = rx.try_recv().expect("should receive entry from channel");
 
     // AND it has INFO level
     assert_eq!(entry.level, Level::INFO);
@@ -55,9 +53,7 @@ fn on_event_sends_error_level_entry() {
     });
 
     // THEN a LogPaneEntry is received with ERROR level
-    let entry = rx
-        .try_recv()
-        .expect("should receive entry from channel");
+    let entry = rx.try_recv().expect("should receive entry from channel");
     assert_eq!(entry.level, Level::ERROR);
     assert_eq!(entry.message, "test error message");
 }

@@ -548,7 +548,10 @@ fn cycle_focus_moves_from_stats_to_main_when_log_pane_hidden() {
     let mut state = AppState::new(session);
     state.focus = FocusPane::Stats;
     // log_pane starts hidden by default
-    assert!(!state.log_pane.is_visible(), "precondition: log pane hidden");
+    assert!(
+        !state.log_pane.is_visible(),
+        "precondition: log pane hidden"
+    );
 
     state.cycle_focus();
 
@@ -561,11 +564,18 @@ fn cycle_focus_moves_from_stats_to_logpane_when_log_pane_visible() {
     let mut state = AppState::new(session);
     state.focus = FocusPane::Stats;
     state.log_pane.toggle_visible(); // Make visible
-    assert!(state.log_pane.is_visible(), "precondition: log pane visible");
+    assert!(
+        state.log_pane.is_visible(),
+        "precondition: log pane visible"
+    );
 
     state.cycle_focus();
 
-    assert_eq!(state.focus, FocusPane::LogPane, "should cycle to visible LogPane");
+    assert_eq!(
+        state.focus,
+        FocusPane::LogPane,
+        "should cycle to visible LogPane"
+    );
 }
 
 #[test]
@@ -1283,11 +1293,17 @@ fn toggle_global_wrap_twice_returns_to_original() {
 fn toggle_log_pane_makes_visible_when_hidden() {
     let session = make_test_session();
     let mut state = AppState::new(session);
-    assert!(!state.log_pane.is_visible(), "precondition: log pane hidden");
+    assert!(
+        !state.log_pane.is_visible(),
+        "precondition: log pane hidden"
+    );
 
     state.log_pane.toggle_visible();
 
-    assert!(state.log_pane.is_visible(), "log pane should become visible");
+    assert!(
+        state.log_pane.is_visible(),
+        "log pane should become visible"
+    );
 }
 
 #[test]
@@ -1295,11 +1311,17 @@ fn toggle_log_pane_makes_hidden_when_visible() {
     let session = make_test_session();
     let mut state = AppState::new(session);
     state.log_pane.toggle_visible(); // Make visible first
-    assert!(state.log_pane.is_visible(), "precondition: log pane visible");
+    assert!(
+        state.log_pane.is_visible(),
+        "precondition: log pane visible"
+    );
 
     state.log_pane.toggle_visible();
 
-    assert!(!state.log_pane.is_visible(), "log pane should become hidden");
+    assert!(
+        !state.log_pane.is_visible(),
+        "log pane should become hidden"
+    );
 }
 
 #[test]
@@ -1392,7 +1414,10 @@ fn focus_cycle_includes_log_pane_when_visible() {
 fn focus_cycle_skips_log_pane_when_hidden() {
     let session = make_test_session();
     let mut state = AppState::new(session);
-    assert!(!state.log_pane.is_visible(), "precondition: log pane hidden");
+    assert!(
+        !state.log_pane.is_visible(),
+        "precondition: log pane hidden"
+    );
     state.focus = FocusPane::Main;
 
     // Cycle: Main -> Subagent -> Stats -> Main (skip hidden LogPane)

@@ -63,11 +63,7 @@ where
     ///
     /// If the channel send fails (receiver dropped), the event is silently ignored
     /// to satisfy FR-059: errors in logging must not break the main UI flow.
-    fn on_event(
-        &self,
-        event: &tracing::Event<'_>,
-        _ctx: Context<'_, S>,
-    ) {
+    fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, S>) {
         // Extract message from the event
         let mut visitor = MessageVisitor::default();
         event.record(&mut visitor);

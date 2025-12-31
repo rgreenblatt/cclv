@@ -130,7 +130,9 @@ impl<'a> ConversationView<'a> {
                 let is_expanded = self.scroll_state.is_expanded(log_entry.uuid());
 
                 // Get effective wrap mode (per-entry override may invert global)
-                let effective_wrap = self.scroll_state.effective_wrap(log_entry.uuid(), global_wrap);
+                let effective_wrap = self
+                    .scroll_state
+                    .effective_wrap(log_entry.uuid(), global_wrap);
 
                 match log_entry.message().content() {
                     MessageContent::Text(text) => {
@@ -783,15 +785,12 @@ pub fn render_conversation_view(
     let all_entries = conversation.entries();
 
     // Create temporary ConversationView to use helper methods
-    let temp_view = ConversationView::new(conversation, scroll, styles, focused)
-        .global_wrap(global_wrap);
+    let temp_view =
+        ConversationView::new(conversation, scroll, styles, focused).global_wrap(global_wrap);
 
     // Calculate visible entry range
-    let (start_idx, end_idx) = temp_view.calculate_visible_range(
-        viewport_height,
-        viewport_width,
-        global_wrap,
-    );
+    let (start_idx, end_idx) =
+        temp_view.calculate_visible_range(viewport_height, viewport_width, global_wrap);
 
     let visible_entries = &all_entries[start_idx..end_idx];
 
@@ -4506,10 +4505,8 @@ mod tests {
     fn render_entry_paragraph_applies_wrap_when_wrap_mode_is_wrap() {
         // ARRANGE: Entry with long text that would wrap
         let long_text = "This is a very long line that would definitely wrap in a narrow terminal viewport if wrapping is enabled for this entry";
-        let entry = ConversationEntry::Valid(Box::new(create_test_log_entry(
-            "entry-para-2",
-            long_text,
-        )));
+        let entry =
+            ConversationEntry::Valid(Box::new(create_test_log_entry("entry-para-2", long_text)));
         let scroll_state = create_test_scroll_state();
         let styles = create_test_styles();
 
@@ -4554,10 +4551,8 @@ mod tests {
     fn render_entry_paragraph_no_wrap_when_wrap_mode_is_nowrap() {
         // ARRANGE: Entry with long text
         let long_text = "This is a very long line that would wrap if wrapping was enabled but should stay on one line";
-        let entry = ConversationEntry::Valid(Box::new(create_test_log_entry(
-            "entry-para-3",
-            long_text,
-        )));
+        let entry =
+            ConversationEntry::Valid(Box::new(create_test_log_entry("entry-para-3", long_text)));
         let scroll_state = create_test_scroll_state();
         let styles = create_test_styles();
 
@@ -4580,23 +4575,15 @@ mod tests {
         // In NoWrap mode, content should be on line 0 (single line), rest empty
         // Line 1 might have the spacing line from render_entry_lines, but the main
         // content text should not have wrapped to multiple lines
-        let line0: String = (0..20)
-            .map(|x| buffer.content()[x].symbol())
-            .collect();
-        let line1: String = (0..20)
-            .map(|x| buffer.content()[20 + x].symbol())
-            .collect();
+        let line0: String = (0..20).map(|x| buffer.content()[x].symbol()).collect();
+        let line1: String = (0..20).map(|x| buffer.content()[20 + x].symbol()).collect();
 
         // Line 0 should have text content (truncated, not wrapped)
-        assert!(
-            line0.trim().len() > 0,
-            "Line 0 should have content"
-        );
+        assert!(line0.trim().len() > 0, "Line 0 should have content");
 
         // The long text should appear on one line only (may be truncated)
         // We verify this by checking that line 1 is either empty or just spacing
-        let line1_is_content = line1.trim().len() > 0
-            && line1.contains(char::is_alphanumeric);
+        let line1_is_content = line1.trim().len() > 0 && line1.contains(char::is_alphanumeric);
 
         assert!(
             !line1_is_content,
@@ -4651,7 +4638,9 @@ mod tests {
 
     #[test]
     fn calculate_entry_height_nowrap_counts_newlines() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         let uuid = EntryUuid::new("test-uuid-1").expect("valid uuid");
@@ -4659,7 +4648,10 @@ mod tests {
         let timestamp = Utc::now();
 
         // Create entry with 3 lines of text (2 newlines)
-        let message = Message::new(Role::User, MessageContent::Text("Line 1\nLine 2\nLine 3".to_string()));
+        let message = Message::new(
+            Role::User,
+            MessageContent::Text("Line 1\nLine 2\nLine 3".to_string()),
+        );
         let log_entry = LogEntry::new(
             uuid,
             None,
@@ -4684,7 +4676,9 @@ mod tests {
 
     #[test]
     fn calculate_entry_height_wrap_with_long_line_wraps() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         let uuid = EntryUuid::new("test-uuid-2").expect("valid uuid");
@@ -4693,7 +4687,7 @@ mod tests {
 
         // Create entry with single long line (100 chars, should wrap to 2 lines at width 80)
         let long_text = "a".repeat(100);
-        
+
         let message = Message::new(Role::User, MessageContent::Text(long_text));
         let log_entry = LogEntry::new(
             uuid,
@@ -4714,12 +4708,18 @@ mod tests {
 
         // With Wrap at width 80, 100 chars should wrap to at least 2 lines
         let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
-        assert!(height >= 2, "Wrap mode should wrap 100 chars at width 80 to at least 2 lines, got {}", height);
+        assert!(
+            height >= 2,
+            "Wrap mode should wrap 100 chars at width 80 to at least 2 lines, got {}",
+            height
+        );
     }
 
     #[test]
     fn calculate_entry_height_wrap_respects_per_entry_override() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         let uuid = EntryUuid::new("test-uuid-3").expect("valid uuid");
@@ -4728,7 +4728,7 @@ mod tests {
 
         // Create entry with long line
         let long_text = "a".repeat(100);
-        
+
         let message = Message::new(Role::User, MessageContent::Text(long_text));
         let log_entry = LogEntry::new(
             uuid.clone(),
@@ -4753,19 +4753,23 @@ mod tests {
 
         // Global is Wrap, but per-item override should make it NoWrap (1 line)
         let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
-        assert_eq!(height, 1, "Per-item override should invert global Wrap to NoWrap (1 line)");
+        assert_eq!(
+            height, 1,
+            "Per-item override should invert global Wrap to NoWrap (1 line)"
+        );
     }
 
     #[test]
     fn calculate_entry_height_wrap_empty_text() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         let uuid = EntryUuid::new("test-uuid-4").expect("valid uuid");
         let session_id = SessionId::new("test-session-4").expect("valid session");
         let timestamp = Utc::now();
 
-        
         let message = Message::new(Role::User, MessageContent::Text("".to_string()));
         let log_entry = LogEntry::new(
             uuid,
@@ -4786,12 +4790,18 @@ mod tests {
 
         // Empty text should be at least 1 line (empty line still occupies space)
         let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
-        assert!(height >= 1, "Empty text should have height of at least 1, got {}", height);
+        assert!(
+            height >= 1,
+            "Empty text should have height of at least 1, got {}",
+            height
+        );
     }
 
     #[test]
     fn calculate_entry_height_wrap_exactly_viewport_width() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         let uuid = EntryUuid::new("test-uuid-5").expect("valid uuid");
@@ -4800,7 +4810,7 @@ mod tests {
 
         // Create text exactly 80 chars (should fit in one line)
         let text = "a".repeat(80);
-        
+
         let message = Message::new(Role::User, MessageContent::Text(text));
         let log_entry = LogEntry::new(
             uuid,
@@ -4821,12 +4831,17 @@ mod tests {
 
         // Exactly viewport width should fit in 1 line
         let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
-        assert_eq!(height, 1, "Text exactly viewport width should fit in 1 line");
+        assert_eq!(
+            height, 1,
+            "Text exactly viewport width should fit in 1 line"
+        );
     }
 
     #[test]
     fn calculate_entry_height_wrap_one_char_over_wraps() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         let uuid = EntryUuid::new("test-uuid-6").expect("valid uuid");
@@ -4835,7 +4850,7 @@ mod tests {
 
         // Create text 81 chars (one more than viewport, should wrap to 2 lines)
         let text = "a".repeat(81);
-        
+
         let message = Message::new(Role::User, MessageContent::Text(text));
         let log_entry = LogEntry::new(
             uuid,
@@ -4856,12 +4871,17 @@ mod tests {
 
         // 81 chars at width 80 should wrap to 2 lines
         let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
-        assert_eq!(height, 2, "Text one char over viewport width should wrap to 2 lines");
+        assert_eq!(
+            height, 2,
+            "Text one char over viewport width should wrap to 2 lines"
+        );
     }
 
     #[test]
     fn calculate_entry_height_wrap_multiline_text_each_line_wraps() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         let uuid = EntryUuid::new("test-uuid-7").expect("valid uuid");
@@ -4870,7 +4890,7 @@ mod tests {
 
         // Two lines, each 100 chars (should wrap to 2 lines each = 4 total)
         let text = format!("{}\n{}", "a".repeat(100), "b".repeat(100));
-        
+
         let message = Message::new(Role::User, MessageContent::Text(text));
         let log_entry = LogEntry::new(
             uuid,
@@ -4891,7 +4911,11 @@ mod tests {
 
         // 2 lines × 2 wrapped = 4 total lines
         let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
-        assert!(height >= 4, "Two 100-char lines at width 80 should wrap to at least 4 lines, got {}", height);
+        assert!(
+            height >= 4,
+            "Two 100-char lines at width 80 should wrap to at least 4 lines, got {}",
+            height
+        );
     }
 
     // ===== Tests for calculate_entry_layouts =====
@@ -4905,12 +4929,18 @@ mod tests {
 
         let layouts = widget.calculate_entry_layouts(&[], 0, 80, 24, WrapMode::NoWrap);
 
-        assert_eq!(layouts.len(), 0, "Empty entries should return empty layout vec");
+        assert_eq!(
+            layouts.len(),
+            0,
+            "Empty entries should return empty layout vec"
+        );
     }
 
     #[test]
     fn calculate_entry_layouts_single_entry_has_zero_offset() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId,
+        };
         use chrono::Utc;
 
         let uuid = EntryUuid::new("test-uuid-1").expect("valid uuid");
@@ -4940,12 +4970,17 @@ mod tests {
 
         assert_eq!(layouts.len(), 1, "Single entry should return one layout");
         assert_eq!(layouts[0].y_offset, 0, "First entry should have y_offset=0");
-        assert_eq!(layouts[0].height, 3, "Entry with 3 lines should have height=3");
+        assert_eq!(
+            layouts[0].height, 3,
+            "Entry with 3 lines should have height=3"
+        );
     }
 
     #[test]
     fn calculate_entry_layouts_multiple_entries_have_cumulative_offsets() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId,
+        };
         use chrono::Utc;
 
         // Entry 1: 3 lines
@@ -4987,10 +5022,7 @@ mod tests {
 
         // Entry 3: 1 line
         let uuid3 = EntryUuid::new("test-uuid-3").expect("valid uuid");
-        let message3 = Message::new(
-            Role::User,
-            MessageContent::Text("Single line".to_string()),
-        );
+        let message3 = Message::new(Role::User, MessageContent::Text("Single line".to_string()));
         let log_entry3 = LogEntry::new(
             uuid3,
             None,
@@ -5011,24 +5043,36 @@ mod tests {
         let entries = vec![entry1, entry2, entry3];
         let layouts = widget.calculate_entry_layouts(&entries, 0, 80, 24, WrapMode::NoWrap);
 
-        assert_eq!(layouts.len(), 3, "Three entries should return three layouts");
+        assert_eq!(
+            layouts.len(),
+            3,
+            "Three entries should return three layouts"
+        );
 
         // Entry 1: y_offset=0, height=3
         assert_eq!(layouts[0].y_offset, 0, "First entry should start at y=0");
         assert_eq!(layouts[0].height, 3, "First entry should have height=3");
 
         // Entry 2: y_offset=3, height=2
-        assert_eq!(layouts[1].y_offset, 3, "Second entry should start at y=3 (after first entry)");
+        assert_eq!(
+            layouts[1].y_offset, 3,
+            "Second entry should start at y=3 (after first entry)"
+        );
         assert_eq!(layouts[1].height, 2, "Second entry should have height=2");
 
         // Entry 3: y_offset=5, height=1
-        assert_eq!(layouts[2].y_offset, 5, "Third entry should start at y=5 (after first two)");
+        assert_eq!(
+            layouts[2].y_offset, 5,
+            "Third entry should start at y=5 (after first two)"
+        );
         assert_eq!(layouts[2].height, 1, "Third entry should have height=1");
     }
 
     #[test]
     fn calculate_entry_layouts_respects_scroll_offset() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId,
+        };
         use chrono::Utc;
 
         // Create entry with 5 lines
@@ -5063,13 +5107,18 @@ mod tests {
         // The y_offset should be relative to scroll position
         // Entry starts at absolute y=0, but when scroll_offset=2, it appears at viewport y=-2
         // However, visible portion starts at viewport y=0
-        assert_eq!(layouts[0].y_offset, 0, "Entry should render at top of viewport when partially scrolled");
+        assert_eq!(
+            layouts[0].y_offset, 0,
+            "Entry should render at top of viewport when partially scrolled"
+        );
         assert_eq!(layouts[0].height, 5, "Entry height should remain 5 lines");
     }
 
     #[test]
     fn calculate_entry_layouts_filters_entries_outside_viewport() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId,
+        };
         use chrono::Utc;
 
         let session_id = SessionId::new("test-session-1").expect("valid session");
@@ -5105,18 +5154,27 @@ mod tests {
         let layouts = widget.calculate_entry_layouts(&entries, 0, 80, 10, WrapMode::NoWrap);
 
         // Should include entries that are visible or partially visible in viewport
-        assert!(layouts.len() >= 2 && layouts.len() <= 3,
-            "Should return 2-3 visible entries for 10-line viewport, got {}", layouts.len());
+        assert!(
+            layouts.len() >= 2 && layouts.len() <= 3,
+            "Should return 2-3 visible entries for 10-line viewport, got {}",
+            layouts.len()
+        );
 
         // Verify first entry
         if layouts.len() >= 1 {
-            assert_eq!(layouts[0].y_offset, 0, "First visible entry should start at y=0");
+            assert_eq!(
+                layouts[0].y_offset, 0,
+                "First visible entry should start at y=0"
+            );
             assert_eq!(layouts[0].height, 5, "First entry should be 5 lines");
         }
 
         // Verify second entry
         if layouts.len() >= 2 {
-            assert_eq!(layouts[1].y_offset, 5, "Second visible entry should start at y=5");
+            assert_eq!(
+                layouts[1].y_offset, 5,
+                "Second visible entry should start at y=5"
+            );
             assert_eq!(layouts[1].height, 5, "Second entry should be 5 lines");
         }
     }
@@ -5136,7 +5194,8 @@ mod tests {
         // Create a conversation with a message containing long text
         let mut conversation = AgentConversation::new(None);
 
-        let long_text = "This is a very long line that should be horizontally scrolled when in NoWrap mode";
+        let long_text =
+            "This is a very long line that should be horizontally scrolled when in NoWrap mode";
         let message = Message::new(Role::Assistant, MessageContent::Text(long_text.to_string()));
 
         let uuid = EntryUuid::new("entry-scroll-test").expect("valid uuid");
@@ -5558,7 +5617,10 @@ mod tests {
         let mut conversation = AgentConversation::new(None);
 
         let multiline_text = "First line\nSecond line\nThird line";
-        let message = Message::new(Role::Assistant, MessageContent::Text(multiline_text.to_string()));
+        let message = Message::new(
+            Role::Assistant,
+            MessageContent::Text(multiline_text.to_string()),
+        );
 
         let uuid = EntryUuid::new("entry-no-indicator").expect("valid uuid");
         let entry = LogEntry::new(
@@ -5644,7 +5706,10 @@ fn very_long_function_name_that_exceeds_viewport_width() -> Result<String, Error
 
 That was the code."#;
 
-        let message = Message::new(Role::Assistant, MessageContent::Text(markdown_with_code.to_string()));
+        let message = Message::new(
+            Role::Assistant,
+            MessageContent::Text(markdown_with_code.to_string()),
+        );
 
         let uuid = EntryUuid::new("entry-code-block").expect("valid uuid");
         let entry = LogEntry::new(
@@ -5707,9 +5772,7 @@ That was the code."#;
         let lines: Vec<&str> = content.split('\n').collect();
         let code_block_lines: Vec<&&str> = lines
             .iter()
-            .filter(|line| {
-                line.contains("fn very_long") || line.contains("let result =")
-            })
+            .filter(|line| line.contains("fn very_long") || line.contains("let result ="))
             .collect();
 
         for code_line in code_block_lines {
@@ -5746,7 +5809,10 @@ let code_line = "This code line is also very long but should NOT wrap even in na
 
 And here is more prose text that will wrap and show indicators."#;
 
-        let message = Message::new(Role::Assistant, MessageContent::Text(mixed_content.to_string()));
+        let message = Message::new(
+            Role::Assistant,
+            MessageContent::Text(mixed_content.to_string()),
+        );
 
         let uuid = EntryUuid::new("entry-mixed").expect("valid uuid");
         let entry = LogEntry::new(
@@ -5836,10 +5902,7 @@ More text."#;
         let result = has_code_blocks(content);
 
         // ASSERT
-        assert!(
-            result,
-            "Fenced code block (```) should be detected"
-        );
+        assert!(result, "Fenced code block (```) should be detected");
     }
 
     #[test]
@@ -5858,10 +5921,7 @@ Conclusion."#;
         let result = has_code_blocks(content);
 
         // ASSERT
-        assert!(
-            result,
-            "Tilde-fenced code block (~~~) should be detected"
-        );
+        assert!(result, "Tilde-fenced code block (~~~) should be detected");
     }
 
     #[test]
@@ -5937,10 +5997,7 @@ Done."#;
         let result = has_code_blocks(content);
 
         // ASSERT
-        assert!(
-            !result,
-            "Empty content should not contain code blocks"
-        );
+        assert!(!result, "Empty content should not contain code blocks");
     }
 
     #[test]
@@ -5954,10 +6011,7 @@ fn test() {}
         let result = has_code_blocks(content);
 
         // ASSERT
-        assert!(
-            result,
-            "Code block at document start should be detected"
-        );
+        assert!(result, "Code block at document start should be detected");
     }
 
     #[test]
@@ -5979,7 +6033,9 @@ fn test() {}
 
     #[test]
     fn entry_with_code_block_forces_nowrap_regardless_of_global() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
         use ratatui::backend::TestBackend;
         use ratatui::Terminal;
@@ -6043,7 +6099,9 @@ More prose."#;
 
     #[test]
     fn entry_with_only_prose_respects_effective_wrap() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
         use ratatui::backend::TestBackend;
         use ratatui::Terminal;
@@ -6052,7 +6110,10 @@ More prose."#;
         let mut conversation = AgentConversation::new(None);
         let content_text = "This is plain prose text with no code blocks at all.";
 
-        let message = Message::new(Role::Assistant, MessageContent::Text(content_text.to_string()));
+        let message = Message::new(
+            Role::Assistant,
+            MessageContent::Text(content_text.to_string()),
+        );
         let uuid = EntryUuid::new("entry-prose").expect("valid uuid");
         let entry = LogEntry::new(
             uuid.clone(),
@@ -6102,7 +6163,9 @@ More prose."#;
 
     #[test]
     fn entry_with_code_block_ignores_per_item_wrap_override() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
         use ratatui::backend::TestBackend;
         use ratatui::Terminal;
@@ -6113,7 +6176,10 @@ More prose."#;
 fn test() { println!("Code blocks always NoWrap"); }
 ```"#;
 
-        let message = Message::new(Role::Assistant, MessageContent::Text(content_text.to_string()));
+        let message = Message::new(
+            Role::Assistant,
+            MessageContent::Text(content_text.to_string()),
+        );
         let uuid = EntryUuid::new("entry-override").expect("valid uuid");
         let entry = LogEntry::new(
             uuid.clone(),
@@ -6163,7 +6229,9 @@ fn test() { println!("Code blocks always NoWrap"); }
 
     #[test]
     fn extract_entry_text_handles_text_content() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         // ARRANGE: Entry with simple Text content
@@ -6190,7 +6258,9 @@ fn test() { println!("Code blocks always NoWrap"); }
 
     #[test]
     fn extract_entry_text_concatenates_text_blocks() {
-        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         // ARRANGE: Entry with Blocks containing multiple Text blocks
@@ -6244,7 +6314,9 @@ fn test() { println!("Code blocks always NoWrap"); }
 
     #[test]
     fn extract_entry_text_includes_thinking_blocks() {
-        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         // ARRANGE: Entry with Thinking block
@@ -6273,14 +6345,26 @@ fn test() { println!("Code blocks always NoWrap"); }
         let result = extract_entry_text(&ConversationEntry::Valid(Box::new(entry)));
 
         // ASSERT - should include both text and thinking content
-        assert!(result.contains("User-visible text"), "Should include text block");
-        assert!(result.contains("Internal reasoning"), "Should include thinking content");
-        assert!(result.contains("```rust"), "Should include code from thinking block");
+        assert!(
+            result.contains("User-visible text"),
+            "Should include text block"
+        );
+        assert!(
+            result.contains("Internal reasoning"),
+            "Should include thinking content"
+        );
+        assert!(
+            result.contains("```rust"),
+            "Should include code from thinking block"
+        );
     }
 
     #[test]
     fn extract_entry_text_includes_tool_result_blocks() {
-        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId, ToolUseId};
+        use crate::model::{
+            ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+            ToolUseId,
+        };
         use chrono::Utc;
 
         // ARRANGE: Entry with ToolResult block
@@ -6311,22 +6395,32 @@ fn test() { println!("Code blocks always NoWrap"); }
         let result = extract_entry_text(&ConversationEntry::Valid(Box::new(entry)));
 
         // ASSERT - should include both text and tool result content
-        assert!(result.contains("Running command"), "Should include text block");
-        assert!(result.contains("Command output"), "Should include tool result content");
-        assert!(result.contains("```bash"), "Should include code from tool result");
+        assert!(
+            result.contains("Running command"),
+            "Should include text block"
+        );
+        assert!(
+            result.contains("Command output"),
+            "Should include tool result content"
+        );
+        assert!(
+            result.contains("```bash"),
+            "Should include code from tool result"
+        );
     }
 
     #[test]
     fn entry_with_code_in_thinking_block_forces_nowrap() {
-        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId};
+        use crate::model::{
+            ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+        };
         use chrono::Utc;
 
         // ARRANGE: Entry with code in Thinking block
-        let blocks = vec![
-            ContentBlock::Thinking {
-                thinking: "Considering this code:\n```python\ndef example():\n    pass\n```".to_string(),
-            },
-        ];
+        let blocks = vec![ContentBlock::Thinking {
+            thinking: "Considering this code:\n```python\ndef example():\n    pass\n```"
+                .to_string(),
+        }];
         let message = Message::new(Role::Assistant, MessageContent::Blocks(blocks));
         let uuid = EntryUuid::new("code-thinking-entry").expect("valid uuid");
         let entry = LogEntry::new(
@@ -6350,17 +6444,18 @@ fn test() { println!("Code blocks always NoWrap"); }
 
     #[test]
     fn entry_with_code_in_tool_result_forces_nowrap() {
-        use crate::model::{ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId, ToolUseId};
+        use crate::model::{
+            ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, Role, SessionId,
+            ToolUseId,
+        };
         use chrono::Utc;
 
         // ARRANGE: Entry with code in ToolResult block
-        let blocks = vec![
-            ContentBlock::ToolResult {
-                tool_use_id: ToolUseId::new("tool-456").expect("valid id"),
-                content: "Output:\n```json\n{\"status\": \"ok\"}\n```".to_string(),
-                is_error: false,
-            },
-        ];
+        let blocks = vec![ContentBlock::ToolResult {
+            tool_use_id: ToolUseId::new("tool-456").expect("valid id"),
+            content: "Output:\n```json\n{\"status\": \"ok\"}\n```".to_string(),
+            is_error: false,
+        }];
         let message = Message::new(Role::Assistant, MessageContent::Blocks(blocks));
         let uuid = EntryUuid::new("code-toolresult-entry").expect("valid uuid");
         let entry = LogEntry::new(
