@@ -289,7 +289,19 @@ impl AppState {
     pub fn selected_conversation_view(
         &self,
     ) -> Option<&crate::view_state::conversation::ConversationViewState> {
-        todo!("selected_conversation_view")
+        let tab_index = self.selected_tab.unwrap_or(0);
+
+        if tab_index == 0 {
+            // Tab 0: Main agent conversation
+            self.log_view.current_session().map(|s| s.main())
+        } else {
+            // Tab 1+: Subagent at sorted index (tab - 1)
+            let session = self.log_view.current_session()?;
+            let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
+            agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+            let agent_id = agent_ids.get(tab_index - 1)?;
+            session.subagents().get(agent_id)
+        }
     }
 
     /// Get mutable reference to currently selected conversation view-state.
@@ -307,7 +319,19 @@ impl AppState {
     pub fn selected_conversation_view_mut(
         &mut self,
     ) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
-        todo!("selected_conversation_view_mut")
+        let tab_index = self.selected_tab.unwrap_or(0);
+
+        if tab_index == 0 {
+            // Tab 0: Main agent conversation
+            self.log_view.current_session_mut().map(|s| s.main_mut())
+        } else {
+            // Tab 1+: Subagent at sorted index (tab - 1)
+            let session = self.log_view.current_session_mut()?;
+            let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
+            agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+            let agent_id = agent_ids.get(tab_index - 1).cloned()?;
+            Some(session.subagent_mut(&agent_id))
+        }
     }
 
     /// Get AgentId of currently selected tab.
@@ -322,7 +346,18 @@ impl AppState {
     /// This encapsulates the tab→agent routing logic. Main agent (tab 0) has no AgentId,
     /// while subagents (tab 1+) map to AgentId at sorted index (tab - 1).
     pub fn selected_agent_id(&self) -> Option<AgentId> {
-        todo!("selected_agent_id")
+        let tab_index = self.selected_tab.unwrap_or(0);
+
+        if tab_index == 0 {
+            // Tab 0: Main agent has no AgentId
+            None
+        } else {
+            // Tab 1+: Get AgentId at sorted index (tab - 1)
+            let session = self.log_view.current_session()?;
+            let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
+            agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+            agent_ids.get(tab_index - 1).cloned()
+        }
     }
 
     /// Check if new messages indicator should be shown.
