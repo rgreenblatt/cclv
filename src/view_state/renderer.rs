@@ -99,7 +99,7 @@ pub fn compute_entry_lines(
     is_subagent_view: bool,
     search_state: &crate::state::SearchState,
     focused: bool,
-    accumulated_tokens: u64,
+    _accumulated_tokens: u64,
     max_context_tokens: u64,
     pricing: &PricingConfig,
 ) -> Vec<Line<'static>> {
@@ -245,7 +245,7 @@ pub fn compute_entry_lines(
                     .and_then(|m| m.model.as_deref());
 
                 let divider =
-                    render_token_divider(usage, accumulated_tokens, max_context, pricing, model_id);
+                    render_token_divider(usage, message.content(), max_context, pricing, model_id);
                 lines.push(divider);
             } else {
                 // No usage data - fall back to blank separator
@@ -277,7 +277,7 @@ pub fn compute_entry_lines(
                     .and_then(|m| m.model.as_deref());
 
                 let divider =
-                    render_token_divider(usage, accumulated_tokens, max_context, pricing, model_id);
+                    render_token_divider(usage, message.content(), max_context, pricing, model_id);
                 lines.push(divider);
             } else {
                 // No usage data - fall back to blank separator

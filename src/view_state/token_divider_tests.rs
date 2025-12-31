@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::model::stats::PricingConfig;
+use crate::model::MessageContent;
 
 // ===== ContextWindowTokens Tests =====
 
@@ -116,23 +117,23 @@ fn render_token_divider_formats_basic_divider() {
         ephemeral_5m_input_tokens: 0,
         ephemeral_1h_input_tokens: 0,
     };
-    let accumulated = 45_200;
+    let content = MessageContent::Text("response text".to_string());
     let max_context = ContextWindowTokens::new(200_000);
     let pricing = PricingConfig::default();
 
-    let line = render_token_divider(&usage, accumulated, max_context, &pricing, Some("opus"));
+    let line = render_token_divider(&usage, &content, max_context, &pricing, Some("opus"));
 
     // Extract text from line spans
     let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
 
-    // Should contain token counts
-    assert!(text.contains("1.2k in"));
-    assert!(text.contains("340 out"));
+    // Should use new format with arrows
+    assert!(text.contains("↓"));
+    assert!(text.contains("↑"));
 
-    // Should contain context info
+    // Should contain context info (per-entry context = input + cache_creation + cache_read + output = 1200 + 0 + 0 + 340 = 1540)
     assert!(text.contains("Context:"));
-    assert!(text.contains("45.2k"));
-    assert!(text.contains("(22%)")); // 45.2k / 200k ≈ 22%
+    assert!(text.contains("1.5k"));
+    assert!(text.contains("(0%)")); // 1.5k / 200k ≈ 0%
 
     // Should contain cost
     assert!(text.contains("$"));
@@ -148,13 +149,13 @@ fn render_token_divider_calculates_cost_correctly() {
         ephemeral_5m_input_tokens: 0,
         ephemeral_1h_input_tokens: 0,
     };
-    let accumulated = 1_000_000;
+    let content = MessageContent::Text("response".to_string());
     let max_context = ContextWindowTokens::new(200_000);
 
     // Use default pricing: Opus is $15 per million input
     let pricing = PricingConfig::default();
 
-    let line = render_token_divider(&usage, accumulated, max_context, &pricing, Some("opus"));
+    let line = render_token_divider(&usage, &content, max_context, &pricing, Some("opus"));
 
     // Extract text from line spans
     let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
@@ -166,16 +167,16 @@ fn render_token_divider_calculates_cost_correctly() {
 #[test]
 fn render_token_divider_handles_zero_usage() {
     let usage = TokenUsage::default();
-    let accumulated = 0;
+    let content = MessageContent::Text("".to_string());
     let max_context = ContextWindowTokens::new(200_000);
     let pricing = PricingConfig::default();
 
-    let line = render_token_divider(&usage, accumulated, max_context, &pricing, None);
+    let line = render_token_divider(&usage, &content, max_context, &pricing, None);
 
     let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
 
-    assert!(text.contains("0 in"));
-    assert!(text.contains("0 out"));
+    assert!(text.contains("↓0/0"));
+    assert!(text.contains("↑0/0"));
     assert!(text.contains("$0.00"));
     assert!(text.contains("Context: 0 (0%)"));
 }
@@ -183,11 +184,11 @@ fn render_token_divider_handles_zero_usage() {
 #[test]
 fn render_token_divider_uses_dim_gray_style() {
     let usage = TokenUsage::default();
-    let accumulated = 0;
+    let content = MessageContent::Text("".to_string());
     let max_context = ContextWindowTokens::default();
     let pricing = PricingConfig::default();
 
-    let line = render_token_divider(&usage, accumulated, max_context, &pricing, None);
+    let line = render_token_divider(&usage, &content, max_context, &pricing, None);
 
     // Should have at least one span
     assert!(!line.spans.is_empty());
@@ -215,13 +216,13 @@ fn render_token_divider_includes_cache_tokens_in_cost() {
         ephemeral_5m_input_tokens: 0,
         ephemeral_1h_input_tokens: 0,
     };
-    let accumulated = 1_000_000;
+    let content = MessageContent::Text("".to_string());
     let max_context = ContextWindowTokens::new(200_000);
 
     // Opus pricing: $1.50 per million cached tokens
     let pricing = PricingConfig::default();
 
-    let line = render_token_divider(&usage, accumulated, max_context, &pricing, Some("opus"));
+    let line = render_token_divider(&usage, &content, max_context, &pricing, Some("opus"));
 
     let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
 

@@ -19,7 +19,7 @@ expression: output
 ││    Let me start by loading the required skill and then following the protocol.                                      │
 ││                                                                                                                     │
 ││    First, I'll invoke the efficient-subagent-orchestration skill as required.                                       │
-│── 9 in / 1 out / $0.06 | Context: 37.4k (18%) ──                                                                     │
+│── ↓37.4k/37.4k ↑1/118 / $0.06 | Context: 37.4k (18%) ──                                                              │
 ││  4 🔧  Tool: Task                                                                                                    │
 ││      {                                                                                                              │
 ││        "description": "Create flake.nix for cclv",                                                                  │
@@ -27,7 +27,7 @@ expression: output
 ││        "prompt": "## Task: Create flake.nix for Claude Code Log Viewer (cclv)\n\n**Bead ID**: cclv-07v.1.1\n\n## Con│
 ││        "subagent_type": "nix-devops-expert"                                                                         │
 ││      }                                                                                                              │
-│── 6 in / 1.2k out / $0.20 | Context: 109.1k (54%) ──                                                                 │
+│── ↓1.3k/71.6k ↑1.2k/1.7k / $0.20 | Context: 72.8k (36%) ──                                                           │
 │                                                                                                                      │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

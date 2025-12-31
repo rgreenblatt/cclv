@@ -9,7 +9,7 @@ expression: bottom_output
 ││        "command": "bd show cclv-07v --json 2>/dev/null | head -100",        │
 ││        "description": "Show epic details"                                   │
 ││      }                                                                      │
-│── 8 in / 1 out / $0.06 | Context: 399.9k (100%) ──                           │
+│── ↓4.3k/41.7k ↑1/24 / $0.06 | Context: 41.7k (20%) ──                        │
 ││ 17 {"FEATURE_DIR":"/home/claude/cclv/specs/001-claude-code-log-viewer","AVAI│
 │                                                                              │
 ││ 18 001-claude-code-log-viewer                                               │

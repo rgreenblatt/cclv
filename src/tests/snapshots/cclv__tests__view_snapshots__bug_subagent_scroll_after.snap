@@ -11,7 +11,7 @@ expression: output_after.clone()
 ││        "command": "git diff HEAD~1 HEAD --name-only",                                                                                                                                               │
 ││        "description": "Show files changed in recent commit"                                                                                                                                         │
 ││      }                                                                                                                                                                                              │
-│── 3 in / 1 out / $0.03 | Context: 16.8k (8%) ──                                                                                                                                                      │
+│── ↓16.8k/16.8k ↑1/25 / $0.03 | Context: 16.8k (8%) ──                                                                                                                                                │
 ││  3 .beads/issues.jsonl                                                                                                                                                                              │
 ││    src/view/mod.rs                                                                                                                                                                                  │
 ││    tests/snapshots/view_snapshots__message_with_search_highlighting.snap                                                                                                                            │
@@ -22,13 +22,13 @@ expression: output_after.clone()
 ││        "file_path": "/home/claude/cclv/src/view/mod.rs",                                                                                                                                            │
 ││        "limit": 100                                                                                                                                                                                 │
 ││      }                                                                                                                                                                                              │
-│── 6 in / 1 out / $0.03 | Context: 33.8k (16%) ──                                                                                                                                                     │
+│── ↓174/17.0k ↑1/16 / $0.03 | Context: 17.0k (8%) ──                                                                                                                                                  │
 ││  5 🔧  Tool: Read                                                                                                                                                                                    │
 ││      {                                                                                                                                                                                              │
 ││        "file_path": "/home/claude/cclv/tests/view_snapshots.rs",                                                                                                                                    │
 ││        "limit": 550                                                                                                                                                                                 │
 ││      }                                                                                                                                                                                              │
-│── 6 in / 1 out / $0.03 | Context: 50.8k (25%) ──                                                                                                                                                     │
+│── ↓174/17.0k ↑1/18 / $0.03 | Context: 17.0k (8%) ──                                                                                                                                                  │
 ││  6      1→//! TUI rendering and terminal management (impure shell)                                                                                                                                  │
 ││         2→                                                                                                                                                                                          │
 ││         3→mod help;                                                                                                                                                                                 │

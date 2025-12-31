@@ -3392,7 +3392,6 @@ fn bug_number_keys_should_select_tabs() {
 /// 2. Observe entry separator lines - context % grows with each entry
 /// 3. Expected: each entry's context should be independent, not accumulated
 #[test]
-#[ignore = "cclv-5ur.70: token stats divider calculation incorrect"]
 fn bug_token_stats_divider_wrong_calculation() {
     use crate::source::FileSource;
     use crate::state::AppState;

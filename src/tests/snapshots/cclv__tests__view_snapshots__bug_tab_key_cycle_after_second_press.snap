@@ -9,7 +9,7 @@ expression: output
 ││  1 Subagent 2 task                                                                              │
 │                                                                                                  │
 ││  2 Subagent 2 working on task.                                                                  │
-│── 5 in / 10 out / $0.00 | Context: 5 (0%) ──                                                     │
+│── ↓5/5 ↑10/10 / $0.00 | Context: 15 (0%) ──                                                      │
 │                                                                                                  │
 │                                                                                                  │
 │                                                                                                  │
