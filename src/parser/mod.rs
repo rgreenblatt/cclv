@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn parse_entry_minimal_user_message() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Hello"},"session_id":"session-123","uuid":"uuid-001","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Hello"},"session_id":"session-123","uuid":"uuid-001"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse valid user message");
@@ -376,7 +376,7 @@ mod tests {
 
     #[test]
     fn parse_entry_assistant_with_usage() {
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Hi there"}],"model":"claude-opus-4-5-20251101","usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":20,"cache_read_input_tokens":10}},"session_id":"session-123","uuid":"uuid-002","timestamp":"2025-12-25T10:00:01Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Hi there"}],"model":"claude-opus-4-5-20251101","usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":20,"cache_read_input_tokens":10}},"session_id":"session-123","uuid":"uuid-002"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse assistant message with usage");
@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn parse_entry_text_content_as_string() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Simple text"},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Simple text"},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok());
@@ -409,7 +409,7 @@ mod tests {
 
     #[test]
     fn parse_entry_text_content_as_blocks() {
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Block text"}]},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Block text"}]},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok());
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn parse_entry_with_subagent() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","uuid":"u1","agentId":"agent-abc","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","uuid":"u1","agentId":"agent-abc"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok());
@@ -440,7 +440,7 @@ mod tests {
     #[test]
     fn parse_entry_with_parent_uuid() {
         // Updated to use parent_tool_use_id (actual Claude Code format)
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test"},"session_id":"s1","uuid":"u2","parent_tool_use_id":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test"},"session_id":"s1","uuid":"u2","parent_tool_use_id":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok());
@@ -458,7 +458,7 @@ mod tests {
     fn parse_entry_with_parent_tool_use_id() {
         // RED TEST: Actual Claude Code format uses parent_tool_use_id, not parentUuid
         // This test expects the actual field name used in Claude Code JSONL
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test"},"session_id":"s1","uuid":"u2","parent_tool_use_id":"tool-123","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test"},"session_id":"s1","uuid":"u2","parent_tool_use_id":"tool-123"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(
@@ -476,7 +476,7 @@ mod tests {
     #[test]
     fn parse_entry_with_null_parent_tool_use_id() {
         // parent_tool_use_id is null for top-level entries
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","uuid":"u1","parent_tool_use_id":null,"timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","uuid":"u1","parent_tool_use_id":null}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse entry with null parent_tool_use_id");
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn parse_entry_summary_type() {
-        let raw = r#"{"type":"summary","message":{"role":"assistant","content":"Summary"},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"summary","message":{"role":"assistant","content":"Summary"},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok());
@@ -534,7 +534,7 @@ mod tests {
 
     #[test]
     fn parse_entry_missing_uuid() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1"}"#;
         let result = parse_entry(raw, 15);
 
         assert!(result.is_err(), "Should reject missing uuid");
@@ -554,7 +554,7 @@ mod tests {
     #[test]
     fn parse_entry_missing_session_id() {
         // Updated: missing sessionId now defaults to unknown instead of error
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"uuid":"u1"}"#;
         let result = parse_entry(raw, 20);
 
         assert!(
@@ -601,7 +601,7 @@ mod tests {
 
     #[test]
     fn parse_entry_empty_uuid() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","uuid":"","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","uuid":""}"#;
         let result = parse_entry(raw, 5);
 
         assert!(result.is_err(), "Should reject empty uuid");
@@ -618,7 +618,7 @@ mod tests {
     #[test]
     fn parse_entry_empty_session_id() {
         // Updated: empty sessionId now defaults to unknown instead of error
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"","uuid":"u1"}"#;
         let result = parse_entry(raw, 7);
 
         assert!(
@@ -671,7 +671,7 @@ mod tests {
 
     #[test]
     fn parse_entry_graceful_returns_valid_for_correct_json() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Hello"},"session_id":"session-123","uuid":"uuid-001","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Hello"},"session_id":"session-123","uuid":"uuid-001"}"#;
         let result = parse_entry_graceful(raw, 1);
 
         match result {
@@ -707,7 +707,7 @@ mod tests {
 
     #[test]
     fn parse_entry_graceful_returns_malformed_for_missing_required_field() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"s1"}"#;
         let result = parse_entry_graceful(raw, 15);
 
         match result {
@@ -764,7 +764,7 @@ mod tests {
     #[test]
     fn parse_entry_graceful_extracts_session_id_when_possible() {
         // Malformed due to missing uuid, but session_id is present and extractable
-        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"extractable-session","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"Test"},"session_id":"extractable-session"}"#;
         let result = parse_entry_graceful(raw, 10);
 
         match result {
@@ -863,7 +863,7 @@ mod tests {
 
     #[test]
     fn parse_entry_with_tool_use_block() {
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tool-123","name":"Read","input":{"file_path":"test.txt"}}]},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tool-123","name":"Read","input":{"file_path":"test.txt"}}]},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse entry with ToolUse block");
@@ -886,7 +886,7 @@ mod tests {
 
     #[test]
     fn parse_entry_with_tool_result_block_success() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-456","content":"file contents here","is_error":false}]},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-456","content":"file contents here","is_error":false}]},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse entry with ToolResult block");
@@ -913,7 +913,7 @@ mod tests {
 
     #[test]
     fn parse_entry_with_tool_result_block_error() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-789","content":"Error: file not found","is_error":true}]},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-789","content":"Error: file not found","is_error":true}]},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse entry with ToolResult error");
@@ -940,7 +940,7 @@ mod tests {
 
     #[test]
     fn parse_entry_with_tool_result_defaults_is_error_to_false() {
-        let raw = r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-999","content":"output"}]},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-999","content":"output"}]},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(
@@ -961,7 +961,7 @@ mod tests {
 
     #[test]
     fn parse_entry_with_thinking_block() {
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"Let me analyze this problem..."}]},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"Let me analyze this problem..."}]},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse entry with Thinking block");
@@ -982,7 +982,7 @@ mod tests {
 
     #[test]
     fn parse_entry_with_mixed_content_blocks() {
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I'll read the file"},{"type":"thinking","thinking":"Using Read tool"},{"type":"tool_use","id":"t1","name":"Read","input":{"file":"a.txt"}},{"type":"text","text":"Done"}]},"session_id":"s1","uuid":"u1","timestamp":"2025-12-25T10:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I'll read the file"},{"type":"thinking","thinking":"Using Read tool"},{"type":"tool_use","id":"t1","name":"Read","input":{"file":"a.txt"}},{"type":"text","text":"Done"}]},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse entry with mixed blocks");
@@ -1005,7 +1005,7 @@ mod tests {
     fn parse_entry_missing_session_id_uses_unknown() {
         // Entry with no sessionId field should parse successfully
         // using SessionId::unknown() ("unknown-session")
-        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","timestamp":"2025-01-01T00:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123"}"#;
 
         let result = parse_entry(raw, 1);
         assert!(
@@ -1023,7 +1023,7 @@ mod tests {
     #[test]
     fn parse_entry_empty_session_id_uses_unknown() {
         // Entry with empty sessionId field should use unknown
-        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":"","timestamp":"2025-01-01T00:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":""}"#;
 
         let result = parse_entry(raw, 1);
         assert!(
@@ -1041,7 +1041,7 @@ mod tests {
     #[test]
     fn parse_entry_null_session_id_uses_unknown() {
         // Entry with null sessionId field should use unknown
-        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":null,"timestamp":"2025-01-01T00:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":null}"#;
 
         let result = parse_entry(raw, 1);
         assert!(
@@ -1059,7 +1059,7 @@ mod tests {
     #[test]
     fn parse_entry_valid_session_id_preserved() {
         // Entry with valid sessionId should still work
-        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":"my-session","timestamp":"2025-01-01T00:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":"my-session"}"#;
 
         let result = parse_entry(raw, 1);
         assert!(result.is_ok(), "Should parse with valid sessionId");
@@ -1076,7 +1076,7 @@ mod tests {
     #[test]
     fn parse_entry_with_nested_cache_creation() {
         // RED TEST: Parse usage with nested cache_creation object containing ephemeral breakdowns
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test","usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":24337,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":24337,"ephemeral_1h_input_tokens":0}}},"session_id":"s1","uuid":"u1","timestamp":"2025-12-26T00:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test","usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":24337,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":24337,"ephemeral_1h_input_tokens":0}}},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(
@@ -1106,7 +1106,7 @@ mod tests {
     #[test]
     fn parse_entry_with_missing_cache_creation_defaults_to_zero() {
         // Entry without cache_creation nested object should default ephemeral fields to 0
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test","usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":20,"cache_read_input_tokens":10}},"session_id":"s1","uuid":"u1","timestamp":"2025-12-26T00:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test","usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":20,"cache_read_input_tokens":10}},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse entry without cache_creation");
@@ -1131,7 +1131,7 @@ mod tests {
     #[test]
     fn parse_entry_with_both_ephemeral_fields() {
         // Entry with both 5m and 1h ephemeral tokens
-        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test","usage":{"input_tokens":50,"output_tokens":25,"cache_creation_input_tokens":10000,"cache_read_input_tokens":5000,"cache_creation":{"ephemeral_5m_input_tokens":6000,"ephemeral_1h_input_tokens":4000}}},"session_id":"s1","uuid":"u1","timestamp":"2025-12-26T00:00:00Z"}"#;
+        let raw = r#"{"type":"assistant","message":{"role":"assistant","content":"Test","usage":{"input_tokens":50,"output_tokens":25,"cache_creation_input_tokens":10000,"cache_read_input_tokens":5000,"cache_creation":{"ephemeral_5m_input_tokens":6000,"ephemeral_1h_input_tokens":4000}}},"session_id":"s1","uuid":"u1"}"#;
         let result = parse_entry(raw, 1);
 
         assert!(result.is_ok(), "Should parse entry with both ephemeral fields");
@@ -1148,7 +1148,7 @@ mod tests {
     fn parse_entry_session_id_snake_case() {
         // RED TEST: Actual Claude Code format uses snake_case session_id
         // This test expects snake_case and will FAIL until we remove camelCase rename
-        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":"snake-case-session","timestamp":"2025-01-01T00:00:00Z"}"#;
+        let raw = r#"{"type":"user","message":{"role":"user","content":"hello"},"uuid":"abc-123","session_id":"snake-case-session"}"#;
 
         let result = parse_entry(raw, 1);
         assert!(
