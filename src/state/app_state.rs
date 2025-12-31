@@ -360,6 +360,31 @@ impl AppState {
         }
     }
 
+    /// Find the tab index for a given agent_id.
+    ///
+    /// # Routing Logic
+    ///
+    /// Maps AgentId to its tab index using 0-based indexing into sorted subagent list:
+    /// - First subagent (alphabetically) -> tab 0
+    /// - Second subagent -> tab 1
+    /// - etc.
+    ///
+    /// Returns None if the agent_id is not found in the current session's subagents.
+    ///
+    /// Note: This uses 0-based subagent indexing, which differs from `selected_agent_id()`
+    /// where tab 0 represents the main agent. The two methods serve different purposes
+    /// in different parts of the routing system.
+    pub fn tab_index_for_agent(&self, agent_id: &AgentId) -> Option<usize> {
+        let session = self.log_view.current_session()?;
+        let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
+        agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        agent_ids
+            .iter()
+            .enumerate()
+            .find(|(_, aid)| **aid == *agent_id)
+            .map(|(idx, _)| idx)
+    }
+
     /// Check if new messages indicator should be shown.
     /// Returns true when live_mode is active but auto_scroll is paused.
     /// This signals to the UI that new content has arrived below the current view.

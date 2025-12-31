@@ -462,6 +462,7 @@ where
             }
             KeyAction::FilterSubagent => {
                 // Filter to current subagent tab if selected
+                // Note: This uses 0-based subagent tab indexing (tab 0 = first subagent)
                 if let Some(tab_index) = self.app_state.selected_tab {
                     let mut subagent_ids: Vec<_> = self
                         .app_state
