@@ -5,7 +5,7 @@
 //! - Typing: User is entering a query
 //! - Active: Search complete with results
 
-use crate::model::{AgentId, EntryUuid};
+use crate::model::{AgentId, EntryUuid, Session};
 
 // ===== SearchState =====
 
@@ -59,6 +59,17 @@ pub struct SearchMatch {
     pub block_index: usize,
     pub char_offset: usize,
     pub length: usize,
+}
+
+// ===== Search Execution =====
+
+/// Execute a search across all conversations in a session.
+///
+/// Searches all text content in main agent and all subagents.
+/// Performs case-insensitive substring matching.
+/// Returns all matches with full location information.
+pub fn execute_search(session: &Session, query: &SearchQuery) -> Vec<SearchMatch> {
+    todo!("execute_search")
 }
 
 // ===== Tests =====
