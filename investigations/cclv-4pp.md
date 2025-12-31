@@ -22,24 +22,41 @@ The comment "This is safe because AppState is cheap to clone (Rc internals)" is 
 AppState uses `#[derive(Clone)]` which does DEEP COPIES of:
 - Vec<SessionViewState>
 - Vec<ConversationViewState>
-- Vec<EntryView> (31k entries with rendered content)
+- Vec<EntryView> (31k entries with pre-rendered `Vec<Line>`)
 
-**Flamegraph Breakdown (total 102ms):**
+## Flamegraph Analysis
 
-| Category | % | Time |
-|----------|---|------|
-| State cloning | 30% | ~31ms |
-| Syntax highlighting | 13% | ~13ms |
-| Memory mgmt (alloc/dealloc) | 10% | ~10ms |
-| Text cloning (Span/Cow) | 5% | ~5ms |
-| Rendering | 3% | ~3ms |
-| Other | 39% | ~40ms |
+**IMPORTANT**: The flamegraph captures the ENTIRE benchmark process, not just the measured closure.
+This includes setup (fixture load, state clones for iter_batched) and measurement.
+
+### What's in the MEASURED path (the actual bottleneck):
+
+| Category | % | Notes |
+|----------|---|-------|
+| **State cloning** | **30%** | `app_state.clone()` at mod.rs:474 - IN HOT PATH |
+| Memory mgmt | 10% | Alloc/dealloc from clone operations |
+| Text cloning | 5% | Span/Cow clones from Vec<Line> copies |
+
+### What's in SETUP only (not the bottleneck):
+
+| Category | % | Notes |
+|----------|---|-------|
+| Syntax highlighting | 13% | One-time cost in `compute_entry_lines()` |
+| | | Cached in `EntryView.rendered_lines: Vec<Line>` |
+| | | Called only in `new()` and `relayout()` |
+| Rendering | 3% | Draws pre-computed lines to buffer |
+
+The syntect/tui_markdown overhead (13%) is from:
+1. Initial fixture load (`load_fixture()`) - runs once
+2. Setup phase of iter_batched - clones the already-highlighted lines
+
+**Syntax highlighting is NOT re-computed on scroll** - it's cached in EntryView.
 
 ## Hypotheses
 
 ### H4: AppState deep clone on every scroll [LEADING - CONFIRMED]
 - Bead: cclv-4pp.6
-- Evidence: E1 (flamegraph shows 30%+ in clone operations)
+- Evidence: E1 (flamegraph shows 30%+ in clone operations in measured path)
 - Fix: Change handle_scroll_action to take `&mut AppState` instead of owned
 
 ### H1: Vec allocation in visible_range() [ELIMINATED]
@@ -50,40 +67,41 @@ AppState uses `#[derive(Clone)]` which does DEEP COPIES of:
 - Bead: cclv-4pp.2 (closed)
 - Eliminated by: E1 - no Fenwick tree operations visible in profile
 
-### H3: Rendering overhead is the actual bottleneck [PARKED]
+### H3: Rendering overhead is the actual bottleneck [ELIMINATED]
 - Bead: cclv-4pp.3
-- Partial: Rendering is only ~3%, but syntax highlighting is ~13%
-- Secondary optimization target
+- Eliminated: Rendering is only ~3%, syntax highlighting is cached (not re-run on scroll)
+- The 13% syntect is setup cost, not scroll cost
 
 ## Evidence Log
 
 | ID | Source | Finding | Supports | Refutes |
 |----|--------|---------|----------|---------|
-| E1 | cclv-4pp.5 | Flamegraph: ConversationViewState::clone 15%, to_vec_in 15%, drop 10% | H4 | H1, H2 |
+| E1 | cclv-4pp.5 | Flamegraph: ConversationViewState::clone 15%, to_vec_in 15%, drop 10% | H4 | H1, H2, H3 |
 
 ## Dead Ends
 - H1: Vec allocation - NOT the bottleneck (E1)
 - H2: Fenwick tree - NOT visible in profile (E1)
+- H3: Rendering/highlighting - NOT in hot path, cached in EntryView (E1)
 
 ## Recommended Fix
 
-**Phase 1: Eliminate state cloning (target: <35ms)**
+**Single fix needed: Eliminate state cloning**
+
 1. Change `handle_scroll_action(state: AppState)` to `handle_scroll_action(state: &mut AppState)`
-2. Update call sites to pass mutable reference
-3. Remove the false comment about Rc internals
+2. Update call site at mod.rs:474 to pass `&mut self.app_state`
+3. Remove the false comment about "Rc internals"
 
-**Phase 2: Optimize syntax highlighting (target: <22ms)**
-- Cache syntax highlighting results instead of re-highlighting on every render
-- Consider lazy highlighting (only visible lines)
+Expected improvement: ~30% reduction (102ms → ~70ms)
 
-**Phase 3: Further optimization (target: <2ms)**
-- May require architectural changes (Rc for expensive data, incremental updates)
+Further optimization to reach <2ms target would require:
+- Investigating the remaining 70ms
+- Possible architectural changes (Rc for expensive data, incremental updates)
 
 ## Investigation Artifacts
-- `flamegraph.svg` - Generated with debug symbols
-- `perf.data` - Raw perf data (5.7GB)
+- `cclv-4pp-flamegraph.svg` - Generated with debug symbols
+- Cargo.toml `[profile.bench]` added for future profiling
 
 ## Next Steps
-1. Close cclv-4pp.4 experiment as complete
-2. Create implementation task for Phase 1 fix
-3. Re-run benchmark after fix to measure improvement
+1. Implement the &mut AppState fix
+2. Re-run benchmark to measure improvement
+3. Profile again if still >2ms to find next bottleneck
