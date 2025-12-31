@@ -86,7 +86,7 @@ impl AcceptanceTestHarness {
         let entry_count = entries.len();
 
         // Build session from entries
-        let mut session = if let Some(ref first_entry) = entries.first() {
+        let mut session = if let Some(first_entry) = entries.first() {
             Session::new(first_entry.session_id().clone())
         } else {
             Session::new(SessionId::unknown())
@@ -107,13 +107,8 @@ impl AcceptanceTestHarness {
         let input_source = cclv::source::InputSource::Stdin(stdin_source);
 
         // Create TuiApp using test constructor
-        let app = TuiApp::new_for_test(
-            terminal,
-            app_state,
-            input_source,
-            entry_count,
-            key_bindings,
-        );
+        let app =
+            TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
 
         Ok(Self {
             app,

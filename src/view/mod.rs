@@ -81,10 +81,7 @@ impl TuiApp<CrosstermBackend<Stdout>> {
     /// Create and initialize a new TUI application
     ///
     /// Sets up terminal in raw mode with alternate screen
-    pub fn new(
-        mut input_source: InputSource,
-        session_id: SessionId,
-    ) -> Result<Self, TuiError> {
+    pub fn new(mut input_source: InputSource, session_id: SessionId) -> Result<Self, TuiError> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         stdout.execute(EnterAlternateScreen)?;
@@ -138,6 +135,9 @@ impl TuiApp<CrosstermBackend<Stdout>> {
         // Timer interval for LIVE indicator blink (500ms)
         const TIMER_INTERVAL: Duration = Duration::from_millis(500);
 
+        // Initial render - ensures screen has content immediately (cclv-07v.12.21.4)
+        self.draw()?;
+
         loop {
             // Poll for events with timer timeout (event-driven)
             let event_result = if event::poll(TIMER_INTERVAL)? {
@@ -176,8 +176,7 @@ impl TuiApp<CrosstermBackend<Stdout>> {
 
                 // Toggle blink state on timer event when in Streaming mode
                 // This creates the blinking animation for the LIVE indicator
-                let should_blink =
-                    self.app_state.input_mode == crate::state::InputMode::Streaming;
+                let should_blink = self.app_state.input_mode == crate::state::InputMode::Streaming;
                 if should_blink {
                     self.app_state.toggle_blink();
                 }
@@ -645,7 +644,6 @@ where
         let entries = std::mem::take(&mut self.pending_entries);
         self.app_state.add_entries(entries);
     }
-
 }
 
 /// CLI arguments for TUI initialization

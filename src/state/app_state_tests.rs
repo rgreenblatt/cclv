@@ -1243,7 +1243,7 @@ fn app_state_new_defaults_blink_on_to_true() {
     let session = make_test_session();
     let state = AppState::new(session);
 
-    assert_eq!(state.blink_on, true);
+    assert!(state.blink_on);
 }
 
 #[test]
@@ -1254,8 +1254,8 @@ fn toggle_blink_switches_from_true_to_false() {
 
     let result = state.toggle_blink();
 
-    assert_eq!(state.blink_on, false);
-    assert_eq!(result, false);
+    assert!(!state.blink_on);
+    assert!(!result);
 }
 
 #[test]
@@ -1266,8 +1266,8 @@ fn toggle_blink_switches_from_false_to_true() {
 
     let result = state.toggle_blink();
 
-    assert_eq!(state.blink_on, true);
-    assert_eq!(result, true);
+    assert!(state.blink_on);
+    assert!(result);
 }
 
 #[test]

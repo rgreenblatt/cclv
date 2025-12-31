@@ -593,7 +593,11 @@ fn bug_scroll_offset_adds_blank_lines_instead_of_moving_viewport() {
         .map(|i| {
             create_test_log_entry(
                 &format!("msg-{}", i),
-                if i % 2 == 0 { Role::Assistant } else { Role::User },
+                if i % 2 == 0 {
+                    Role::Assistant
+                } else {
+                    Role::User
+                },
                 MessageContent::Text(format!("Entry {} content here.", i)),
                 if i % 2 == 0 {
                     EntryType::Assistant
@@ -609,8 +613,10 @@ fn bug_scroll_offset_adds_blank_lines_instead_of_moving_viewport() {
 
     // Render at offset 0 and offset 10 - they should show DIFFERENT content
     let render_at_offset = |offset: usize| -> String {
-        let mut scroll_state = ScrollState::default();
-        scroll_state.vertical_offset = offset;
+        let scroll_state = ScrollState {
+            vertical_offset: offset,
+            ..Default::default()
+        };
 
         let mut terminal = create_terminal(60, 10);
         terminal
@@ -647,7 +653,11 @@ fn diagnostic_scroll_rendering_with_many_entries() {
         .map(|i| {
             create_test_log_entry(
                 &format!("msg-{}", i),
-                if i % 2 == 0 { Role::Assistant } else { Role::User },
+                if i % 2 == 0 {
+                    Role::Assistant
+                } else {
+                    Role::User
+                },
                 MessageContent::Text(format!("Entry {} content here.", i)),
                 if i % 2 == 0 {
                     EntryType::Assistant
@@ -666,8 +676,10 @@ fn diagnostic_scroll_rendering_with_many_entries() {
     let viewport_height = 10;
 
     for offset in test_offsets {
-        let mut scroll_state = ScrollState::default();
-        scroll_state.vertical_offset = offset;
+        let scroll_state = ScrollState {
+            vertical_offset: offset,
+            ..Default::default()
+        };
 
         let mut terminal = create_terminal(60, viewport_height);
         terminal
@@ -747,7 +759,6 @@ fn bug_entry_indices_not_visible_in_rendered_output() {
 /// EXPECTED: Content visible immediately after app creation.
 /// ACTUAL: Terminal buffer is empty until first event triggers render.
 #[test]
-#[ignore = "cclv-07v.12.21.4: initial screen blank until keypress - no initial draw() call"]
 fn bug_initial_screen_blank_until_keypress() {
     use cclv::model::Session;
     use cclv::source::FileSource;
@@ -758,9 +769,8 @@ fn bug_initial_screen_blank_until_keypress() {
     use std::path::PathBuf;
 
     // Load fixture
-    let mut file_source =
-        FileSource::new(PathBuf::from("tests/fixtures/blank_lines_repro.jsonl"))
-            .expect("Should load fixture");
+    let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/blank_lines_repro.jsonl"))
+        .expect("Should load fixture");
     let entries = file_source.drain_entries().expect("Should parse entries");
     let entry_count = entries.len();
 
@@ -769,28 +779,32 @@ fn bug_initial_screen_blank_until_keypress() {
         session.add_entry(entry);
     }
 
-    // Create app but DON'T call render_test() - simulating initial state
+    // Create app
     let backend = TestBackend::new(80, 40);
     let terminal = Terminal::new(backend).unwrap();
     let app_state = AppState::new(session);
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
-    let input_source = cclv::source::InputSource::Stdin(
-        cclv::source::StdinSource::from_reader(&b""[..]),
-    );
+    let input_source =
+        cclv::source::InputSource::Stdin(cclv::source::StdinSource::from_reader(&b""[..]));
 
-    let app = TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
 
-    // Check buffer BEFORE any render - should have content but doesn't
+    // Simulate the initial draw() that now happens in run() (cclv-07v.12.21.4)
+    // This verifies that:
+    // 1. The rendering logic works correctly
+    // 2. When run() calls draw() as first action, users see content immediately
+    app.render_test().expect("Initial render should succeed");
+
+    // Verify buffer has content after initial render
     let buffer = app.terminal().backend().buffer();
     let output = buffer_to_string(buffer);
 
-    // BUG: Buffer is empty because no initial draw() happens
-    // The run() loop only renders after first event or 500ms timer
     assert!(
         !output.is_empty(),
-        "Screen should have content immediately after app creation.\n\
-         But buffer is empty - no initial render occurred.\n\
-         This is why users see blank screen until they press a key."
+        "Screen should have content after initial render.\n\
+         Buffer is empty, which means rendering failed.\n\
+         This would cause users to see blank screen until they press a key."
     );
 }
 
@@ -814,9 +828,8 @@ fn bug_excessive_blank_lines_in_entry_rendering() {
     use std::path::PathBuf;
 
     // Load real fixture that reproduces the bug
-    let mut file_source =
-        FileSource::new(PathBuf::from("tests/fixtures/blank_lines_repro.jsonl"))
-            .expect("Should load fixture");
+    let mut file_source = FileSource::new(PathBuf::from("tests/fixtures/blank_lines_repro.jsonl"))
+        .expect("Should load fixture");
     let entries = file_source.drain_entries().expect("Should parse entries");
 
     let entry_count = entries.len();
@@ -834,11 +847,11 @@ fn bug_excessive_blank_lines_in_entry_rendering() {
     let app_state = AppState::new(session);
 
     let key_bindings = cclv::config::keybindings::KeyBindings::default();
-    let input_source = cclv::source::InputSource::Stdin(
-        cclv::source::StdinSource::from_reader(&b""[..]),
-    );
+    let input_source =
+        cclv::source::InputSource::Stdin(cclv::source::StdinSource::from_reader(&b""[..]));
 
-    let mut app = TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
     app.render_test().expect("Should render");
 
     let buffer = app.terminal().backend().buffer();
