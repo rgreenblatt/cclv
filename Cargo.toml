@@ -52,11 +52,21 @@ name = "scroll_benchmark"
 harness = false
 required-features = ["bench-internals"]
 
+[[example]]
+name = "stress_scroll"
+required-features = ["bench-internals"]
+
 [profile.release]
 opt-level = 3
 lto = true
 codegen-units = 1
 strip = true
+
+# Flamegraph profiling profile
+[profile.flamegraph]
+inherits = "release"
+debug = true
+strip = false
 
 # Profiling profile: optimized but with debug symbols
 [profile.bench]
