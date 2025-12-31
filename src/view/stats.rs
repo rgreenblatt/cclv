@@ -393,6 +393,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts,
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 2,
             entry_count: 10,
         };
@@ -425,6 +427,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 5,
         };
@@ -469,6 +473,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 5,
         };
@@ -510,6 +516,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 5,
         };
@@ -557,6 +565,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 5,
         };
@@ -596,6 +606,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 5,
         };
@@ -635,6 +647,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 5,
         };
@@ -674,6 +688,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 5,
         };
@@ -720,6 +736,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 5,
         };
@@ -938,6 +956,8 @@ mod tests {
             },
             subagent_usage,
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 1,
             entry_count: 10,
         };
@@ -1002,6 +1022,8 @@ mod tests {
             },
             subagent_usage,
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 1,
             entry_count: 10,
         };
@@ -1067,6 +1089,8 @@ mod tests {
             },
             subagent_usage,
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 1,
             entry_count: 10,
         };
@@ -1214,6 +1238,8 @@ mod tests {
             },
             subagent_usage,
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 1,
             entry_count: 10,
         };
@@ -1278,6 +1304,8 @@ mod tests {
             },
             subagent_usage,
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 1,
             entry_count: 10,
         };
@@ -1324,6 +1352,8 @@ mod tests {
             main_agent_usage: TokenUsage::default(),
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 3,
             entry_count: 42,
         };

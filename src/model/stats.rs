@@ -18,6 +18,8 @@ pub struct SessionStats {
     pub main_agent_usage: TokenUsage,
     pub subagent_usage: HashMap<AgentId, TokenUsage>,
     pub tool_counts: HashMap<ToolName, u32>,
+    pub main_agent_tool_counts: HashMap<ToolName, u32>,
+    pub subagent_tool_counts: HashMap<AgentId, HashMap<ToolName, u32>>,
     pub subagent_count: usize,
     pub entry_count: usize,
 }
@@ -111,6 +113,16 @@ impl SessionStats {
                 .copied()
                 .unwrap_or_default(),
         }
+    }
+
+    /// Get filtered tool counts based on the current stats filter.
+    ///
+    /// Returns:
+    /// - `StatsFilter::Global`: tool_counts (all agents)
+    /// - `StatsFilter::MainAgent`: main_agent_tool_counts only
+    /// - `StatsFilter::Subagent(id)`: tool_counts for specific subagent, or empty if not found
+    pub fn filtered_tool_counts(&self, filter: &StatsFilter) -> &HashMap<ToolName, u32> {
+        todo!("filtered_tool_counts")
     }
 }
 
@@ -500,6 +512,8 @@ mod tests {
                 cache_creation_input_tokens: 0,
                 cache_read_input_tokens: 0,
             },
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             ..Default::default()
         };
         let pricing = PricingConfig::default();
@@ -519,6 +533,8 @@ mod tests {
                 cache_creation_input_tokens: 0,
                 cache_read_input_tokens: 0,
             },
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             ..Default::default()
         };
         let pricing = PricingConfig::default();
@@ -538,6 +554,8 @@ mod tests {
                 cache_creation_input_tokens: 500_000,
                 cache_read_input_tokens: 500_000,
             },
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             ..Default::default()
         };
         let pricing = PricingConfig::default();
@@ -557,6 +575,8 @@ mod tests {
                 cache_creation_input_tokens: 500_000,
                 cache_read_input_tokens: 500_000,
             },
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             ..Default::default()
         };
         let pricing = PricingConfig::default();
@@ -576,6 +596,8 @@ mod tests {
                 cache_creation_input_tokens: 0,
                 cache_read_input_tokens: 0,
             },
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             ..Default::default()
         };
         let pricing = PricingConfig::default();
@@ -595,6 +617,8 @@ mod tests {
                 cache_creation_input_tokens: 0,
                 cache_read_input_tokens: 0,
             },
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             ..Default::default()
         };
         let pricing = PricingConfig::default();
@@ -614,6 +638,8 @@ mod tests {
                 cache_creation_input_tokens: 0,
                 cache_read_input_tokens: 0,
             },
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             ..Default::default()
         };
         let pricing = PricingConfig::default();
@@ -633,6 +659,8 @@ mod tests {
                 cache_creation_input_tokens: 0,
                 cache_read_input_tokens: 0,
             },
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             ..Default::default()
         };
         let pricing = PricingConfig::default();
@@ -781,6 +809,8 @@ mod tests {
             },
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 10,
         };
@@ -811,6 +841,8 @@ mod tests {
             },
             subagent_usage: HashMap::new(),
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 0,
             entry_count: 10,
         };
@@ -864,6 +896,8 @@ mod tests {
             },
             subagent_usage,
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 2,
             entry_count: 20,
         };
@@ -908,6 +942,8 @@ mod tests {
             },
             subagent_usage,
             tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
             subagent_count: 1,
             entry_count: 15,
         };
@@ -920,5 +956,196 @@ mod tests {
         assert_eq!(usage.output_tokens, 0);
         assert_eq!(usage.cache_creation_input_tokens, 0);
         assert_eq!(usage.cache_read_input_tokens, 0);
+    }
+
+    // ===== Per-Agent Tool Counts Tests =====
+
+    #[test]
+    fn record_entry_tracks_main_agent_tool_counts() {
+        let mut stats = SessionStats::default();
+        let message = make_message_with_tool_calls(vec![ToolName::Read, ToolName::Write]);
+        let entry = make_log_entry("e1", "s1", None, message); // None = main agent
+
+        stats.record_entry(&entry);
+
+        // Should track in main_agent_tool_counts
+        assert_eq!(stats.main_agent_tool_counts.get(&ToolName::Read), Some(&1));
+        assert_eq!(stats.main_agent_tool_counts.get(&ToolName::Write), Some(&1));
+        // Should NOT track in subagent_tool_counts
+        assert!(stats.subagent_tool_counts.is_empty());
+    }
+
+    #[test]
+    fn record_entry_tracks_subagent_tool_counts() {
+        let mut stats = SessionStats::default();
+        let message = make_message_with_tool_calls(vec![ToolName::Bash, ToolName::Grep]);
+        let entry = make_log_entry("e1", "s1", Some("agent-123"), message);
+
+        stats.record_entry(&entry);
+
+        // Should track in subagent_tool_counts under the agent
+        let agent_id = make_agent_id("agent-123");
+        let agent_tools = stats.subagent_tool_counts.get(&agent_id).expect("subagent tools");
+        assert_eq!(agent_tools.get(&ToolName::Bash), Some(&1));
+        assert_eq!(agent_tools.get(&ToolName::Grep), Some(&1));
+        // Should NOT track in main_agent_tool_counts
+        assert!(stats.main_agent_tool_counts.is_empty());
+    }
+
+    #[test]
+    fn record_entry_accumulates_main_agent_tool_counts() {
+        let mut stats = SessionStats::default();
+        let message1 = make_message_with_tool_calls(vec![ToolName::Read]);
+        let message2 = make_message_with_tool_calls(vec![ToolName::Read, ToolName::Bash]);
+        let entry1 = make_log_entry("e1", "s1", None, message1);
+        let entry2 = make_log_entry("e2", "s1", None, message2);
+
+        stats.record_entry(&entry1);
+        stats.record_entry(&entry2);
+
+        assert_eq!(stats.main_agent_tool_counts.get(&ToolName::Read), Some(&2));
+        assert_eq!(stats.main_agent_tool_counts.get(&ToolName::Bash), Some(&1));
+    }
+
+    #[test]
+    fn record_entry_accumulates_subagent_tool_counts_for_same_agent() {
+        let mut stats = SessionStats::default();
+        let message1 = make_message_with_tool_calls(vec![ToolName::Edit]);
+        let message2 = make_message_with_tool_calls(vec![ToolName::Edit, ToolName::Read]);
+        let entry1 = make_log_entry("e1", "s1", Some("agent-abc"), message1);
+        let entry2 = make_log_entry("e2", "s1", Some("agent-abc"), message2);
+
+        stats.record_entry(&entry1);
+        stats.record_entry(&entry2);
+
+        let agent_id = make_agent_id("agent-abc");
+        let agent_tools = stats.subagent_tool_counts.get(&agent_id).expect("subagent tools");
+        assert_eq!(agent_tools.get(&ToolName::Edit), Some(&2));
+        assert_eq!(agent_tools.get(&ToolName::Read), Some(&1));
+    }
+
+    #[test]
+    fn record_entry_keeps_subagent_tool_counts_separate() {
+        let mut stats = SessionStats::default();
+        let message1 = make_message_with_tool_calls(vec![ToolName::Bash]);
+        let message2 = make_message_with_tool_calls(vec![ToolName::Read]);
+        let entry1 = make_log_entry("e1", "s1", Some("agent-1"), message1);
+        let entry2 = make_log_entry("e2", "s1", Some("agent-2"), message2);
+
+        stats.record_entry(&entry1);
+        stats.record_entry(&entry2);
+
+        let agent1 = make_agent_id("agent-1");
+        let agent2 = make_agent_id("agent-2");
+
+        let agent1_tools = stats.subagent_tool_counts.get(&agent1).expect("agent-1 tools");
+        assert_eq!(agent1_tools.get(&ToolName::Bash), Some(&1));
+        assert_eq!(agent1_tools.get(&ToolName::Read), None);
+
+        let agent2_tools = stats.subagent_tool_counts.get(&agent2).expect("agent-2 tools");
+        assert_eq!(agent2_tools.get(&ToolName::Read), Some(&1));
+        assert_eq!(agent2_tools.get(&ToolName::Bash), None);
+    }
+
+    #[test]
+    fn filtered_tool_counts_returns_global_tools() {
+        let mut tool_counts = HashMap::new();
+        tool_counts.insert(ToolName::Read, 5);
+        tool_counts.insert(ToolName::Write, 3);
+
+        let stats = SessionStats {
+            tool_counts: tool_counts.clone(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: HashMap::new(),
+            ..Default::default()
+        };
+
+        let filter = StatsFilter::Global;
+        let result = stats.filtered_tool_counts(&filter);
+
+        assert_eq!(result.get(&ToolName::Read), Some(&5));
+        assert_eq!(result.get(&ToolName::Write), Some(&3));
+    }
+
+    #[test]
+    fn filtered_tool_counts_returns_main_agent_tools() {
+        let mut global_counts = HashMap::new();
+        global_counts.insert(ToolName::Read, 10);
+        global_counts.insert(ToolName::Write, 8);
+
+        let mut main_counts = HashMap::new();
+        main_counts.insert(ToolName::Read, 6);
+        main_counts.insert(ToolName::Write, 4);
+
+        let stats = SessionStats {
+            tool_counts: global_counts,
+            main_agent_tool_counts: main_counts,
+            subagent_tool_counts: HashMap::new(),
+            ..Default::default()
+        };
+
+        let filter = StatsFilter::MainAgent;
+        let result = stats.filtered_tool_counts(&filter);
+
+        // Should return only main agent counts
+        assert_eq!(result.get(&ToolName::Read), Some(&6));
+        assert_eq!(result.get(&ToolName::Write), Some(&4));
+    }
+
+    #[test]
+    fn filtered_tool_counts_returns_specific_subagent_tools() {
+        let agent1 = make_agent_id("agent-1");
+        let agent2 = make_agent_id("agent-2");
+
+        let mut agent1_counts = HashMap::new();
+        agent1_counts.insert(ToolName::Bash, 7);
+        agent1_counts.insert(ToolName::Read, 2);
+
+        let mut agent2_counts = HashMap::new();
+        agent2_counts.insert(ToolName::Edit, 3);
+
+        let mut subagent_counts = HashMap::new();
+        subagent_counts.insert(agent1.clone(), agent1_counts);
+        subagent_counts.insert(agent2.clone(), agent2_counts);
+
+        let stats = SessionStats {
+            tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: subagent_counts,
+            ..Default::default()
+        };
+
+        let filter = StatsFilter::Subagent(agent1);
+        let result = stats.filtered_tool_counts(&filter);
+
+        // Should return only agent-1 counts
+        assert_eq!(result.get(&ToolName::Bash), Some(&7));
+        assert_eq!(result.get(&ToolName::Read), Some(&2));
+        assert_eq!(result.get(&ToolName::Edit), None);
+    }
+
+    #[test]
+    fn filtered_tool_counts_returns_empty_for_unknown_subagent() {
+        let agent1 = make_agent_id("agent-1");
+        let agent_missing = make_agent_id("agent-missing");
+
+        let mut agent1_counts = HashMap::new();
+        agent1_counts.insert(ToolName::Read, 5);
+
+        let mut subagent_counts = HashMap::new();
+        subagent_counts.insert(agent1.clone(), agent1_counts);
+
+        let stats = SessionStats {
+            tool_counts: HashMap::new(),
+            main_agent_tool_counts: HashMap::new(),
+            subagent_tool_counts: subagent_counts,
+            ..Default::default()
+        };
+
+        let filter = StatsFilter::Subagent(agent_missing);
+        let result = stats.filtered_tool_counts(&filter);
+
+        // Should return empty HashMap for missing agent
+        assert!(result.is_empty());
     }
 }
