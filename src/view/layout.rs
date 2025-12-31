@@ -134,7 +134,10 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
         ""
     };
 
-    let status_text = format!("{}q: quit | Tab: switch pane", live_indicator);
+    let status_text = format!(
+        "{}q: quit | Tab: cycle panes | 1/2/3: focus Main/Subagent/Stats",
+        live_indicator
+    );
 
     let style = if state.live_mode && state.auto_scroll {
         Style::default().fg(Color::Green)

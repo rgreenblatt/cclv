@@ -170,6 +170,26 @@ where
     ///
     /// Returns true if app should quit
     fn handle_key(&mut self, key: KeyEvent) -> bool {
+        // Focus cycling - Tab key cycles between Main, Subagent, Stats
+        if key.code == KeyCode::Tab {
+            self.app_state.cycle_focus();
+            return false;
+        }
+
+        // Direct focus - Number keys 1/2/3
+        if key.code == KeyCode::Char('1') {
+            self.app_state.focus_main();
+            return false;
+        }
+        if key.code == KeyCode::Char('2') {
+            self.app_state.focus_subagent();
+            return false;
+        }
+        if key.code == KeyCode::Char('3') {
+            self.app_state.focus_stats();
+            return false;
+        }
+
         // FR-038: Toggle auto-scroll on 'a' key
         if key.code == KeyCode::Char('a') {
             self.app_state.auto_scroll = !self.app_state.auto_scroll;
