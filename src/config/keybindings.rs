@@ -217,6 +217,16 @@ impl Default for KeyBindings {
             KeyAction::ScrollToLatest,
         );
 
+        // Wrap toggle
+        bindings.insert(
+            KeyEvent::new(KeyCode::Char('w'), KeyModifiers::NONE),
+            KeyAction::ToggleWrap,
+        );
+        bindings.insert(
+            KeyEvent::new(KeyCode::Char('W'), KeyModifiers::SHIFT),
+            KeyAction::ToggleGlobalWrap,
+        );
+
         // Application controls
         bindings.insert(
             KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE),
