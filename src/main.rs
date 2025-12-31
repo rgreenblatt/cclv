@@ -48,17 +48,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Default to info level, override with RUST_LOG env var
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info"))
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
 
-    let _args = Args::parse();
+    let args = Args::parse();
 
     info!(version = env!("CARGO_PKG_VERSION"), "cclv starting");
 
-    // Run the TUI
-    cclv::view::run()?;
+    // Detect input source (file or stdin)
+    let input_source = cclv::source::detect_input_source(args.file.clone())?;
+
+    // Create CliArgs for TUI
+    let cli_args = cclv::view::CliArgs::new(args.stats, args.follow);
+
+    // Run the TUI with the input source
+    cclv::view::run_with_source(input_source, cli_args)?;
 
     Ok(())
 }
