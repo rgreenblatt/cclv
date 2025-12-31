@@ -7621,4 +7621,276 @@ fn test() { println!("Code blocks always NoWrap"); }
             ContentSection::Prose(_) => panic!("Expected CodeBlock"),
         }
     }
+
+    // ===== Section-Level Rendering Tests (FR-053) =====
+
+    #[test]
+    fn render_mixed_entry_prose_wraps_code_does_not() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::{backend::TestBackend, Terminal};
+
+        // Create entry with prose and code block mixed
+        let content_with_code = "This is regular prose text that should wrap.\n\n```rust\nfn very_long_function_name_that_should_not_wrap_under_any_circumstances() {}\n```\n\nMore prose after.";
+
+        let message = Message::new(
+            Role::User,
+            MessageContent::Blocks(vec![ContentBlock::Text {
+                text: content_with_code.to_string(),
+            }]),
+        );
+
+        let entry = LogEntry::new(
+            EntryUuid::new("test-uuid-001").expect("valid uuid"),
+            None,
+            SessionId::new("session-001").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+
+        let mut conversation = AgentConversation::new(None);
+        conversation.add_entry(entry);
+
+        let scroll = ScrollState::default();
+        let styles = create_test_styles();
+
+        // Create terminal with narrow width to force wrapping
+        let backend = TestBackend::new(50, 30);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        // Enable wrap mode globally
+        let global_wrap = WrapMode::Wrap;
+
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll,
+                    &styles,
+                    true,
+                    global_wrap,
+                );
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+
+        // Verify prose wraps by checking if prose text appears on multiple lines
+        let has_wrapped_prose = buffer
+            .content()
+            .windows(buffer.area.width as usize)
+            .any(|window| {
+                let text: String = window.iter().map(|c| c.symbol()).collect();
+                text.contains("This is regular") || text.contains("prose text")
+            });
+
+        // Verify code block does NOT wrap by checking the long function name appears intact
+        let code_not_wrapped = buffer.content().iter().any(|cell| {
+            cell.symbol()
+                .contains("very_long_function_name_that_should_not_wrap")
+        });
+
+        assert!(
+            has_wrapped_prose,
+            "Prose sections should wrap when wrap mode is enabled"
+        );
+        assert!(
+            code_not_wrapped,
+            "Code block sections should never wrap, even when wrap mode is enabled"
+        );
+    }
+
+    #[test]
+    fn render_entry_sections_prose_respects_wrap_setting() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::{backend::TestBackend, Terminal};
+
+        // Entry with only prose (no code blocks)
+        let prose_only = "This is a very long line of prose text that should definitely wrap when the viewport is narrow and wrap mode is enabled.";
+
+        let message = Message::new(
+            Role::User,
+            MessageContent::Blocks(vec![ContentBlock::Text {
+                text: prose_only.to_string(),
+            }]),
+        );
+
+        let entry = LogEntry::new(
+            EntryUuid::new("test-uuid-002").expect("valid uuid"),
+            None,
+            SessionId::new("session-002").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+
+        let mut conversation = AgentConversation::new(None);
+        conversation.add_entry(entry);
+
+        let scroll = ScrollState::default();
+        let styles = create_test_styles();
+
+        let backend = TestBackend::new(40, 20);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        // Test with wrap enabled
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll,
+                    &styles,
+                    true,
+                    WrapMode::Wrap,
+                );
+            })
+            .unwrap();
+
+        let buffer_wrapped = terminal.backend().buffer().clone();
+
+        // Count lines containing prose text
+        let wrapped_line_count = buffer_wrapped
+            .content()
+            .chunks(buffer_wrapped.area.width as usize)
+            .filter(|line| {
+                let text: String = line.iter().map(|c| c.symbol()).collect();
+                text.contains("This is") || text.contains("long line") || text.contains("wrap mode")
+            })
+            .count();
+
+        // Test with wrap disabled
+        let backend2 = TestBackend::new(40, 20);
+        let mut terminal2 = Terminal::new(backend2).unwrap();
+
+        terminal2
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll,
+                    &styles,
+                    true,
+                    WrapMode::NoWrap,
+                );
+            })
+            .unwrap();
+
+        let buffer_nowrap = terminal2.backend().buffer();
+
+        let nowrap_line_count = buffer_nowrap
+            .content()
+            .chunks(buffer_nowrap.area.width as usize)
+            .filter(|line| {
+                let text: String = line.iter().map(|c| c.symbol()).collect();
+                text.contains("This is")
+            })
+            .count();
+
+        // With wrap enabled, prose should span multiple lines
+        assert!(
+            wrapped_line_count > 1,
+            "Prose should wrap across multiple lines when wrap enabled (got {} lines)",
+            wrapped_line_count
+        );
+
+        // With wrap disabled, prose should be on one line (possibly truncated)
+        assert_eq!(
+            nowrap_line_count, 1,
+            "Prose should be on single line when wrap disabled"
+        );
+    }
+
+    #[test]
+    fn render_code_block_never_wraps_regardless_of_setting() {
+        use crate::model::{
+            AgentConversation, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
+            MessageContent, Role, SessionId,
+        };
+        use chrono::Utc;
+        use ratatui::{backend::TestBackend, Terminal};
+
+        // Entry with only code block
+        let code_only = "```rust\nlet very_long_variable_name_that_exceeds_viewport_width = 42;\n```";
+
+        let message = Message::new(
+            Role::User,
+            MessageContent::Blocks(vec![ContentBlock::Text {
+                text: code_only.to_string(),
+            }]),
+        );
+
+        let entry = LogEntry::new(
+            EntryUuid::new("test-uuid-003").expect("valid uuid"),
+            None,
+            SessionId::new("session-003").expect("valid session id"),
+            None,
+            Utc::now(),
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+
+        let mut conversation = AgentConversation::new(None);
+        conversation.add_entry(entry);
+
+        let scroll = ScrollState::default();
+        let styles = create_test_styles();
+
+        let backend = TestBackend::new(30, 20);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        // Test with wrap ENABLED - code should still not wrap
+        terminal
+            .draw(|frame| {
+                let area = frame.area();
+                render_conversation_view(
+                    frame,
+                    area,
+                    &conversation,
+                    &scroll,
+                    &styles,
+                    true,
+                    WrapMode::Wrap,
+                );
+            })
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+
+        // Count lines containing the variable name
+        let line_count = buffer
+            .content()
+            .chunks(buffer.area.width as usize)
+            .filter(|line| {
+                let text: String = line.iter().map(|c| c.symbol()).collect();
+                text.contains("very_long_variable_name")
+            })
+            .count();
+
+        assert_eq!(
+            line_count, 1,
+            "Code block should never wrap, even when global wrap is enabled (found on {} lines)",
+            line_count
+        );
+    }
 }
