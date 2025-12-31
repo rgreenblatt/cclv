@@ -545,6 +545,47 @@ fn render_header_shows_subagent_id_when_subagent_focused() {
     );
 }
 
+#[test]
+fn render_header_uses_selected_tab_not_focus() {
+    // Bug: render_header() was using state.focus instead of state.selected_tab
+    // to determine agent_label, causing "Main Agent" to always show.
+    // This test verifies header shows correct agent based on selected_tab,
+    // REGARDLESS of which pane has focus.
+
+    let mut terminal = create_test_terminal();
+    let entries = create_entries_with_subagents();
+    let mut state = AppState::new();
+    state.add_entries(entries);
+
+    // Critical: Focus is on Stats pane (not Subagent),
+    // but we've selected a subagent tab.
+    // Header should show "Subagent X", not "Main Agent"
+    state.focus = FocusPane::Stats;
+    state.selected_tab = Some(0); // First subagent tab selected
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let first_line: String = buffer.content.iter().take(80).map(|c| c.symbol()).collect();
+
+    // Header should show subagent identifier based on selected_tab,
+    // NOT "Main Agent" based on focus
+    assert!(
+        first_line.contains("subagent"),
+        "Header should show subagent identifier based on selected_tab (got: '{}')",
+        first_line
+    );
+    assert!(
+        !first_line.contains("Main Agent"),
+        "Header should NOT show 'Main Agent' when subagent tab is selected (got: '{}')",
+        first_line
+    );
+}
+
 // ===== Stats Panel Integration Tests =====
 
 #[test]
