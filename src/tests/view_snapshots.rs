@@ -2915,6 +2915,125 @@ fn bug_tab_click_region_mismatch() {
     );
 }
 
+/// Bug reproduction: Tab click X coordinate off by 6 chars (Main vs Main Agent)
+///
+/// EXPECTED: Clicking at column 9 (visually on "tab2") should switch to tab index 1
+/// ACTUAL: Click stays on Main because detect_tab_click uses "Main Agent" (10 chars)
+///         instead of "Main" (4 chars) that is actually rendered
+///
+/// Root cause analysis:
+/// - tabs.rs line 62 renders: "Main" (4 chars)
+/// - mouse_handler.rs line 96 uses: "Main Agent" (10 chars)
+/// - This creates a 6-character offset in all tab click positions
+///
+/// Tab bar layout:
+///   Visual:  │ Main │ tab2 │
+///   Columns: 0 1234 5 6789...
+///   "Main" ends at column 5, "tab2" starts at column 8
+///
+///   detect_tab_click thinks:
+///   "Main Agent" (10 chars + 3) = 13 chars, so Main extends to column 12
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/tab_x_offset_repro.jsonl
+/// 2. Click on the tab bar at approximately column 9 (on "tab2" text)
+/// 3. Observe: Tab does NOT switch to tab2 - stays on Main
+///
+/// Bead: cclv-el4
+#[test]
+#[ignore = "cclv-el4: Tab click X offset by 6 chars (Main vs Main Agent)"]
+fn bug_tab_click_x_offset_main_vs_main_agent() {
+    use crate::config::keybindings::KeyBindings;
+    use crate::source::{FileSource, InputSource, StdinSource};
+    use crate::state::AppState;
+    use crate::view::TuiApp;
+    use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+    use std::path::PathBuf;
+
+    // Load minimal fixture with Main + one subagent "tab2"
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/tab_x_offset_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal
+    let backend = TestBackend::new(80, 24);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Initial render
+    app.render_test().expect("Initial render should succeed");
+
+    let initial_output = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_tab_x_offset_initial", initial_output.clone());
+
+    // Verify we start on Main tab
+    assert_eq!(
+        app.app_state().selected_tab_index(),
+        Some(0),
+        "Should start with Main tab selected (index 0)"
+    );
+
+    // The tab bar renders as: "│ Main │ tab2 │"
+    // Visual columns:
+    //   0: │ (border)
+    //   1: space
+    //   2-5: "Main"
+    //   6: space
+    //   7: │ (separator)
+    //   8: space
+    //   9-12: "tab2"
+    //
+    // Click at column 9 - this is visually on "tab2" but due to the bug,
+    // detect_tab_click thinks "Main Agent" extends to column 12, so it
+    // reports TabClicked(0) instead of TabClicked(1).
+
+    let mouse_event = MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: 9,  // Visually on "tab2", but bug thinks this is still "Main Agent"
+        row: 2,     // Tab bar content row (0-indexed, accounting for title row)
+        modifiers: KeyModifiers::NONE,
+    };
+    app.handle_mouse_test(mouse_event);
+
+    app.render_test()
+        .expect("Render after click should succeed");
+
+    let after_click_output = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_tab_x_offset_after_click", after_click_output.clone());
+
+    // BUG ASSERTION: Click at column 9 should switch to tab2 (index 1)
+    // but due to "Main Agent" vs "Main" mismatch, it stays on Main (index 0)
+    assert_eq!(
+        app.app_state().selected_tab_index(),
+        Some(1),
+        "BUG: Tab click X offset is wrong.\n\
+         Clicking at column 9 (visually on 'tab2') should switch to tab index 1.\n\
+         But detect_tab_click uses 'Main Agent' (10 chars) instead of 'Main' (4 chars),\n\
+         creating a 6-character offset.\n\n\
+         Tab bar visual:  │ Main │ tab2 │\n\
+         Column 9 is on 'tab2', but click detection thinks Main extends to column 12.\n\n\
+         Fix: Change mouse_handler.rs line 96 from:\n\
+           let main_agent_width = \"Main Agent\".len() as u16 + 3;\n\
+         to:\n\
+           let main_agent_width = \"Main\".len() as u16 + 3;\n\n\
+         Current tab: {:?} (expected: Some(1))",
+        app.app_state().selected_tab_index()
+    );
+}
+
 /// Bug reproduction: Help popup does not appear when pressing '?' in terminal
 ///
 /// EXPECTED: Pressing '?' shows the help popup overlay
