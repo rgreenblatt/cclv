@@ -21,20 +21,35 @@ pub struct Session {
 
 impl Session {
     /// Create empty session with ID.
-    pub fn new(_session_id: SessionId) -> Self {
-        todo!("Session::new")
+    pub fn new(session_id: SessionId) -> Self {
+        Self {
+            session_id,
+            main_agent: AgentConversation::new(None),
+            subagents: HashMap::new(),
+        }
     }
 
     /// Add an entry to the appropriate agent conversation.
     /// Routes to main_agent if entry.agent_id() is None,
     /// otherwise routes to the corresponding subagent (creating if needed).
-    pub fn add_entry(&mut self, _entry: LogEntry) {
-        todo!("Session::add_entry")
+    pub fn add_entry(&mut self, entry: LogEntry) {
+        if let Some(agent_id) = entry.agent_id() {
+            // Route to subagent (create if doesn't exist)
+            self.subagents
+                .entry(agent_id.clone())
+                .or_insert_with(|| AgentConversation::new(Some(agent_id.clone())))
+                .add_entry(entry);
+        } else {
+            // Route to main agent
+            self.main_agent.add_entry(entry);
+        }
     }
 
     /// Get subagent IDs in order of first appearance (by timestamp).
     pub fn subagent_ids_ordered(&self) -> Vec<&AgentId> {
-        todo!("Session::subagent_ids_ordered")
+        let mut agents: Vec<_> = self.subagents.iter().collect();
+        agents.sort_by_key(|(_, conv)| conv.first_timestamp());
+        agents.into_iter().map(|(id, _)| id).collect()
     }
 
     // ===== Accessors (read-only) =====
@@ -65,14 +80,22 @@ pub struct AgentConversation {
 impl AgentConversation {
     /// Create a new empty conversation.
     /// agent_id is None for main agent, Some(id) for subagents.
-    pub fn new(_agent_id: Option<AgentId>) -> Self {
-        todo!("AgentConversation::new")
+    pub fn new(agent_id: Option<AgentId>) -> Self {
+        Self {
+            agent_id,
+            entries: Vec::new(),
+            model: None,
+        }
     }
 
     /// Add an entry to this conversation.
     /// Updates model if entry.message().model() is Some.
-    pub fn add_entry(&mut self, _entry: LogEntry) {
-        todo!("AgentConversation::add_entry")
+    pub fn add_entry(&mut self, entry: LogEntry) {
+        // Update model if present in entry
+        if let Some(model) = entry.message().model() {
+            self.model = Some(model.clone());
+        }
+        self.entries.push(entry);
     }
 
     // ===== Accessors (read-only) =====
