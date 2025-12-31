@@ -13,6 +13,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Widget},
     Frame,
 };
+use tui_markdown::from_str;
 
 // ===== ConversationView Widget =====
 
@@ -337,6 +338,26 @@ pub fn render_conversation_view(
 
     let paragraph = Paragraph::new(lines).block(block);
     frame.render_widget(paragraph, area);
+}
+
+// ===== Markdown Rendering =====
+
+/// Render markdown text as formatted lines.
+///
+/// Converts markdown content to styled ratatui Lines with:
+/// - Headings styled with bold and different colors
+/// - Bold/italic text styled appropriately
+/// - Code blocks preserved for display
+/// - Lists rendered with bullets
+/// - Links visible
+///
+/// # Arguments
+/// * `markdown_text` - The markdown content to render
+///
+/// # Returns
+/// Vector of ratatui `Line` objects representing the rendered markdown
+fn render_markdown(markdown_text: &str) -> Vec<Line<'static>> {
+    todo!("render_markdown")
 }
 
 // ===== Content Block Rendering =====
@@ -1405,6 +1426,144 @@ mod tests {
         assert_eq!(
             widget.buffer_size, 30,
             "Builder pattern should set buffer_size"
+        );
+    }
+
+    // ===== render_markdown Tests =====
+
+    #[test]
+    fn render_markdown_with_plain_text_returns_unchanged() {
+        let text = "This is plain text\nAnother line";
+        let lines = render_markdown(text);
+
+        // Plain text should be rendered as-is
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            rendered.contains("This is plain text"),
+            "Plain text should be preserved in markdown rendering"
+        );
+        assert!(
+            rendered.contains("Another line"),
+            "All plain text lines should be rendered"
+        );
+    }
+
+    #[test]
+    fn render_markdown_with_heading_applies_styling() {
+        let markdown = "# Heading 1\n## Heading 2\nPlain text";
+        let lines = render_markdown(markdown);
+
+        // Should have lines for both headings and plain text
+        assert!(
+            lines.len() >= 3,
+            "Should render at least 3 lines (2 headings + text), got {}",
+            lines.len()
+        );
+
+        // Verify headings have bold styling
+        let has_bold = lines.iter().any(|line| {
+            line.spans
+                .iter()
+                .any(|span| span.style.add_modifier.contains(Modifier::BOLD))
+        });
+        assert!(
+            has_bold,
+            "Headings should have bold styling applied"
+        );
+    }
+
+    #[test]
+    fn render_markdown_with_code_block_preserves_content() {
+        let markdown = "Some text\n```rust\nfn main() {}\n```\nMore text";
+        let lines = render_markdown(markdown);
+
+        // Code content should be visible
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            rendered.contains("fn main") || rendered.contains("main"),
+            "Code block content should be preserved and visible"
+        );
+    }
+
+    #[test]
+    fn render_markdown_with_bold_applies_styling() {
+        let markdown = "Normal text **bold text** more normal";
+        let lines = render_markdown(markdown);
+
+        // Should have bold styling somewhere
+        let has_bold = lines.iter().any(|line| {
+            line.spans
+                .iter()
+                .any(|span| span.style.add_modifier.contains(Modifier::BOLD))
+        });
+        assert!(
+            has_bold,
+            "Bold markdown (**text**) should apply bold styling"
+        );
+
+        // Content should be present
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            rendered.contains("bold text") || rendered.contains("text"),
+            "Bold text content should be visible"
+        );
+    }
+
+    #[test]
+    fn render_markdown_with_italic_applies_styling() {
+        let markdown = "Normal text *italic text* more normal";
+        let lines = render_markdown(markdown);
+
+        // Should have italic styling somewhere
+        let has_italic = lines.iter().any(|line| {
+            line.spans
+                .iter()
+                .any(|span| span.style.add_modifier.contains(Modifier::ITALIC))
+        });
+        assert!(
+            has_italic,
+            "Italic markdown (*text*) should apply italic styling"
+        );
+
+        // Content should be present
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            rendered.contains("italic text") || rendered.contains("text"),
+            "Italic text content should be visible"
+        );
+    }
+
+    #[test]
+    fn render_markdown_with_list_shows_items() {
+        let markdown = "List:\n- Item 1\n- Item 2\n- Item 3";
+        let lines = render_markdown(markdown);
+
+        // List items should be visible
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            rendered.contains("Item 1"),
+            "First list item should be visible"
+        );
+        assert!(
+            rendered.contains("Item 2"),
+            "Second list item should be visible"
+        );
+        assert!(
+            rendered.contains("Item 3"),
+            "Third list item should be visible"
+        );
+    }
+
+    #[test]
+    fn render_markdown_with_link_shows_url() {
+        let markdown = "Check [this link](https://example.com) out";
+        let lines = render_markdown(markdown);
+
+        // Link text or URL should be visible
+        let rendered: String = lines.iter().map(|l| l.to_string()).collect();
+        assert!(
+            rendered.contains("this link") || rendered.contains("example.com"),
+            "Link text or URL should be visible in rendered output"
         );
     }
 
