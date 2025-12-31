@@ -21,6 +21,7 @@
 
 - Q: Should subagent view-states be created lazily on tab selection or eagerly on first entry arrival? → A: Eagerly on first entry arrival. Lazy initialization on tab selection conflicts with rendering architecture (immutable &AppState during render vs &mut self for init). Eager init has negligible memory impact since entries exist anyway.
 - Q: Should UI use split-pane (main 60% / subagent 40%) or unified tabs for all conversations? → A: Unified tabs. All conversations (main agent and subagents) appear as top-level tabs in a single tabbed container. Main agent is tab 0, subagents are tabs 1..N. This reduces cognitive overhead (main agent is no longer "special") and provides consistent interaction patterns. Full viewport width for active conversation.
+- Q: How many entries per conversation vs per file? → A: Log files may contain 100,000+ entries across multiple concatenated sessions, but individual conversations (main agent or subagent) are expected to have fewer than 1,000 entries. Entry indices are per-conversation (scoped), so 3-digit display (1-999) is sufficient. The 100k limit applies to total file entries, not per-conversation.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -197,8 +198,8 @@ A user scrolls through content and previously viewed entries render instantly fr
 
 ### Measurable Outcomes
 
-- **SC-001**: No blank viewport at any scroll position in documents up to 100,000 entries
-- **SC-002**: Scroll operations complete in under 16ms (60fps) for documents up to 100,000 entries
+- **SC-001**: No blank viewport at any scroll position in documents up to 100,000 entries (per-file, across multiple sessions; individual conversations expected <1,000 entries)
+- **SC-002**: Scroll operations complete in under 16ms (60fps) for documents up to 100,000 entries (per-file)
 - **SC-003**: Expand/collapse toggle updates UI in under 16ms
 - **SC-004**: Mouse click hit-testing identifies correct entry in under 1ms
 - **SC-005**: Initial layout computation for 30,000 entries completes in under 500ms

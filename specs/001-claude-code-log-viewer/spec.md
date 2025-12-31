@@ -38,7 +38,7 @@
 
 - Q: How should input handling work for file vs stdin? → A: File arg reads entire file once (static mode); stdin reads buffered input then continues streaming until EOF. No file-watching code needed; users leverage `tail -f file | cclv` for live following.
 - Q: How should the UI indicate static vs streaming mode? → A: Show "LIVE" indicator: gray when static/EOF, blinking green when actively streaming. App never auto-exits on EOF; user must explicitly quit.
-- Q: How should conversation entries be numbered? → A: Each entry displays a subtle index bullet (1, 2, 3...) within its conversation; main agent and each subagent have independent counters starting at 1.
+- Q: How should conversation entries be numbered? → A: Each entry displays a subtle index bullet (1, 2, 3...) within its conversation; main agent and each subagent have independent counters starting at 1. Entry indices display as 3-digit numbers (1-999); individual conversations are expected to have fewer than 1,000 entries while log files may contain 100,000+ entries across multiple concatenated sessions.
 - Q: How should application logging/tracing be handled? → A: Remove logging pane entirely. Tracing output redirects to a log file; users can `tail -f` the log file in another terminal. Simplifies UI significantly.
 - Q: When should the UI refresh/redraw? → A: Event-driven only: new stdin entry, user input, timer events (LIVE blink, clock). No continuous render loop.
 - Q: What level of mouse support should the TUI provide? → A: v1: Keyboard primary, mouse supported for basic clicks (tab selection, expand/collapse, scroll). Architecture MUST support future full mouse (drag-resize, text selection) without refactor.
@@ -243,6 +243,7 @@ A developer is looking for a specific piece of information in a long session. Th
 - **FR-061**: Each conversation entry MUST display a subtle index number (1, 2, 3...) as a visual bullet
 - **FR-062**: Entry indices MUST be scoped per conversation: main agent starts at 1, each subagent starts at 1
 - **FR-063**: Entry indices MUST increase monotonically within their conversation scope
+- **FR-064**: Entry index display MUST support 3-digit numbers (1-999); individual conversations are expected to have fewer than 1,000 entries (log files may contain 100,000+ entries across multiple sessions)
 
 **Performance**
 - **FR-028**: System MUST use event-driven rendering: redraw only on new stdin data, user input, or timer events (LIVE indicator blink, clock update)
