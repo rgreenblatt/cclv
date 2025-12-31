@@ -28,7 +28,7 @@ Model: claude-opus-4-5-20251101 | Main Agent | /home/claude/cclv | 18 tools, 17 
 ││         "prompt": "## Task: Create flake.nix for Claude Code Log Viewer (cclv)\n\n**Bead ID**: cclv-07v.1.1\n\n## Co│
 ││         "subagent_type": "nix-devops-expert"                                                                        │
 ││       }                                                                                                             │
-│── 6 in / 1.2k out / $0.20 | Context: 110.3k (55%) ──                                                                 │
+│── 6 in / 1.2k out / $0.20 | Context: 109.1k (54%) ──                                                                 │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
