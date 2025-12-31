@@ -234,3 +234,33 @@ impl Default for KeyBindings {
         Self { bindings }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::{KeyCode, KeyModifiers};
+
+    #[test]
+    fn default_bindings_map_lowercase_w_to_toggle_wrap() {
+        let bindings = KeyBindings::default();
+        let key_event = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::NONE);
+
+        assert_eq!(
+            bindings.get(key_event),
+            Some(KeyAction::ToggleWrap),
+            "Lowercase 'w' should map to ToggleWrap"
+        );
+    }
+
+    #[test]
+    fn default_bindings_map_uppercase_w_to_toggle_global_wrap() {
+        let bindings = KeyBindings::default();
+        let key_event = KeyEvent::new(KeyCode::Char('W'), KeyModifiers::SHIFT);
+
+        assert_eq!(
+            bindings.get(key_event),
+            Some(KeyAction::ToggleGlobalWrap),
+            "Uppercase 'W' (shift+w) should map to ToggleGlobalWrap"
+        );
+    }
+}
