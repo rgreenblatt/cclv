@@ -10,7 +10,7 @@ use super::types::{LineHeight, LineOffset};
 /// # Invariants
 /// - `height >= 1` (enforced by LineHeight)
 /// - `cumulative_y[i] = sum(height[0..i])` (maintained by ConversationViewState)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct EntryLayout {
     /// Height of this entry in lines.
     height: LineHeight,
@@ -46,14 +46,6 @@ impl EntryLayout {
     }
 }
 
-impl Default for EntryLayout {
-    fn default() -> Self {
-        Self {
-            height: LineHeight::default(),
-            cumulative_y: LineOffset::default(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -127,7 +119,7 @@ mod tests {
     #[test]
     fn clone_produces_equal_layout() {
         let layout1 = EntryLayout::new(LineHeight::new(7).unwrap(), LineOffset::new(20));
-        let layout2 = layout1.clone();
+        let layout2 = layout1; // Copy semantics, not clone
 
         assert_eq!(layout1, layout2);
     }
