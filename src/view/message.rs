@@ -17,6 +17,21 @@ use ratatui::{
 use tui_markdown::from_str;
 use unicode_width::UnicodeWidthStr;
 
+// ===== Entry Layout =====
+
+/// Layout information for a single conversation entry.
+///
+/// Maps an entry to its vertical position (y_offset) and height in the rendered view.
+/// Used for virtualized rendering to determine which entries are visible and where to place them.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct EntryLayout {
+    /// Vertical offset from the top of the conversation (in lines).
+    y_offset: u16,
+    /// Height of the entry in lines (accounting for wrapping and collapse state).
+    height: u16,
+}
+
 // ===== ConversationView Widget =====
 
 /// Virtualized conversation view widget.
@@ -188,6 +203,30 @@ impl<'a> ConversationView<'a> {
 
         // Ensure at least 1 line for empty text
         total_lines.max(1)
+    }
+
+    /// Build a layout map with Y offsets and heights for visible entries.
+    ///
+    /// # Arguments
+    /// * `visible_entries` - Slice of conversation entries to layout
+    /// * `scroll_offset` - Current vertical scroll position in lines
+    /// * `viewport_width` - Width of the viewport for wrapping calculations
+    /// * `viewport_height` - Height of the viewport to determine visibility
+    /// * `global_wrap` - Global wrap mode setting
+    ///
+    /// # Returns
+    /// Vector of EntryLayout structs with y_offset and height for each visible entry.
+    /// Indices correspond to positions in the visible_entries slice.
+    #[allow(dead_code)]
+    fn calculate_entry_layouts(
+        &self,
+        _visible_entries: &[ConversationEntry],
+        _scroll_offset: usize,
+        _viewport_width: usize,
+        _viewport_height: usize,
+        _global_wrap: WrapMode,
+    ) -> Vec<EntryLayout> {
+        todo!("calculate_entry_layouts")
     }
 
     /// Determine the range of entries that should be rendered based on viewport.
@@ -4547,5 +4586,232 @@ mod tests {
         // 2 lines × 2 wrapped = 4 total lines
         let height = widget.calculate_entry_height(&entry, 80, WrapMode::Wrap);
         assert!(height >= 4, "Two 100-char lines at width 80 should wrap to at least 4 lines, got {}", height);
+    }
+
+    // ===== Tests for calculate_entry_layouts =====
+
+    #[test]
+    fn calculate_entry_layouts_empty_entries_returns_empty() {
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        let layouts = widget.calculate_entry_layouts(&[], 0, 80, 24, WrapMode::NoWrap);
+
+        assert_eq!(layouts.len(), 0, "Empty entries should return empty layout vec");
+    }
+
+    #[test]
+    fn calculate_entry_layouts_single_entry_has_zero_offset() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use chrono::Utc;
+
+        let uuid = EntryUuid::new("test-uuid-1").expect("valid uuid");
+        let session_id = SessionId::new("test-session-1").expect("valid session");
+        let message = Message::new(
+            Role::User,
+            MessageContent::Text("Line 1\nLine 2\nLine 3".to_string()),
+        );
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            session_id,
+            None,
+            Utc::now(),
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        let layouts = widget.calculate_entry_layouts(&[entry], 0, 80, 24, WrapMode::NoWrap);
+
+        assert_eq!(layouts.len(), 1, "Single entry should return one layout");
+        assert_eq!(layouts[0].y_offset, 0, "First entry should have y_offset=0");
+        assert_eq!(layouts[0].height, 3, "Entry with 3 lines should have height=3");
+    }
+
+    #[test]
+    fn calculate_entry_layouts_multiple_entries_have_cumulative_offsets() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use chrono::Utc;
+
+        // Entry 1: 3 lines
+        let uuid1 = EntryUuid::new("test-uuid-1").expect("valid uuid");
+        let session_id = SessionId::new("test-session-1").expect("valid session");
+        let message1 = Message::new(
+            Role::User,
+            MessageContent::Text("Line 1\nLine 2\nLine 3".to_string()),
+        );
+        let log_entry1 = LogEntry::new(
+            uuid1,
+            None,
+            session_id.clone(),
+            None,
+            Utc::now(),
+            EntryType::User,
+            message1,
+            EntryMetadata::default(),
+        );
+        let entry1 = ConversationEntry::Valid(Box::new(log_entry1));
+
+        // Entry 2: 2 lines
+        let uuid2 = EntryUuid::new("test-uuid-2").expect("valid uuid");
+        let message2 = Message::new(
+            Role::Assistant,
+            MessageContent::Text("Response 1\nResponse 2".to_string()),
+        );
+        let log_entry2 = LogEntry::new(
+            uuid2,
+            None,
+            session_id.clone(),
+            None,
+            Utc::now(),
+            EntryType::Assistant,
+            message2,
+            EntryMetadata::default(),
+        );
+        let entry2 = ConversationEntry::Valid(Box::new(log_entry2));
+
+        // Entry 3: 1 line
+        let uuid3 = EntryUuid::new("test-uuid-3").expect("valid uuid");
+        let message3 = Message::new(
+            Role::User,
+            MessageContent::Text("Single line".to_string()),
+        );
+        let log_entry3 = LogEntry::new(
+            uuid3,
+            None,
+            session_id,
+            None,
+            Utc::now(),
+            EntryType::User,
+            message3,
+            EntryMetadata::default(),
+        );
+        let entry3 = ConversationEntry::Valid(Box::new(log_entry3));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        let entries = vec![entry1, entry2, entry3];
+        let layouts = widget.calculate_entry_layouts(&entries, 0, 80, 24, WrapMode::NoWrap);
+
+        assert_eq!(layouts.len(), 3, "Three entries should return three layouts");
+
+        // Entry 1: y_offset=0, height=3
+        assert_eq!(layouts[0].y_offset, 0, "First entry should start at y=0");
+        assert_eq!(layouts[0].height, 3, "First entry should have height=3");
+
+        // Entry 2: y_offset=3, height=2
+        assert_eq!(layouts[1].y_offset, 3, "Second entry should start at y=3 (after first entry)");
+        assert_eq!(layouts[1].height, 2, "Second entry should have height=2");
+
+        // Entry 3: y_offset=5, height=1
+        assert_eq!(layouts[2].y_offset, 5, "Third entry should start at y=5 (after first two)");
+        assert_eq!(layouts[2].height, 1, "Third entry should have height=1");
+    }
+
+    #[test]
+    fn calculate_entry_layouts_respects_scroll_offset() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use chrono::Utc;
+
+        // Create entry with 5 lines
+        let uuid = EntryUuid::new("test-uuid-1").expect("valid uuid");
+        let session_id = SessionId::new("test-session-1").expect("valid session");
+        let message = Message::new(
+            Role::User,
+            MessageContent::Text("Line 1\nLine 2\nLine 3\nLine 4\nLine 5".to_string()),
+        );
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            session_id,
+            None,
+            Utc::now(),
+            EntryType::User,
+            message,
+            EntryMetadata::default(),
+        );
+        let entry = ConversationEntry::Valid(Box::new(log_entry));
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // When scrolled down 2 lines, the entry should still start at y=0 in viewport
+        // but content starts 2 lines down
+        let layouts = widget.calculate_entry_layouts(&[entry], 2, 80, 24, WrapMode::NoWrap);
+
+        assert_eq!(layouts.len(), 1, "Should return one layout");
+        // The y_offset should be relative to scroll position
+        // Entry starts at absolute y=0, but when scroll_offset=2, it appears at viewport y=-2
+        // However, visible portion starts at viewport y=0
+        assert_eq!(layouts[0].y_offset, 0, "Entry should render at top of viewport when partially scrolled");
+        assert_eq!(layouts[0].height, 5, "Entry height should remain 5 lines");
+    }
+
+    #[test]
+    fn calculate_entry_layouts_filters_entries_outside_viewport() {
+        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role, SessionId};
+        use chrono::Utc;
+
+        let session_id = SessionId::new("test-session-1").expect("valid session");
+
+        // Create 5 entries, each 5 lines tall (total 25 lines)
+        let mut entries = Vec::new();
+        for i in 0..5 {
+            let uuid = EntryUuid::new(&format!("test-uuid-{}", i)).expect("valid uuid");
+            let message = Message::new(
+                Role::User,
+                MessageContent::Text(format!("Line 1\nLine 2\nLine 3\nLine 4\nLine 5")),
+            );
+            let log_entry = LogEntry::new(
+                uuid,
+                None,
+                session_id.clone(),
+                None,
+                Utc::now(),
+                EntryType::User,
+                message,
+                EntryMetadata::default(),
+            );
+            entries.push(ConversationEntry::Valid(Box::new(log_entry)));
+        }
+
+        let conversation = AgentConversation::new(None);
+        let scroll_state = ScrollState::default();
+        let styles = create_test_styles();
+        let widget = ConversationView::new(&conversation, &scroll_state, &styles, false);
+
+        // Viewport height is 10 lines
+        // With no scroll, should see entries 0-1 fully, entry 2 partially (total 10+ lines)
+        let layouts = widget.calculate_entry_layouts(&entries, 0, 80, 10, WrapMode::NoWrap);
+
+        // Should include entries that are visible or partially visible in viewport
+        assert!(layouts.len() >= 2 && layouts.len() <= 3,
+            "Should return 2-3 visible entries for 10-line viewport, got {}", layouts.len());
+
+        // Verify first entry
+        if layouts.len() >= 1 {
+            assert_eq!(layouts[0].y_offset, 0, "First visible entry should start at y=0");
+            assert_eq!(layouts[0].height, 5, "First entry should be 5 lines");
+        }
+
+        // Verify second entry
+        if layouts.len() >= 2 {
+            assert_eq!(layouts[1].y_offset, 5, "Second visible entry should start at y=5");
+            assert_eq!(layouts[1].height, 5, "Second entry should be 5 lines");
+        }
     }
 }
