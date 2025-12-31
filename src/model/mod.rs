@@ -2,6 +2,7 @@
 //!
 //! All types in this module are pure data with smart constructors.
 
+pub mod error;
 pub mod identifiers;
 pub mod log_entry;
 pub mod message;
@@ -10,6 +11,7 @@ pub mod stats;
 pub mod usage;
 
 // Re-export for convenience
+pub use error::{AppError, InputError, ParseError};
 pub use identifiers::{
     AgentId, EntryUuid, InvalidAgentId, InvalidSessionId, InvalidToolUseId, InvalidUuid,
     SessionId, ToolUseId,
