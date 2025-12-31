@@ -20,17 +20,21 @@ use ratatui::{
 pub fn render_layout(frame: &mut Frame, state: &AppState) {
     let has_subagents = !state.session().subagents().is_empty();
 
-    // Split screen vertically: main content area + status bar
+    // Split screen vertically: header + main content area + status bar
     let vertical_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(1),  // Header bar (1 line)
             Constraint::Min(0),     // Main content area
             Constraint::Length(1),  // Status bar (1 line)
         ])
         .split(frame.area());
 
-    let content_area = vertical_chunks[0];
-    let status_area = vertical_chunks[1];
+    let header_area = vertical_chunks[0];
+    let content_area = vertical_chunks[1];
+    let status_area = vertical_chunks[2];
+
+    render_header(frame, header_area, state);
 
     // Split content area horizontally based on subagent presence
     let (main_constraint, subagent_constraint) = calculate_horizontal_constraints(has_subagents);
@@ -135,6 +139,16 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
 
     let paragraph = Paragraph::new(Line::from(status_text)).style(style);
     frame.render_widget(paragraph, area);
+}
+
+/// Render the header bar showing model name, agent ID, and live indicator.
+///
+/// Displays:
+/// - Model name (from ModelInfo.display_name()) for current conversation
+/// - [LIVE] indicator when live_mode && auto_scroll are both true
+/// - Agent identifier based on focused pane (Main Agent vs subagent ID)
+fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
+    todo!("render_header: not implemented")
 }
 
 // ===== Tests =====

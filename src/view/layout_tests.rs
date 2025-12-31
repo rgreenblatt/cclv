@@ -294,3 +294,191 @@ fn render_layout_uses_selected_tab_to_display_correct_subagent() {
     // Note: The actual message content rendering depends on ConversationView widget
     // which is tested separately. This test verifies tab selection logic works.
 }
+
+// ===== Header Rendering Tests =====
+
+#[test]
+fn render_header_displays_model_name_for_main_agent() {
+    use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, ModelInfo, Role};
+    use chrono::Utc;
+
+    let mut terminal = create_test_terminal();
+    let session_id = SessionId::new("test-session").unwrap();
+    let mut session = Session::new(session_id);
+
+    // Add main agent entry with model info
+    let model_info = ModelInfo::new("claude-sonnet-4-5-20250929");
+    let message = Message::new(
+        Role::Assistant,
+        MessageContent::Text("Response".to_string()),
+    ).with_model(model_info);
+    let entry = LogEntry::new(
+        EntryUuid::new("entry-1").unwrap(),
+        None,
+        SessionId::new("test-session").unwrap(),
+        None,
+        Utc::now(),
+        EntryType::Assistant,
+        message,
+        EntryMetadata::default(),
+    );
+    session.add_entry(entry);
+
+    let state = AppState::new(session);
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let content = buffer.content.iter().map(|c| c.symbol()).collect::<String>();
+
+    // Header should contain model display name "Sonnet"
+    assert!(
+        content.contains("Sonnet"),
+        "Header should display model name 'Sonnet'"
+    );
+}
+
+#[test]
+fn render_header_shows_live_indicator_when_live_mode_and_auto_scroll() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.live_mode = true;
+    state.auto_scroll = true;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let content = buffer.content.iter().map(|c| c.symbol()).collect::<String>();
+
+    assert!(
+        content.contains("[LIVE]"),
+        "Header should show [LIVE] indicator when live_mode=true and auto_scroll=true"
+    );
+}
+
+#[test]
+fn render_header_hides_live_indicator_when_live_mode_false() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.live_mode = false;
+    state.auto_scroll = true;
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let content = buffer.content.iter().map(|c| c.symbol()).collect::<String>();
+
+    // Should NOT contain [LIVE] in header area
+    // Note: Status bar might still show LIVE, but we're testing header specifically
+    // We'll verify by checking the first line of output
+    let first_line: String = buffer
+        .content
+        .iter()
+        .take(80) // First row (80 cols width)
+        .map(|c| c.symbol())
+        .collect();
+
+    assert!(
+        !first_line.contains("[LIVE]"),
+        "Header (first line) should NOT show [LIVE] when live_mode=false"
+    );
+}
+
+#[test]
+fn render_header_hides_live_indicator_when_auto_scroll_false() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+    state.live_mode = true;
+    state.auto_scroll = false; // User scrolled away
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let first_line: String = buffer
+        .content
+        .iter()
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    assert!(
+        !first_line.contains("[LIVE]"),
+        "Header should NOT show [LIVE] when auto_scroll=false (user scrolled)"
+    );
+}
+
+#[test]
+fn render_header_shows_main_agent_label() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let state = AppState::new(session);
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let first_line: String = buffer
+        .content
+        .iter()
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    assert!(
+        first_line.contains("Main") || first_line.contains("main"),
+        "Header should identify main agent"
+    );
+}
+
+#[test]
+fn render_header_shows_subagent_id_when_subagent_focused() {
+    use crate::model::{AgentId, EntryMetadata, EntryType, EntryUuid, Message, MessageContent, Role};
+    use chrono::Utc;
+
+    let mut terminal = create_test_terminal();
+    let session = create_session_with_subagents();
+    let mut state = AppState::new(session);
+    state.focus = FocusPane::Subagent;
+    state.selected_tab = Some(0); // First subagent
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let first_line: String = buffer
+        .content
+        .iter()
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    assert!(
+        first_line.contains("subagent"),
+        "Header should show subagent identifier when subagent pane focused"
+    );
+}
