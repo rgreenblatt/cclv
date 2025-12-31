@@ -1,0 +1,25 @@
+---
+source: tests/view_snapshots.rs
+assertion_line: 90
+expression: output
+---
+┌ Statistics ────────────────────────────────────┐
+│Tokens:                                         │
+│  Input:  0                                     │
+│  Output: 0                                     │
+│  Total:  0                                     │
+│                                                │
+│Estimated Cost:                                 │
+│  $0.00                                         │
+│                                                │
+│Subagents:                                      │
+│  Count: 0                                      │
+│                                                │
+│Entries:                                        │
+│  Count: 0                                      │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘

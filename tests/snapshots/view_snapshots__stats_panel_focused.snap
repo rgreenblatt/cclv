@@ -1,0 +1,30 @@
+---
+source: tests/view_snapshots.rs
+assertion_line: 126
+expression: output
+---
+┌ Statistics ────────────────────────────────────┐
+│Tokens:                                         │
+│  Input:  1,800                                 │
+│  Output: 750                                   │
+│  Total:  2,550                                 │
+│  Cache:  300                                   │
+│                                                │
+│Estimated Cost:                                 │
+│  $0.08                                         │
+│                                                │
+│Tool Usage:                                     │
+│  Read: 5                                       │
+│  Write: 3                                      │
+│  Bash: 2                                       │
+│                                                │
+│Subagents:                                      │
+│  Count: 2                                      │
+│                                                │
+│Entries:                                        │
+│  Count: 10                                     │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘

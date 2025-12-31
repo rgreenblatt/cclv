@@ -1,0 +1,30 @@
+---
+source: tests/view_snapshots.rs
+assertion_line: 176
+expression: output
+---
+┌ Statistics ────────────────────────────────────┐
+│Tokens:                                         │
+│  Input:  13,500                                │
+│  Output: 5,000                                 │
+│  Total:  18,500                                │
+│  Cache:  3,500                                 │
+│                                                │
+│Estimated Cost:                                 │
+│  $0.03                                         │
+│                                                │
+│Subagents:                                      │
+│  Count: 0                                      │
+│                                                │
+│Entries:                                        │
+│  Count: 5                                      │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘

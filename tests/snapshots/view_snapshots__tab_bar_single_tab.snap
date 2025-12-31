@@ -1,0 +1,10 @@
+---
+source: tests/view_snapshots.rs
+assertion_line: 195
+expression: output
+---
+┌Subagents─────────────────────────────┐
+│ agent-abc123                         │
+│                                      │
+│                                      │
+└──────────────────────────────────────┘

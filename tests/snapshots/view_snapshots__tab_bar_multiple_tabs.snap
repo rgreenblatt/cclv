@@ -1,0 +1,10 @@
+---
+source: tests/view_snapshots.rs
+assertion_line: 214
+expression: output
+---
+┌Subagents─────────────────────────────────────────────────┐
+│ agent-1 │ agent-2 │ agent-3                              │
+│                                                          │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
