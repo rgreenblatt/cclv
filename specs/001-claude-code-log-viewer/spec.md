@@ -26,27 +26,36 @@
 - Q: What keyboard shortcuts for wrap toggle? → A: `w` for per-item toggle, `W` (shift) for global toggle
 - Q: How should wrap state be visually indicated? → A: Global state in status bar; wrapped lines show subtle arrow (e.g., `↩`) at wrap points
 - Q: Should code blocks wrap differently than prose? → A: Code blocks never wrap (always horizontal scroll); prose follows global setting
-- Q: Where should the logging pane appear in the UI? → A: Bottom panel (horizontal strip, resizable, like a terminal console)
-- Q: What keyboard shortcut should toggle the logging pane? → A: `L` (mnemonic for "Log", single lowercase letter)
-- Q: What severity levels should appear in the logging pane? → A: Pipe tracing output to pane; log level controlled via tracing infrastructure (RUST_LOG / config)
-- Q: How should new errors be indicated when logging pane is hidden? → A: Status bar badge with count, color-coded by severity (red for errors)
-- Q: How many log entries should be retained in the logging pane? → A: Ring buffer with configurable capacity (config file); default 1000 entries
+- ~~Q: Where should the logging pane appear in the UI?~~ → *Superseded: logging pane removed (see Session 2025-12-27)*
+- ~~Q: What keyboard shortcut should toggle the logging pane?~~ → *Superseded: logging pane removed*
+- ~~Q: What severity levels should appear in the logging pane?~~ → *Superseded: tracing redirects to log file*
+- ~~Q: How should new errors be indicated when logging pane is hidden?~~ → *Superseded: no in-UI logging*
+- ~~Q: How many log entries should be retained in the logging pane?~~ → *Superseded: logging pane removed*
 - Q: At what granularity should code block wrap exemption apply? → A: Section-level (multiple Paragraph widgets per entry); each prose block and code block rendered as separate widget, allowing code to never wrap while prose follows wrap setting within the same entry
 - Q: What JSONL format should the parser expect? → A: Match actual Claude Code output format (snake_case `session_id`, no required timestamp, handle system/result entry types, nested usage structure with `cache_creation`)
+
+### Session 2025-12-27
+
+- Q: How should input handling work for file vs stdin? → A: File arg reads entire file once (static mode); stdin reads buffered input then continues streaming until EOF. No file-watching code needed; users leverage `tail -f file | cclv` for live following.
+- Q: How should the UI indicate static vs streaming mode? → A: Show "LIVE" indicator: gray when static/EOF, blinking green when actively streaming. App never auto-exits on EOF; user must explicitly quit.
+- Q: How should conversation entries be numbered? → A: Each entry displays a subtle index bullet (1, 2, 3...) within its conversation; main agent and each subagent have independent counters starting at 1.
+- Q: How should application logging/tracing be handled? → A: Remove logging pane entirely. Tracing output redirects to a log file; users can `tail -f` the log file in another terminal. Simplifies UI significantly.
+- Q: When should the UI refresh/redraw? → A: Event-driven only: new stdin entry, user input, timer events (LIVE blink, clock). No continuous render loop.
+- Q: What level of mouse support should the TUI provide? → A: v1: Keyboard primary, mouse supported for basic clicks (tab selection, expand/collapse, scroll). Architecture MUST support future full mouse (drag-resize, text selection) without refactor.
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Monitor Live Agent Session (Priority: P1)
 
-A developer is running Claude Code on a complex task and wants to observe the agent's progress in real-time. They launch the log viewer pointing to the active JSONL log file. The viewer displays the main agent's conversation as it happens, showing each message, tool call, and model being used. When the agent spawns subagents, new tabs automatically appear showing each subagent's activity.
+A developer is running Claude Code on a complex task and wants to observe the agent's progress in real-time. They use `tail -f session.jsonl | cclv` to stream the log to the viewer. The viewer displays the main agent's conversation as it happens, showing each message, tool call, and model being used. When the agent spawns subagents, new tabs automatically appear showing each subagent's activity. The "LIVE" indicator blinks green to show active streaming.
 
-**Why this priority**: This is the primary use case - developers need to understand what their agents are doing while they're doing it. Without live tailing, the tool would just be a static log reader.
+**Why this priority**: This is the primary use case - developers need to understand what their agents are doing while they're doing it. The Unix pipe pattern (`tail -f | cclv`) leverages battle-tested file-following without reimplementing it.
 
-**Independent Test**: Can be fully tested by starting Claude Code on a task, then launching the viewer pointing to the active log. Delivers immediate visibility into agent behavior.
+**Independent Test**: Can be fully tested by starting Claude Code on a task, then running `tail -f <logfile> | cclv`. Delivers immediate visibility into agent behavior.
 
 **Acceptance Scenarios**:
 
-1. **Given** a Claude Code session is running, **When** user launches the viewer pointing to the active log file, **Then** they see the conversation updating in real-time without manual refresh
+1. **Given** a Claude Code session is running, **When** user runs `tail -f <logfile> | cclv`, **Then** they see the conversation updating in real-time with a blinking green "LIVE" indicator
 2. **Given** JSONL data is piped to stdin, **When** user launches the viewer without a file argument, **Then** the viewer reads from stdin and displays the session
 3. **Given** the viewer is showing a live session, **When** the main agent spawns a subagent, **Then** a new tab appears within 1 second showing the subagent's prompt and ongoing conversation
 4. **Given** the viewer is showing a live session, **When** the main agent makes a tool call, **Then** the tool name and parameters are displayed, and the result appears when available
@@ -54,6 +63,7 @@ A developer is running Claude Code on a complex task and wants to observe the ag
 6. **Given** live mode with auto-scroll active, **When** new messages arrive, **Then** the view scrolls to show the latest content
 7. **Given** live mode, **When** user scrolls up to read earlier content, **Then** auto-scroll pauses and a "new messages" indicator appears
 8. **Given** auto-scroll is paused, **When** user clicks the indicator or scrolls to bottom, **Then** auto-scroll resumes
+9. **Given** streaming mode with blinking green "LIVE" indicator, **When** stdin reaches EOF, **Then** indicator transitions to gray and app remains open for browsing
 
 ---
 
@@ -134,12 +144,12 @@ A developer is looking for a specific piece of information in a long session. Th
 
 ### Edge Cases
 
-- What happens when the JSONL file is malformed or contains invalid JSON lines? Log error to logging pane and continue parsing valid lines; UI remains functional
+- What happens when the JSONL file is malformed or contains invalid JSON lines? Log error to log file (tracing) and continue parsing valid lines; UI remains functional
 - How does system handle extremely large log files (>1GB)? Load entire file into memory; virtualize rendering (only render visible messages plus ±20 buffer). **Measurable criteria**: Startup <5 seconds for 1GB file, UI remains responsive at 60fps during navigation
 - What happens when a subagent is referenced but its spawn event wasn't logged? Show placeholder tab with agentId, entry count, and "[incomplete data]" indicator
 - How does the viewer handle log files with no subagents? Hide or minimize the subagent pane; show main agent only
-- What happens when following a live log and the file is deleted? Show error notification and stop following
-- How does the system handle rapid updates (many lines per second)? Batch updates at 16ms intervals (matching 60fps frame budget); accumulate entries between frames without dropping any
+- What happens when stdin stream ends (EOF)? Transition LIVE indicator from blinking green to gray; app remains open for browsing until user explicitly quits
+- How does the system handle rapid updates (many lines per second)? Process all incoming entries; redraw triggered by event (not continuous loop); entries accumulated in model immediately, render coalesces naturally
 
 ## Requirements *(mandatory)*
 
@@ -174,7 +184,7 @@ A developer is looking for a specific piece of information in a long session. Th
 - **FR-038**: When user scrolls back to bottom or activates scroll-to-bottom, system MUST resume auto-scroll
 
 **Log Handling**
-- **FR-007**: System MUST support following a live JSONL log file (tail -f behavior)
+- **FR-007**: When a file path is provided as CLI argument, system MUST read the entire file into memory (static mode); no file-watching or tailing
 - **FR-008**: System MUST support viewing completed/closed JSONL log files
 - **FR-009**: System MUST parse Claude Code JSONL format to extract conversations, tool calls, and metadata
 - **FR-009a**: Parser MUST use snake_case field names matching actual Claude Code output (`session_id`, not `sessionId`)
@@ -182,8 +192,11 @@ A developer is looking for a specific piece of information in a long session. Th
 - **FR-009c**: Parser MUST NOT require a `timestamp` field (entries may lack timestamps)
 - **FR-009d**: Parser MUST handle nested `usage.cache_creation` structure for token accounting
 - **FR-010**: System MUST handle malformed JSON lines gracefully without crashing
-- **FR-041**: System MUST accept JSONL input from stdin (piped input) as alternative to file path
-- **FR-042**: When reading from stdin, system MUST support both streaming (live) and complete (EOF) modes
+- **FR-041**: System MUST accept JSONL input from stdin when no file argument is provided
+- **FR-042**: When reading from stdin, system MUST read all buffered input, then continue reading streaming lines until EOF while updating the model (enables `tail -f file | cclv` pattern for live following)
+- **FR-042a**: System MUST NOT auto-exit when stdin reaches EOF; user must explicitly quit
+- **FR-042b**: System MUST display a "LIVE" indicator in the status bar: gray when static mode or after EOF, blinking green when actively streaming from stdin
+- **FR-042c**: When new data arrives on stdin, system MUST update the model and propagate changes to views in real-time
 
 **Search**
 - **FR-011**: System MUST provide text search across all conversations
@@ -217,17 +230,23 @@ A developer is looking for a specific piece of information in a long session. Th
 - **FR-044**: Domain actions (e.g., ScrollUp, ScrollDown, ExpandMessage, NextTab) MUST be enumerated and mappable to keys
 - **FR-045**: Default key bindings MUST be provided; users MAY override via configuration
 
-**Logging Pane**
-- **FR-054**: System MUST provide a toggleable logging pane as a bottom panel
-- **FR-055**: System MUST display tracing output in the logging pane, with log level controlled via tracing infrastructure (RUST_LOG / config)
-- **FR-056**: System MUST use a ring buffer for log entries with configurable capacity (default: 1000 entries)
-- **FR-057**: System MUST display a status bar badge showing unread log count, color-coded by severity (red for errors)
-- **FR-058**: System MUST clear the unread count when user opens the logging pane
-- **FR-059**: Errors in the logging pane MUST NOT interrupt or break the main UI flow
-- **FR-060**: Default keybinding for ToggleLogPane MUST be `L`
+**Mouse Support**
+- **FR-064**: v1: System MUST support basic mouse clicks for tab selection, message expand/collapse, and scroll
+- **FR-065**: Input event handling architecture MUST be designed to support future full mouse features (drag-resize panes, text selection) without requiring architectural refactor
+
+**Tracing & Logging**
+- **FR-054**: System MUST redirect tracing output to a log file (not displayed in UI)
+- **FR-055**: Log file path MUST be configurable; default to platform-appropriate location (e.g., `~/.local/state/cclv/cclv.log`)
+- **FR-056**: Users MAY view logs via external tools (e.g., `tail -f ~/.local/state/cclv/cclv.log`)
+
+**Entry Display**
+- **FR-061**: Each conversation entry MUST display a subtle index number (1, 2, 3...) as a visual bullet
+- **FR-062**: Entry indices MUST be scoped per conversation: main agent starts at 1, each subagent starts at 1
+- **FR-063**: Entry indices MUST increase monotonically within their conversation scope
 
 **Performance**
-- **FR-028**: System MUST maintain responsive UI (60fps) even with large log files
+- **FR-028**: System MUST use event-driven rendering: redraw only on new stdin data, user input, or timer events (LIVE indicator blink, clock update)
+- **FR-028a**: System MUST NOT use a continuous render loop; idle state consumes minimal CPU
 - **FR-029**: System MUST use virtualized rendering for long conversations (only render visible content)
 - **FR-030**: System MUST load log files into memory for fast navigation and search
 
@@ -240,12 +259,11 @@ A developer is looking for a specific piece of information in a long session. Th
 - **Statistics**: Aggregated metrics (tokens, cost, tool counts) that can be scoped to agent level
 - **KeyAction**: Enumerated domain-level actions that can be mapped to configurable key bindings:
   - Scrolling: ScrollUp, ScrollDown, ScrollLeft, ScrollRight, PageUp, PageDown, ScrollToTop, ScrollToBottom
-  - Focus: FocusMain, FocusSubagent, FocusStats, FocusLogPane, CycleFocus
+  - Focus: FocusMain, FocusSubagent, FocusStats, CycleFocus
   - Tabs: NextTab, PrevTab, SelectTab(1-9)
   - Messages: ExpandMessage, CollapseMessage, ToggleExpand, ToggleWrap (per-item), ToggleGlobalWrap
   - Search: StartSearch, SubmitSearch, CancelSearch, NextMatch, PrevMatch
   - Stats: ToggleStats, FilterGlobal, FilterMainAgent, FilterSubagent
-  - Logging: ToggleLogPane
   - Live mode: ToggleAutoScroll, ScrollToLatest
   - Application: Quit, Help, Refresh
 

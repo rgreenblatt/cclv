@@ -5,18 +5,19 @@
 
 ## Summary
 
-Build a high-performance TUI application to view Claude Code JSONL log files in real-time or for post-mortem analysis. The application displays main agent and subagent conversations in split panes with tabs, supports live tailing, search, statistics, markdown rendering with syntax highlighting, and full keyboard navigation. Target: 60fps rendering, <500ms latency.
+Build a high-performance TUI application to view Claude Code JSONL log files in real-time or for post-mortem analysis. The application displays main agent and subagent conversations in split panes with tabs, supports live streaming via stdin (using `tail -f | cclv` pattern), search, statistics, markdown rendering with syntax highlighting, and full keyboard navigation. Target: event-driven rendering, <500ms latency.
 
 ## Technical Context
 
 **Language/Version**: Rust stable (latest, currently 1.83+)
-**Primary Dependencies**: ratatui (TUI framework), crossterm (terminal backend), serde_json (JSONL parsing), notify (file watching), syntect (syntax highlighting), toml (config parsing), dirs (XDG config paths)
+**Primary Dependencies**: ratatui (TUI framework), crossterm (terminal backend), serde_json (JSONL parsing), syntect (syntax highlighting), toml (config parsing), dirs (XDG config paths)
+**Removed Dependencies**: ~~notify~~ (file watching removed - users leverage `tail -f | cclv` pattern instead)
 **Build System**: Nix flake with naersk for reproducible Rust builds
 **Storage**: N/A - loads file into memory, no persistence
 **Testing**: cargo test, proptest (property-based), insta (snapshot testing)
 **Target Platform**: Linux/macOS terminals with 256-color or true-color support
 **Project Type**: Single CLI application at repository root
-**Performance Goals**: 60fps UI, <500ms write-to-display latency, <1s search in 50MB file, <1s startup for <10MB files
+**Performance Goals**: Event-driven rendering (no continuous loop), <500ms write-to-display latency, <1s search in 50MB file, <1s startup for <10MB files
 **Constraints**: Virtualized rendering for large logs (v1 loads entire file into memory)
 **Scale/Scope**: Single-user CLI tool, handles logs up to 1GB+
 
@@ -393,22 +394,23 @@ Static binaries:
 
 ## Implementation Status
 
-*Updated: 2025-12-26 (late session)*
+*Updated: 2025-12-27*
 
 | Phase | Bead ID | Status | Notes |
 |-------|---------|--------|-------|
 | Setup | cclv-07v.1 | ✅ Complete | Nix flake, Cargo.toml, dev shell |
 | Foundational | cclv-07v.2 | ✅ Complete | Core types, parser, test fixtures |
-| US1 - Live Monitoring | cclv-07v.3 | ✅ Complete | File tailing, stdin, split panes, tabs |
+| US1 - Live Monitoring | cclv-07v.3 | ✅ Complete | ~~File tailing~~, stdin, split panes, tabs |
 | US2 - Session Analysis | cclv-07v.4 | ✅ Complete | Markdown, syntax highlighting, expand/collapse |
 | US3 - Usage Statistics | cclv-07v.5 | ✅ Complete | Token counts, cost estimation, filtering |
 | US4 - Keyboard Navigation | cclv-07v.6 | ✅ Complete | Key bindings, focus cycling, shortcuts |
 | US5 - Search | cclv-07v.7 | ✅ Complete | Search state machine, highlighting, navigation |
 | Polish | cclv-07v.8 | ✅ Complete | Theme selection, snapshot tests |
 | Line Wrapping | cclv-07v.9 | ✅ Complete | Core + per-entry + section-level rendering |
-| Logging Pane | cclv-07v.9.17 | ✅ Complete | Toggleable bottom panel, ring buffer, severity badges |
+| ~~Logging Pane~~ | ~~cclv-07v.9.17~~ | ⛔ **SUPERSEDED** | Removed per 2025-12-27 clarification; tracing → log file |
 | JSONL Format Fix | cclv-07v.11 | ✅ Complete | Parser matches actual Claude Code output |
-| **Acceptance Testing** | cclv-31l | 🔲 **NEW P1** | **Automated end-to-end acceptance tests** |
+| Acceptance Testing | cclv-31l | ✅ Complete | All 31 scenarios + E2E smoke tests |
+| **Arch Simplification** | cclv-32x | 🔲 **NEW P1** | Input handling, event-driven rendering, entry indices |
 
 ---
 
@@ -620,18 +622,20 @@ enum ContentSection {
 
 ---
 
-## Phase: Logging Pane Feature
+## ~~Phase: Logging Pane Feature~~ ⛔ SUPERSEDED
 
-**Purpose**: Add a toggleable logging pane to display tracing output, preventing errors from breaking the main UI.
+> **SUPERSEDED** (2025-12-27): Logging pane removed to simplify architecture. Tracing output now redirects to a log file (FR-054-056 updated). Users can `tail -f` the log file in another terminal. This follows the same Unix philosophy as the input handling simplification.
 
-**Requirements** (from spec clarifications 2025-12-26):
-- FR-054: Toggleable logging pane as a bottom panel
-- FR-055: Display tracing output, log level controlled via tracing infrastructure (RUST_LOG / config)
-- FR-056: Ring buffer with configurable capacity (default: 1000 entries)
-- FR-057: Status bar badge showing unread log count, color-coded by severity
-- FR-058: Clear unread count when user opens logging pane
-- FR-059: Errors in logging pane MUST NOT interrupt main UI flow
-- FR-060: Default keybinding: `L` for ToggleLogPane
+~~**Purpose**: Add a toggleable logging pane to display tracing output, preventing errors from breaking the main UI.~~
+
+~~**Requirements** (from spec clarifications 2025-12-26):~~
+~~- FR-054: Toggleable logging pane as a bottom panel~~
+~~- FR-055: Display tracing output, log level controlled via tracing infrastructure (RUST_LOG / config)~~
+~~- FR-056: Ring buffer with configurable capacity (default: 1000 entries)~~
+~~- FR-057: Status bar badge showing unread log count, color-coded by severity~~
+~~- FR-058: Clear unread count when user opens logging pane~~
+~~- FR-059: Errors in logging pane MUST NOT interrupt main UI flow~~
+~~- FR-060: Default keybinding: `L` for ToggleLogPane~~
 
 ### Design Decisions
 
@@ -1250,6 +1254,129 @@ expectrl = { version = "0.7", optional = true }  # For E2E smoke tests
 
 ---
 
+## Phase: Architectural Simplification (cclv-32x) - NEW
+
+**Purpose**: Simplify architecture based on 2025-12-27 spec clarifications. Remove complexity, embrace Unix philosophy.
+
+**Requirements** (from spec clarifications 2025-12-27):
+- FR-007 (updated): File arg reads entire file once; no file-watching
+- FR-042 (updated): Stdin streams until EOF; enables `tail -f file | cclv` pattern
+- FR-042a: App never auto-exits on EOF; user must quit
+- FR-042b: LIVE indicator: gray (static/EOF), blinking green (streaming)
+- FR-042c: Real-time model updates on new stdin data
+- FR-028 (updated): Event-driven rendering only (no continuous loop)
+- FR-028a: Idle state consumes minimal CPU
+- FR-054-056 (updated): Tracing → log file; no in-UI logging pane
+- FR-061-063: Entry indices per conversation (numbered bullets)
+- FR-064-065: Basic mouse clicks now; architecture for future full mouse
+
+### Design Decisions
+
+| Aspect | Decision | Rationale |
+|--------|----------|-----------|
+| File tailing | Removed | Users leverage `tail -f \| cclv` - Unix philosophy |
+| File watching | Removed | `notify` crate no longer needed |
+| Render loop | Event-driven | Redraw on: stdin data, user input, timer (LIVE blink) |
+| Logging pane | Removed | Tracing → file; `tail -f cclv.log` in another terminal |
+| Entry indices | Per-conversation | Main agent + each subagent starts at 1 |
+| LIVE indicator | State machine | Static → gray, Streaming → blink green, EOF → gray |
+| Mouse support | Extensible | Basic clicks now; architecture supports future drag/select |
+
+### Implementation Approach
+
+**This is primarily a simplification/removal task.** Most work involves:
+1. Removing code (file watcher, logging pane, continuous render loop)
+2. Adding small new features (entry indices, LIVE indicator)
+3. Refactoring existing code (event loop, input handling)
+
+### Data Model Changes
+
+```rust
+// ===== src/state/app_state.rs changes =====
+
+/// Input mode indicator
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputMode {
+    Static,     // File loaded once
+    Streaming,  // Stdin actively streaming
+    Eof,        // Stdin reached EOF
+}
+
+// Add to AppState:
+pub struct AppState {
+    // ... existing fields ...
+    pub input_mode: InputMode,
+    // Remove: log_pane: LogPaneState,  // REMOVED
+}
+
+// ===== Entry index tracking (pure, in model layer) =====
+// Entry indices are derived from position in conversation, not stored.
+// Rendering calculates: enumerate(conversation.entries).map(|(i, e)| i + 1)
+```
+
+### Tasks
+
+| Bead | Task | Description | Priority | Dependencies |
+|------|------|-------------|----------|--------------|
+| cclv-32x.1 | AS-001 | Remove `notify` from Cargo.toml dependencies | P1 | None |
+| cclv-32x.2 | AS-002 | Remove file-watching code from `src/source/file.rs` | P1 | AS-001 |
+| cclv-32x.3 | AS-003 | Simplify file source to read-once semantics | P1 | AS-002 |
+| cclv-32x.4 | AS-004 | Add `InputMode` enum to AppState | P1 | None |
+| cclv-32x.5 | AS-005 | Implement LIVE indicator widget (gray/blinking green) | P1 | AS-004 |
+| cclv-32x.6 | AS-006 | Add LIVE indicator to status bar | P1 | AS-005 |
+| cclv-32x.7 | AS-007 | Refactor event loop to event-driven (remove continuous loop) | P1 | AS-004 |
+| cclv-32x.8 | AS-008 | Add timer event for LIVE indicator blink animation | P1 | AS-007 |
+| cclv-32x.9 | AS-009 | Remove LogPaneState and all logging pane code | P1 | None |
+| cclv-32x.10 | AS-010 | Remove `ToggleLogPane`, `FocusLogPane` from KeyAction | P1 | AS-009 |
+| cclv-32x.11 | AS-011 | Configure tracing to write to log file | P1 | AS-009 |
+| cclv-32x.12 | AS-012 | Add entry index rendering to message view | P1 | None |
+| cclv-32x.13 | AS-013 | Implement per-conversation index counting | P1 | AS-012 |
+| cclv-32x.14 | AS-014 | Add basic mouse click handling for tabs | P2 | None |
+| cclv-32x.15 | AS-015 | Add basic mouse click handling for expand/collapse | P2 | AS-014 |
+| cclv-32x.16 | AS-016 | Add mouse scroll support | P2 | AS-014 |
+| cclv-32x.17 | AS-017 | Update tests for new input semantics | P1 | AS-003, AS-007 |
+| cclv-32x.18 | AS-018 | Update acceptance tests for removed logging pane | P1 | AS-009 |
+
+### Removal Checklist
+
+Code to remove:
+- [ ] `notify` dependency from Cargo.toml
+- [ ] `src/source/file.rs` file-watching logic (keep read-once)
+- [ ] `LogPaneState` struct and impl
+- [ ] `LogPaneEntry` struct
+- [ ] `LogPaneView` widget
+- [ ] `ToggleLogPane` from KeyAction enum
+- [ ] `FocusLogPane` from focus cycling
+- [ ] `L` keybinding for log pane toggle
+- [ ] Logging pane layout code in main view
+- [ ] Status bar unread badge logic
+- [ ] Continuous render loop (replace with event-driven)
+
+### Risk Mitigation
+
+| Risk | Mitigation |
+|------|------------|
+| Breaking existing tests | Update tests incrementally; AS-017, AS-018 dedicated to test updates |
+| Event loop timing issues | Use crossterm's event polling with timeout for timer events |
+| Mouse event conflicts | Keep mouse handling simple; defer complex interactions |
+| Tracing initialization | Configure tracing early in main(); file appender from tracing-appender |
+
+### Verification Criteria
+
+1. **File mode works**: `cclv file.jsonl` loads file, shows gray LIVE indicator
+2. **Stdin streaming works**: `tail -f file.jsonl | cclv` shows blinking green LIVE indicator
+3. **EOF transition**: When stdin closes, LIVE goes gray, app stays open
+4. **Entry indices visible**: Each message shows subtle index (1, 2, 3...)
+5. **No logging pane**: `L` key does nothing; no bottom panel
+6. **Tracing to file**: Errors logged to `~/.local/state/cclv/cclv.log`
+7. **Event-driven**: CPU idle when no input (verify with `top`)
+8. **Mouse clicks work**: Click on tabs switches; click on message expands/collapses
+9. **All tests pass**: `cargo test` succeeds
+
+**Checkpoint**: App starts with `tail -f | cclv`, shows blinking LIVE indicator, entries have index bullets, no logging pane visible, CPU idle when waiting for input.
+
+---
+
 ## Generated Artifacts
 
 | Artifact | Path | Status |
@@ -1263,37 +1390,36 @@ expectrl = { version = "0.7", optional = true }  # For E2E smoke tests
 | Dev Shell | nix/devshell.nix | ✅ Implemented |
 | Formatter Config | nix/treefmt.nix | ✅ Implemented |
 | Source Code | src/ | ✅ Complete |
-| Acceptance Tests | tests/acceptance.rs, tests/e2e_smoke.rs | 🔲 Planned (cclv-31l) |
+| Acceptance Tests | tests/acceptance.rs, tests/e2e_smoke.rs | ✅ Complete (cclv-31l) |
 
 ---
 
 ## Current Status
 
-**Active Work**: Acceptance Testing (cclv-31l) - 12 open tasks
+*Updated: 2025-12-27*
 
-| Task | Priority | Status |
-|------|----------|--------|
-| AT-012: Fix scroll crash bug | P0 | Open (cclv-31l.3) |
-| AT-008: Crash regression tests | P0 | Open (cclv-31l.2) |
-| AT-001 to AT-007: User story tests | P1 | Open |
-| AT-009 to AT-011: E2E smoke tests | P2 | Open |
+**Active Work**: Architectural Simplification (cclv-32x) - NEW from spec clarifications
 
-**All Core Implementation Complete**:
+### Completed Phases
+
 - ✅ Setup, Foundational, US1-US5, Polish phases
 - ✅ Line Wrapping (FR-039 to FR-053)
-- ✅ Logging Pane (FR-054 to FR-060)
+- ⛔ ~~Logging Pane~~ (SUPERSEDED - tracing → log file)
 - ✅ JSONL Format Compatibility (FR-009a to FR-009d)
+- ✅ Acceptance Testing (cclv-31l) - 31 scenarios + E2E smoke tests
 
 ### Known Issues
 
-| Bead | Severity | Description |
-|------|----------|-------------|
-| cclv-31l.3 | P0 | Scroll crash when navigating large files (AT-012) |
+*None currently blocking*
 
 ### Remaining Work
 
-1. **P0**: Fix scroll crash (cclv-31l.3) - blocks acceptance testing
-2. **P1**: Complete acceptance test harness and user story tests
-3. **P2**: Add expectrl E2E smoke tests and CI integration
-4. **Future**: Performance benchmarking, user documentation
+1. **P1**: Architectural Simplification (cclv-32x) - from 2025-12-27 spec clarifications:
+   - Remove file-watching code (simplify to stdin streaming only)
+   - Implement event-driven rendering (no continuous loop)
+   - Add entry index bullets per conversation
+   - Add LIVE indicator (gray/blinking green)
+   - Redirect tracing to log file (remove logging pane)
+   - Add basic mouse support (clicks only, architecture for future full mouse)
+2. **Future**: Performance benchmarking, user documentation
 
