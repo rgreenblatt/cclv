@@ -2191,3 +2191,90 @@ fn bug_tab_keypress_does_not_change_conversation_content() {
          Actual output:\n{output_after_tab}"
     );
 }
+
+/// Bug reproduction: Header shows wrong agent when selected_tab = Some(0).
+///
+/// EXPECTED: When selected_tab = Some(0), header should show "Main Agent" since
+/// tab 0 is the main agent tab.
+///
+/// ACTUAL: Header shows first subagent (agent_ids[0]) instead of "Main Agent".
+/// The render_header function uses agent_ids.get(selected_idx) without checking
+/// if selected_idx == 0 should mean "Main Agent".
+///
+/// Steps to reproduce manually:
+/// 1. cargo run --release -- tests/fixtures/tab_header_mismatch_repro.jsonl
+/// 2. Observe on initial load:
+///    - Header shows: "Subagent toolu_subagent1" (WRONG)
+///    - Content pane shows: "Main Agent (2 entries)" (correct)
+///
+/// Root cause: layout.rs render_header() uses agent_ids.get(selected_idx)
+/// directly, but tab 0 should be Main Agent, not agent_ids[0].
+///
+/// Fixture: tests/fixtures/tab_header_mismatch_repro.jsonl
+#[test]
+#[ignore = "cclv-5ur.41: header shows wrong agent for selected_tab=0"]
+fn bug_header_shows_wrong_agent_for_tab_zero() {
+    use cclv::config::keybindings::KeyBindings;
+    use cclv::source::{FileSource, InputSource, StdinSource};
+    use cclv::state::AppState;
+    use cclv::view::TuiApp;
+    use std::path::PathBuf;
+
+    // Load fixture with subagent entries
+    let mut file_source =
+        FileSource::new(PathBuf::from("tests/fixtures/tab_header_mismatch_repro.jsonl"))
+            .expect("Should load fixture");
+    let log_entries = file_source.drain_entries().expect("Should parse entries");
+    let entry_count = log_entries.len();
+
+    let entries: Vec<ConversationEntry> = log_entries
+        .into_iter()
+        .map(|e| ConversationEntry::Valid(Box::new(e)))
+        .collect();
+
+    // Create terminal with standard dimensions
+    let backend = TestBackend::new(120, 30);
+    let terminal = Terminal::new(backend).unwrap();
+    let mut app_state = AppState::new();
+    app_state.add_entries(entries);
+    let key_bindings = KeyBindings::default();
+    let input_source = InputSource::Stdin(StdinSource::from_reader(&b""[..]));
+
+    let mut app =
+        TuiApp::new_for_test(terminal, app_state, input_source, entry_count, key_bindings);
+
+    // Verify subagents exist before testing
+    assert!(
+        app.app_state().session_view().has_subagents(),
+        "Test precondition: fixture must have subagent entries"
+    );
+
+    // Verify initial state: selected_tab should be Some(0) (main agent tab)
+    assert_eq!(
+        app.app_state().selected_tab,
+        Some(0),
+        "Test precondition: selected_tab should default to Some(0)"
+    );
+
+    // Initial render
+    app.render_test().expect("Initial render should succeed");
+    let output = buffer_to_string(app.terminal().backend().buffer());
+    insta::assert_snapshot!("bug_header_mismatch_initial", output.clone());
+
+    // The header line is the first line - extract it
+    let header_line = output.lines().next().unwrap_or("");
+
+    // BUG: Header shows "Subagent toolu_subagent1" instead of "Main Agent"
+    // When selected_tab = Some(0), header should show Main Agent
+    assert!(
+        header_line.contains("Main Agent"),
+        "BUG: Header shows wrong agent for tab 0.\n\
+         When selected_tab = Some(0), header should show 'Main Agent'.\n\
+         Expected header to contain: 'Main Agent'\n\
+         Actual header line: {}\n\n\
+         The content pane correctly shows 'Main Agent' but header is wrong.\n\
+         Root cause: render_header() uses agent_ids.get(selected_idx) directly\n\
+         without checking if selected_idx == 0 means Main Agent.",
+        header_line
+    );
+}
