@@ -1,6 +1,5 @@
 ---
 source: tests/view_snapshots.rs
-assertion_line: 1267
 expression: output
 ---
 Model: Unknown | Main Agent
@@ -8,10 +7,10 @@ Model: Unknown | Main Agent
 │This is a short line.                                     │
 │                                                          │
 │This is a very long line that should definitely wrap when │
+│displayed in a narrow terminal window because it exceeds t│
+│he typical width of most terminal displays.               │
 │                                                          │
 │Another short line.                                       │
-│                                                          │
-│                                                          │
 │                                                          │
 │                                                          │
 │                                                          │

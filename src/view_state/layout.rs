@@ -157,8 +157,9 @@ fn count_text_lines(text: &str, wrap: WrapMode, width: u16) -> u16 {
     match wrap {
         WrapMode::NoWrap => line_count as u16,
         WrapMode::Wrap => {
-            // Use actual viewport width for wrapping
-            let wrap_width = width.max(1) as usize; // Ensure width is at least 1
+            // Adjust width for borders (ConversationView uses `area.width.saturating_sub(2)`)
+            // The width parameter is terminal width, but content area is 2 chars narrower
+            let content_width = width.saturating_sub(2).max(1) as usize;
             let mut wrapped_lines = 0;
             for line in lines {
                 let line_width = line.chars().count();
@@ -166,7 +167,7 @@ fn count_text_lines(text: &str, wrap: WrapMode, width: u16) -> u16 {
                     wrapped_lines += 1;
                 } else {
                     // Calculate how many lines this wraps to
-                    wrapped_lines += line_width.div_ceil(wrap_width).max(1);
+                    wrapped_lines += line_width.div_ceil(content_width).max(1);
                 }
             }
             wrapped_lines as u16

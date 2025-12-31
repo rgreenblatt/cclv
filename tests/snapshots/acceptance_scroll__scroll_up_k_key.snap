@@ -4,12 +4,6 @@ expression: scrolled_up_output
 ---
 Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
-│  }                                                                           │
-│                                                                              │
-│Tool: Skill                                                                   │
-│  {                                                                           │
-│    "skill": "beads-project-tracking"                                         │
-│  }                                                                           │
 │                                                                              │
 │Launching skill: efficient-subagent-orchestration                             │
 │                                                                              │
@@ -24,5 +18,11 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │                                                                              │
 │# Beads Project Tracking                                                      │
 │(+199 more lines)                                                             │
+│                                                                              │
+│Now let me follow the coordinator protocol:                                   │
+│                                                                              │
+│1. **Setup**: Run the prerequisites check                                     │
+│2. **Get feature branch and epic**: Get current branch and find epic          │
+│3. **Check checklists**: Check if there are any checklists                    │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

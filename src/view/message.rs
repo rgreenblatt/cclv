@@ -1468,16 +1468,13 @@ pub fn render_content_block(
                 summary_lines,
             )
         }
-        ContentBlock::Thinking { thinking } => thinking
-            .lines()
-            .map(|line| {
-                Line::from(vec![Span::styled(
-                    line.to_string(),
-                    Style::default()
-                        .add_modifier(Modifier::ITALIC)
-                        .add_modifier(Modifier::DIM),
-                )])
-            })
-            .collect(),
+        ContentBlock::Thinking { thinking } => {
+            // Thinking blocks are prose content and should wrap like Text blocks.
+            // Use the same markdown renderer for consistent wrapping behavior.
+            let thinking_style = Style::default()
+                .add_modifier(Modifier::ITALIC)
+                .add_modifier(Modifier::DIM);
+            render_markdown_with_style(thinking, thinking_style)
+        }
     }
 }

@@ -47,8 +47,8 @@ use ratatui::{
 ///
 /// * `entry` - The conversation entry to render
 /// * `expanded` - Whether the entry is currently expanded
-/// * `wrap_mode` - Effective wrap mode for this entry (currently unused, deferred to bead 14.6)
-/// * `width` - Viewport width for text wrapping calculations (currently unused, deferred to bead 14.6)
+/// * `wrap_mode` - Effective wrap mode for this entry (applied to Thinking blocks)
+/// * `width` - Viewport width for text wrapping calculations (applied to Thinking blocks)
 /// * `collapse_threshold` - Number of lines before collapsing (typically 10)
 /// * `summary_lines` - Number of lines to show when collapsed (typically 3)
 ///
@@ -60,9 +60,10 @@ use ratatui::{
 ///
 /// # Note on Wrapping
 ///
-/// The `wrap_mode` and `width` parameters are accepted for forward compatibility but currently
-/// unused. Text wrapping will be integrated in bead 14.6 when view-state connects to the full
-/// rendering pipeline. The signature is stable to avoid breaking changes during integration.
+/// The `wrap_mode` and `width` parameters control text wrapping behavior:
+/// - **Thinking blocks**: Wrapping is fully implemented (lines 304-345)
+/// - **Other blocks**: Wrapping to follow in future phases
+/// The signature accepts these parameters for all blocks to provide a consistent API.
 ///
 /// # Example
 ///
@@ -74,7 +75,6 @@ use ratatui::{
 /// let expanded_lines = compute_entry_lines(&entry, true, WrapMode::Wrap, 80, 10, 3);
 /// // Should return ~100 lines (all content)
 /// ```
-#[allow(unused_variables)] // wrap_mode and width deferred to bead 14.6 integration
 pub fn compute_entry_lines(
     entry: &ConversationEntry,
     expanded: bool,
@@ -129,7 +129,7 @@ pub fn compute_entry_lines(
         MessageContent::Blocks(blocks) => {
             // Render each content block
             for block in blocks {
-                let block_lines = render_block(block, expanded, collapse_threshold, summary_lines);
+                let block_lines = render_block(block, expanded, wrap_mode, width, collapse_threshold, summary_lines);
                 lines.extend(block_lines);
             }
 
@@ -141,10 +141,60 @@ pub fn compute_entry_lines(
     lines
 }
 
+/// Wrap lines to match height calculation behavior.
+///
+/// Takes source lines and wraps them at the viewport width boundary
+/// to match the wrapping logic in layout.rs count_text_lines().
+///
+/// This ensures rendered line count matches calculated height.
+///
+/// # Arguments
+/// * `source_lines` - Original lines from content (split on '\n')
+/// * `wrap_mode` - Whether to wrap or not
+/// * `width` - Viewport width for wrapping (terminal width, will adjust for borders)
+///
+/// # Returns
+/// Vector of wrapped lines (String, not Line<'static>) ready for styling
+fn wrap_lines(source_lines: &[&str], wrap_mode: WrapMode, width: u16) -> Vec<String> {
+    match wrap_mode {
+        WrapMode::NoWrap => {
+            // No wrapping: one output line per source line
+            source_lines.iter().map(|&s| s.to_string()).collect()
+        }
+        WrapMode::Wrap => {
+            // Adjust width for borders (ConversationView uses `area.width.saturating_sub(2)`)
+            // The width parameter is terminal width, but content area is 2 chars narrower
+            let content_width = width.saturating_sub(2).max(1) as usize;
+            let mut wrapped = Vec::new();
+
+            for &line in source_lines {
+                if line.is_empty() {
+                    // Empty lines stay empty
+                    wrapped.push(String::new());
+                } else {
+                    // Split line into chunks of content_width characters
+                    let chars: Vec<char> = line.chars().collect();
+                    let mut offset = 0;
+                    while offset < chars.len() {
+                        let end = (offset + content_width).min(chars.len());
+                        let chunk: String = chars[offset..end].iter().collect();
+                        wrapped.push(chunk);
+                        offset = end;
+                    }
+                }
+            }
+
+            wrapped
+        }
+    }
+}
+
 /// Render a single content block with collapse support.
 fn render_block(
     block: &ContentBlock,
     expanded: bool,
+    wrap_mode: WrapMode,
+    width: u16,
     collapse_threshold: usize,
     summary_lines: usize,
 ) -> Vec<Line<'static>> {
@@ -253,17 +303,21 @@ fn render_block(
         }
         ContentBlock::Thinking { thinking } => {
             // THIS IS THE KEY FIX: Thinking blocks now respect collapse state
+            // AND wrap long lines to match height calculation
             let thinking_lines: Vec<_> = thinking.lines().collect();
-            let total_lines = thinking_lines.len();
+
+            // Wrap lines to match height calculation (layout.rs count_text_lines)
+            let wrapped_lines = wrap_lines(&thinking_lines, wrap_mode, width);
+            let total_lines = wrapped_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
 
             let mut lines = Vec::new();
 
             if should_collapse {
                 // Show summary lines with thinking style
-                for line in thinking_lines.iter().take(summary_lines) {
+                for line in wrapped_lines.iter().take(summary_lines) {
                     lines.push(Line::from(Span::styled(
-                        line.to_string(),
+                        line.clone(),
                         Style::default()
                             .add_modifier(Modifier::ITALIC)
                             .add_modifier(Modifier::DIM),
@@ -277,9 +331,9 @@ fn render_block(
                 )));
             } else {
                 // Show all lines with thinking style
-                for line in thinking_lines {
+                for line in wrapped_lines {
                     lines.push(Line::from(Span::styled(
-                        line.to_string(),
+                        line,
                         Style::default()
                             .add_modifier(Modifier::ITALIC)
                             .add_modifier(Modifier::DIM),

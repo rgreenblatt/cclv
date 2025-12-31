@@ -4,12 +4,6 @@ expression: scrolled_up_output
 ---
 Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 ┌Main Agent (20 entries)───────────────────────────────────────────────────────┐
-│Tool: Skill                                                                   │
-│  {                                                                           │
-│    "skill": "efficient-subagent-orchestration"                               │
-│  }                                                                           │
-│                                                                              │
-│Tool: Skill                                                                   │
 │  {                                                                           │
 │    "skill": "beads-project-tracking"                                         │
 │  }                                                                           │
@@ -24,5 +18,11 @@ Model: Unknown | Main Agent | ? | 0 tools, 0 agents, 0 skills
 │Launching skill: beads-project-tracking                                       │
 │                                                                              │
 │Base directory for this skill: /home/claude/.claude/skills/beads-project-track│
+│                                                                              │
+│# Beads Project Tracking                                                      │
+│(+199 more lines)                                                             │
+│                                                                              │
+│Now let me follow the coordinator protocol:                                   │
+│                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
