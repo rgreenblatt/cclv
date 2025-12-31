@@ -151,6 +151,7 @@ fn merge_config_overrides_with_config_file_values() {
         log_file_path: None,
         keybindings: None,
         pricing: None,
+        render_cache: None,
     };
 
     let resolved = merge_config(Some(config_file));
@@ -177,6 +178,7 @@ fn merge_config_uses_defaults_for_none_fields() {
         log_file_path: None,
         keybindings: None,
         pricing: None,
+        render_cache: None,
     };
 
     let resolved = merge_config(Some(config_file));
@@ -680,6 +682,7 @@ fn precedence_chain_defaults_to_config_file() {
         log_file_path: None,
         keybindings: None,
         pricing: None,
+        render_cache: None,
     };
 
     let resolved = merge_config(Some(config_file));
@@ -714,6 +717,7 @@ fn precedence_chain_config_file_to_env_vars() {
         log_file_path: None,
         keybindings: None,
         pricing: None,
+        render_cache: None,
     };
 
     let merged = merge_config(Some(config_file));
@@ -781,6 +785,7 @@ fn precedence_chain_full_defaults_to_cli() {
         log_file_path: None,
         keybindings: None,
         pricing: None,
+        render_cache: None,
     };
 
     // Step 1: Defaults → Config File
@@ -807,4 +812,118 @@ fn precedence_chain_full_defaults_to_cli() {
 
     // Cleanup
     env::remove_var("CCLV_THEME");
+}
+
+// ===== Render Cache Config Tests =====
+
+#[test]
+fn render_cache_config_parses_from_toml() {
+    let toml_content = r#"
+[render_cache]
+capacity = 500
+"#;
+
+    let config: ConfigFile = toml::from_str(toml_content)
+        .expect("Should parse render_cache section");
+
+    assert!(
+        config.render_cache.is_some(),
+        "render_cache section should be parsed"
+    );
+
+    let render_cache = config.render_cache.unwrap();
+    assert_eq!(
+        render_cache.capacity, 500,
+        "Render cache capacity should match TOML value"
+    );
+}
+
+#[test]
+fn render_cache_config_uses_default_when_missing() {
+    let toml_content = r#"
+theme = "solarized-dark"
+"#;
+
+    let config: ConfigFile = toml::from_str(toml_content)
+        .expect("Should parse config without render_cache");
+
+    assert_eq!(
+        config.render_cache, None,
+        "render_cache should be None when not in TOML"
+    );
+}
+
+#[test]
+fn render_cache_config_allows_partial_fields_with_defaults() {
+    // Empty render_cache section should use defaults via #[serde(default)]
+    let toml_content = r#"
+[render_cache]
+"#;
+
+    let config: ConfigFile = toml::from_str(toml_content)
+        .expect("Should parse empty render_cache section");
+
+    assert!(
+        config.render_cache.is_some(),
+        "render_cache should be Some for empty section"
+    );
+
+    let render_cache = config.render_cache.unwrap();
+    assert_eq!(
+        render_cache.capacity, 1000,
+        "Empty render_cache section should use default capacity of 1000"
+    );
+}
+
+#[test]
+fn full_config_with_render_cache_parses_correctly() {
+    let temp_dir = env::temp_dir();
+    let config_path = temp_dir.join("cclv_test_render_cache.toml");
+
+    let toml_content = r#"
+theme = "base16-ocean"
+follow = true
+
+[render_cache]
+capacity = 2000
+"#;
+
+    fs::write(&config_path, toml_content).expect("Failed to write test config");
+
+    let result = load_config_file(&config_path);
+    assert!(result.is_ok(), "Should parse full config with render_cache");
+
+    let config = result.unwrap().expect("Should have config");
+    assert_eq!(config.theme, Some("base16-ocean".to_string()));
+    assert_eq!(config.follow, Some(true));
+
+    let render_cache = config.render_cache.expect("Should have render_cache section");
+    assert_eq!(render_cache.capacity, 2000);
+
+    // Cleanup
+    fs::remove_file(config_path).ok();
+}
+
+#[test]
+fn merge_config_ignores_render_cache_field() {
+    // render_cache is not part of ResolvedConfig, just ConfigFile
+    // merge_config should not fail when render_cache is present
+    let config_file = ConfigFile {
+        theme: Some("test-theme".to_string()),
+        follow: None,
+        show_stats: None,
+        collapse_threshold: None,
+        summary_lines: None,
+        line_wrap: None,
+        log_buffer_capacity: None,
+        log_file_path: None,
+        keybindings: None,
+        pricing: None,
+        render_cache: Some(crate::view_state::cache::RenderCacheConfig { capacity: 500 }),
+    };
+
+    let resolved = merge_config(Some(config_file));
+
+    // Should complete without error
+    assert_eq!(resolved.theme, "test-theme");
 }

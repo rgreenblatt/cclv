@@ -1,5 +1,6 @@
 //! Configuration file loading with precedence handling.
 
+use crate::view_state::cache::RenderCacheConfig;
 use serde::Deserialize;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -76,6 +77,10 @@ pub struct ConfigFile {
     /// Pricing section for cost estimation.
     #[serde(default)]
     pub pricing: Option<PricingConfigSection>,
+
+    /// Render cache configuration (FR-054).
+    #[serde(default)]
+    pub render_cache: Option<RenderCacheConfig>,
 }
 
 /// Pricing configuration section from TOML.
@@ -406,6 +411,7 @@ mod log_path_tests {
             log_file_path: Some(custom_path.clone()),
             keybindings: None,
             pricing: None,
+            render_cache: None,
         };
 
         let resolved = merge_config(Some(config_file));
@@ -428,6 +434,7 @@ mod log_path_tests {
             log_file_path: None,
             keybindings: None,
             pricing: None,
+            render_cache: None,
         };
 
         let resolved = merge_config(Some(config_file));

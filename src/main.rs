@@ -279,6 +279,7 @@ mod tests {
             log_file_path: None,
             keybindings: None,
             pricing: None,
+            render_cache: None,
         };
 
         // Step 1: Merge with defaults
