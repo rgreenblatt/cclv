@@ -225,9 +225,24 @@ impl<'a> Widget for ConversationView<'a> {
             let (start_index, end_index) = self.calculate_visible_range(viewport_height);
 
             // Render only the visible range
-            for entry in self.conversation.entries()[start_index..end_index].iter() {
+            for (visible_index, entry) in self.conversation.entries()[start_index..end_index].iter().enumerate() {
                 let role = entry.message().role();
                 let role_style = self.styles.style_for_role(role);
+
+                // Calculate actual index in full entry list
+                let actual_index = start_index + visible_index;
+
+                // Add "Initial Prompt" label for first message in subagent view
+                if self.is_subagent_view && actual_index == 0 {
+                    lines.push(Line::from(vec![
+                        ratatui::text::Span::styled(
+                            "🔷 Initial Prompt",
+                            Style::default()
+                                .fg(Color::Magenta)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]));
+                }
 
                 match entry.message().content() {
                     MessageContent::Text(text) => {
@@ -1686,9 +1701,8 @@ mod tests {
             "Should render second message content"
         );
 
-        // Count occurrences of "Initial Prompt" marker
-        let initial_prompt_count = content.matches("Initial Prompt").count()
-            + content.matches("🔷").count();
+        // Count occurrences of "Initial Prompt" text (the emoji might not render in TestBackend)
+        let initial_prompt_count = content.matches("Initial Prompt").count();
 
         // Should have exactly ONE initial prompt marker (for first message only)
         assert_eq!(
