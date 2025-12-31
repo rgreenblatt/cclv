@@ -607,6 +607,198 @@ fn detect_entry_click_with_single_entry_always_returns_index_0() {
     }
 }
 
+// ===== Hit Test Integration Tests =====
+// These tests verify that detect_entry_click uses ConversationViewState.hit_test()
+// rather than a fixed-height linear scan approach.
+
+#[test]
+fn detect_entry_click_uses_actual_entry_heights_from_layout() {
+    use crate::state::WrapMode;
+    use crate::view_state::layout_params::LayoutParams;
+    use crate::view_state::types::LineHeight;
+
+    // Create entries with VARIABLE heights (not fixed 4 lines)
+    let mut entries = Vec::new();
+    for i in 0..3 {
+        let uuid = make_entry_uuid(&format!("entry-{}", i));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            make_session_id("test-session"),
+            None,
+            Utc::now(),
+            EntryType::User,
+            Message::new(Role::User, MessageContent::Text(format!("Message {}", i))),
+            EntryMetadata::default(),
+        );
+        entries.push(ConversationEntry::Valid(Box::new(log_entry)));
+    }
+
+    let mut state = AppState::new();
+    state.add_entries(entries);
+
+    // Force layout computation with variable heights
+    // Entry 0: 10 lines, Entry 1: 5 lines, Entry 2: 8 lines
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    let height_calc = |entry: &ConversationEntry, _expanded: bool, _wrap: WrapMode| {
+        // Use entry index to determine height
+        let idx = match entry {
+            ConversationEntry::Valid(log_entry) => {
+                let uuid_str = log_entry.uuid().to_string();
+                if uuid_str.contains("entry-0") {
+                    0
+                } else if uuid_str.contains("entry-1") {
+                    1
+                } else {
+                    2
+                }
+            }
+            _ => 0,
+        };
+        match idx {
+            0 => LineHeight::new(10).unwrap(),
+            1 => LineHeight::new(5).unwrap(),
+            _ => LineHeight::new(8).unwrap(),
+        }
+    };
+
+    // Trigger layout computation
+    if let Some(session_view) = state.log_view_mut().current_session_mut() {
+        session_view.main_mut().recompute_layout(params, height_calc);
+    }
+
+    // Layout: Entry 0 at y=0..10, Entry 1 at y=10..15, Entry 2 at y=15..23
+    let main_area = Rect::new(0, 0, 40, 30);
+
+    // Click at y=2 (inside border at y=1) -> relative_y = 1 -> should hit Entry 0
+    let result = detect_entry_click(5, 2, main_area, None, &state);
+    assert_eq!(
+        result,
+        EntryClickResult::MainPaneEntry(0),
+        "Click at y=2 (absolute y=1) should hit entry 0 (y=0..10)"
+    );
+
+    // Click at y=11 (inside border) -> relative_y = 10 -> should hit Entry 1 (starts at y=10)
+    let result = detect_entry_click(5, 11, main_area, None, &state);
+    assert_eq!(
+        result,
+        EntryClickResult::MainPaneEntry(1),
+        "Click at y=11 (absolute y=10) should hit entry 1 (y=10..15)"
+    );
+
+    // Click at y=16 (inside border) -> relative_y = 15 -> should hit Entry 2 (starts at y=15)
+    let result = detect_entry_click(5, 16, main_area, None, &state);
+    assert_eq!(
+        result,
+        EntryClickResult::MainPaneEntry(2),
+        "Click at y=16 (absolute y=15) should hit entry 2 (y=15..23)"
+    );
+}
+
+#[test]
+fn detect_entry_click_accounts_for_scroll_offset() {
+    use crate::state::WrapMode;
+    use crate::view_state::layout_params::LayoutParams;
+    use crate::view_state::scroll::ScrollPosition;
+    use crate::view_state::types::{LineHeight, LineOffset};
+
+    // Create 5 entries with 10 lines each
+    let mut entries = Vec::new();
+    for i in 0..5 {
+        let uuid = make_entry_uuid(&format!("entry-{}", i));
+        let log_entry = LogEntry::new(
+            uuid,
+            None,
+            make_session_id("test-session"),
+            None,
+            Utc::now(),
+            EntryType::User,
+            Message::new(Role::User, MessageContent::Text(format!("Message {}", i))),
+            EntryMetadata::default(),
+        );
+        entries.push(ConversationEntry::Valid(Box::new(log_entry)));
+    }
+
+    let mut state = AppState::new();
+    state.add_entries(entries);
+
+    // Layout with fixed height: each entry is 10 lines
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    let height_calc =
+        |_entry: &ConversationEntry, _expanded: bool, _wrap: WrapMode| LineHeight::new(10).unwrap();
+
+    // Trigger layout and set scroll position
+    if let Some(session_view) = state.log_view_mut().current_session_mut() {
+        session_view.main_mut().recompute_layout(params, height_calc);
+        // Scroll to line 20 (skipping entries 0 and 1)
+        session_view
+            .main_mut()
+            .set_scroll(ScrollPosition::AtLine(LineOffset::new(20)));
+    }
+
+    // Layout: Entry 0 at y=0..10, Entry 1 at y=10..20, Entry 2 at y=20..30, Entry 3 at y=30..40, Entry 4 at y=40..50
+    // Scroll offset = 20, so viewport shows y=20..50 (entries 2, 3, 4)
+    let main_area = Rect::new(0, 0, 40, 30);
+
+    // Click at viewport y=2 (inside border at y=1) -> absolute y = 20 + 1 = 21 -> Entry 2
+    let result = detect_entry_click(5, 2, main_area, None, &state);
+    assert_eq!(
+        result,
+        EntryClickResult::MainPaneEntry(2),
+        "Click at viewport y=2 with scroll=20 should hit entry 2 (absolute y=21)"
+    );
+
+    // Click at viewport y=11 -> absolute y = 20 + 10 = 30 -> Entry 3 (starts at y=30)
+    let result = detect_entry_click(5, 11, main_area, None, &state);
+    assert_eq!(
+        result,
+        EntryClickResult::MainPaneEntry(3),
+        "Click at viewport y=11 with scroll=20 should hit entry 3 (absolute y=30)"
+    );
+}
+
+#[test]
+fn detect_entry_click_returns_no_entry_when_clicking_beyond_content() {
+    use crate::state::WrapMode;
+    use crate::view_state::layout_params::LayoutParams;
+    use crate::view_state::types::LineHeight;
+
+    // Create single entry with height 5
+    let uuid = make_entry_uuid("entry-0");
+    let log_entry = LogEntry::new(
+        uuid,
+        None,
+        make_session_id("test-session"),
+        None,
+        Utc::now(),
+        EntryType::User,
+        Message::new(Role::User, MessageContent::Text("Message".to_string())),
+        EntryMetadata::default(),
+    );
+
+    let mut state = AppState::new();
+    state.add_entries(vec![ConversationEntry::Valid(Box::new(log_entry))]);
+
+    // Layout with height 5
+    let params = LayoutParams::new(80, WrapMode::Wrap);
+    let height_calc =
+        |_entry: &ConversationEntry, _expanded: bool, _wrap: WrapMode| LineHeight::new(5).unwrap();
+
+    if let Some(session_view) = state.log_view_mut().current_session_mut() {
+        session_view.main_mut().recompute_layout(params, height_calc);
+    }
+
+    let main_area = Rect::new(0, 0, 40, 30);
+
+    // Click at y=10 (inside border) -> relative_y = 9 -> beyond entry height of 5
+    let result = detect_entry_click(5, 10, main_area, None, &state);
+    assert_eq!(
+        result,
+        EntryClickResult::NoEntry,
+        "Click beyond entry content should return NoEntry"
+    );
+}
+
 // ===== Mouse Scroll Tests =====
 // NOTE: Tests that verified vertical_offset behavior have been deleted.
 // Vertical scrolling is now managed by ConversationViewState via ScrollPosition.
