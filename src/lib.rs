@@ -12,6 +12,7 @@ pub mod parser;
 pub mod source;
 pub mod state;
 pub mod view;
+pub mod view_state;
 
 // Re-export main loop integration
 pub mod integration;
