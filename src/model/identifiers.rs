@@ -3,6 +3,7 @@
 //! All identifiers validate non-empty strings at construction time.
 //! Raw constructors are never exported - use smart constructors only.
 
+use crate::parser::UNKNOWN_SESSION_ID;
 use std::fmt;
 
 /// Unique identifier for a log entry within a session.
@@ -85,8 +86,8 @@ impl SessionId {
     /// a log entry with no valid session ID. The returned value is guaranteed
     /// to be valid (non-empty).
     pub fn unknown() -> Self {
-        // SAFETY: "unknown-session" is a valid non-empty string constant
-        Self(String::from("unknown-session"))
+        // SAFETY: UNKNOWN_SESSION_ID is a valid non-empty string constant
+        Self(String::from(UNKNOWN_SESSION_ID))
     }
 
     /// Returns the underlying string slice.

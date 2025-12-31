@@ -12,6 +12,20 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use std::path::PathBuf;
 
+// Entry type string constants
+const ENTRY_TYPE_USER: &str = "user";
+const ENTRY_TYPE_ASSISTANT: &str = "assistant";
+const ENTRY_TYPE_SUMMARY: &str = "summary";
+const ENTRY_TYPE_SYSTEM: &str = "system";
+const ENTRY_TYPE_RESULT: &str = "result";
+
+// Role string constants
+const ROLE_USER: &str = "user";
+const ROLE_ASSISTANT: &str = "assistant";
+
+// Session ID constants
+pub(crate) const UNKNOWN_SESSION_ID: &str = "unknown-session";
+
 /// Raw JSON structure for deserializing log entries.
 #[derive(Debug, Deserialize)]
 struct RawLogEntry {
@@ -333,11 +347,11 @@ pub fn parse_entry(raw: &str, line_number: usize) -> Result<LogEntry, ParseError
 /// Parse the "type" field into EntryType enum.
 fn parse_entry_type(type_str: &str) -> Option<EntryType> {
     match type_str {
-        "user" => Some(EntryType::User),
-        "assistant" => Some(EntryType::Assistant),
-        "summary" => Some(EntryType::Summary),
-        "system" => Some(EntryType::System),
-        "result" => Some(EntryType::Result),
+        ENTRY_TYPE_USER => Some(EntryType::User),
+        ENTRY_TYPE_ASSISTANT => Some(EntryType::Assistant),
+        ENTRY_TYPE_SUMMARY => Some(EntryType::Summary),
+        ENTRY_TYPE_SYSTEM => Some(EntryType::System),
+        ENTRY_TYPE_RESULT => Some(EntryType::Result),
         _ => None,
     }
 }
@@ -385,8 +399,8 @@ fn parse_result_metadata(raw: &RawLogEntry) -> Option<ResultMetadata> {
 fn parse_message(raw: RawMessage) -> Result<Message, ParseError> {
     // Parse role
     let role = match raw.role.as_str() {
-        "user" => Role::User,
-        "assistant" => Role::Assistant,
+        ROLE_USER => Role::User,
+        ROLE_ASSISTANT => Role::Assistant,
         _ => Role::Assistant, // Default to assistant for unknown roles
     };
 
