@@ -529,6 +529,7 @@ fn render_entry_lines(
 ///
 /// # Returns
 /// Vector of Lines representing this entry with search highlighting, including spacing line at end
+#[allow(clippy::too_many_arguments)]
 fn render_entry_lines_with_search(
     entry: &ConversationEntry,
     entry_index: usize,
@@ -1068,7 +1069,9 @@ pub fn render_conversation_view(
 
 /// Render a conversation view with search match highlighting.
 ///
-/// This function extends render_conversation_view to support search highlighting.
+/// Uses per-entry Paragraph rendering architecture (matching render_conversation_view)
+/// with search highlighting applied via render_entry_lines_with_search.
+///
 /// When SearchState::Active, all matches are highlighted with distinct styles.
 /// The current match (at current_match index) has a different style than other matches.
 ///
@@ -1092,11 +1095,9 @@ pub fn render_conversation_view_with_search(
     focused: bool,
     global_wrap: WrapMode,
 ) {
-    use ratatui::text::Span;
-
     let entry_count = conversation.entries().len();
 
-    // Build title
+    // Build title with agent info
     let title = if let Some(agent_id) = conversation.agent_id() {
         let model_info = conversation
             .model()
@@ -1114,181 +1115,167 @@ pub fn render_conversation_view_with_search(
         format!("Main Agent{} ({} entries)", model_info, entry_count)
     };
 
+    // Style based on focus
     let border_color = if focused { Color::Cyan } else { Color::Gray };
 
-    let mut lines = Vec::new();
-
+    // Handle empty conversation
     if entry_count == 0 {
-        lines.push(Line::from("No messages yet..."));
-    } else {
-        // Extract match information if search is active
-        let match_info = match search {
-            crate::state::SearchState::Active {
-                matches,
-                current_match,
-                ..
-            } => Some((matches, *current_match)),
-            _ => None,
-        };
-
-        // Render entries with highlighting
-        for entry in conversation.entries() {
-            match entry {
-                ConversationEntry::Valid(log_entry) => {
-                    let role = log_entry.message().role();
-                    let role_style = styles.style_for_role(role);
-
-                    match log_entry.message().content() {
-                        MessageContent::Text(text) => {
-                            // Get matches for this entry
-                            let entry_matches = if let Some((matches, current_idx)) = &match_info {
-                                let mut entry_m = Vec::new();
-                                for (idx, m) in matches.iter().enumerate() {
-                                    if m.entry_uuid == *log_entry.uuid() && m.block_index == 0 {
-                                        entry_m.push((
-                                            m.char_offset,
-                                            m.length,
-                                            idx == *current_idx,
-                                        ));
-                                    }
-                                }
-                                entry_m
-                            } else {
-                                Vec::new()
-                            };
-
-                            // Render text with highlighting (handle multi-line correctly)
-                            if entry_matches.is_empty() {
-                                // No highlighting - simple iteration
-                                for line_text in text.lines() {
-                                    lines.push(Line::from(vec![Span::styled(
-                                        line_text.to_string(),
-                                        role_style,
-                                    )]));
-                                }
-                            } else {
-                                // With highlighting - track line positions
-                                let mut cumulative_offset: usize = 0;
-                                for line_text in text.lines() {
-                                    let line_start = cumulative_offset;
-                                    let line_end = line_start.saturating_add(line_text.len());
-
-                                    // Filter and convert matches for this line
-                                    let line_matches: Vec<(usize, usize, bool)> = entry_matches
-                                        .iter()
-                                        .filter_map(|(offset, length, is_current)| {
-                                            let match_start = *offset;
-                                            let match_end = match_start.saturating_add(*length);
-
-                                            // Check if match overlaps this line
-                                            if match_start < line_end && match_end > line_start {
-                                                // Convert to line-relative offset
-                                                let line_relative_start =
-                                                    match_start.saturating_sub(line_start);
-                                                let line_relative_end =
-                                                    (match_end - line_start).min(line_text.len());
-                                                let line_relative_length = line_relative_end
-                                                    .saturating_sub(line_relative_start);
-
-                                                if line_relative_length > 0 {
-                                                    Some((
-                                                        line_relative_start,
-                                                        line_relative_length,
-                                                        *is_current,
-                                                    ))
-                                                } else {
-                                                    None
-                                                }
-                                            } else {
-                                                None
-                                            }
-                                        })
-                                        .collect();
-
-                                    // Render line with highlights
-                                    let highlighted_line = apply_highlights_to_text(
-                                        line_text,
-                                        &line_matches,
-                                        role_style,
-                                    );
-                                    lines.push(highlighted_line);
-
-                                    // Update cumulative offset (add line length + newline char)
-                                    cumulative_offset = line_end.saturating_add(1);
-                                }
-                            }
-                        }
-                        MessageContent::Blocks(blocks) => {
-                            // TODO: Add search highlighting for ContentBlock variants
-                            // (ToolUse, ToolResult, Thinking). Requires:
-                            // 1. Extract text from each block type
-                            // 2. Track block_index to match SearchMatch.block_index
-                            // 3. Apply same multi-line highlighting logic per block
-                            // For now, delegate to existing render logic (no highlighting)
-                            for block in blocks {
-                                let block_lines = render_content_block(
-                                    block,
-                                    log_entry.uuid(),
-                                    scroll,
-                                    styles,
-                                    role_style,
-                                    10,
-                                    3,
-                                );
-                                lines.extend(block_lines);
-                            }
-                        }
-                    }
-                }
-                ConversationEntry::Malformed(malformed) => {
-                    lines.push(Line::from(vec![Span::styled(
-                        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-                        Style::default().fg(Color::Red),
-                    )]));
-                    lines.push(Line::from(vec![Span::styled(
-                        format!("⚠ Parse Error (line {})", malformed.line_number()),
-                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-                    )]));
-                    for error_line in malformed.error_message().lines() {
-                        lines.push(Line::from(vec![Span::styled(
-                            error_line.to_string(),
-                            Style::default().fg(Color::Red),
-                        )]));
-                    }
-                }
-            }
-            lines.push(Line::from(""));
-        }
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .style(Style::default().fg(border_color));
+        let inner_area = block.inner(area);
+        frame.render_widget(block, area);
+        let empty_msg = Paragraph::new(vec![Line::from("No messages yet...")]);
+        frame.render_widget(empty_msg, inner_area);
+        return;
     }
 
+    // Calculate viewport dimensions
+    let viewport_width = area.width.saturating_sub(2) as usize;
+    let viewport_height = area.height.saturating_sub(2) as usize;
+
+    // Determine if this is a subagent conversation
+    let is_subagent_view = conversation.agent_id().is_some();
+
+    // Get all entries for rendering
+    let all_entries = conversation.entries();
+
+    // Create temporary ConversationView to use helper methods
+    let temp_view =
+        ConversationView::new(conversation, scroll, styles, focused).global_wrap(global_wrap);
+
+    // Calculate visible entry range
+    let (start_idx, end_idx) =
+        temp_view.calculate_visible_range(viewport_height, viewport_width, global_wrap);
+
+    let visible_entries = &all_entries[start_idx..end_idx];
+
+    // Determine scroll indicators and horizontal offset (FR-040)
+    let horizontal_offset = scroll.horizontal_offset;
+    let title_with_indicators = if global_wrap == WrapMode::NoWrap {
+        // Collect all lines temporarily to check for scroll indicators
+        let mut all_lines = Vec::new();
+        for (idx, entry) in visible_entries.iter().enumerate() {
+            let actual_entry_index = start_idx + idx;
+            let entry_lines = render_entry_lines_with_search(
+                entry,
+                actual_entry_index,
+                is_subagent_view,
+                scroll,
+                search,
+                styles,
+                10,
+                3,
+            );
+            all_lines.extend(entry_lines);
+        }
+
+        let has_left_indicator = horizontal_offset > 0;
+        let has_right_indicator = has_long_lines(&all_lines, viewport_width + horizontal_offset);
+
+        add_scroll_indicators_to_title(title, has_left_indicator, has_right_indicator)
+    } else {
+        title
+    };
+
+    // Render border with title (including scroll indicators)
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(title)
+        .title(title_with_indicators)
         .style(Style::default().fg(border_color));
 
-    // Apply viewport clipping: skip lines that are scrolled off the top
-    // This prevents processing all lines when scrolled deep into conversation
-    let vertical_offset = scroll.vertical_offset;
-    let visible_lines: Vec<Line> = if vertical_offset > 0 && vertical_offset < lines.len() {
-        lines.into_iter().skip(vertical_offset).collect()
-    } else if vertical_offset >= lines.len() {
-        // Scrolled past end - show empty
-        Vec::new()
-    } else {
-        // No scroll offset or at top
-        lines
-    };
+    let inner_area = block.inner(area);
+    frame.render_widget(block, area);
 
-    // Apply wrap mode (FR-039)
-    let paragraph = if global_wrap == WrapMode::Wrap {
-        Paragraph::new(visible_lines)
-            .block(block)
-            .wrap(Wrap { trim: false })
-    } else {
-        Paragraph::new(visible_lines).block(block)
-    };
+    // Calculate layouts for visible entries
+    let layouts = temp_view.calculate_entry_layouts(
+        visible_entries,
+        scroll.vertical_offset,
+        viewport_width,
+        viewport_height,
+        global_wrap,
+    );
 
-    frame.render_widget(paragraph, area);
+    // Calculate absolute cumulative_y for first visible entry
+    let mut first_entry_absolute_y = 0_usize;
+    for entry in &all_entries[..start_idx] {
+        first_entry_absolute_y += temp_view.calculate_entry_height(entry, viewport_width, global_wrap);
+    }
+
+    // Render each visible entry as a separate Paragraph
+    let mut cumulative_y = first_entry_absolute_y;
+    for (layout_idx, layout) in layouts.iter().enumerate() {
+        let entry = &visible_entries[layout_idx];
+        let actual_entry_index = start_idx + layout_idx;
+
+        // Get per-entry effective wrap mode
+        // FR-053: Code blocks never wrap, always use horizontal scroll
+        let effective_wrap = if has_code_blocks(&extract_entry_text(entry)) {
+            WrapMode::NoWrap
+        } else if let ConversationEntry::Valid(log_entry) = entry {
+            scroll.effective_wrap(log_entry.uuid(), global_wrap)
+        } else {
+            global_wrap
+        };
+
+        // Get entry lines with search highlighting
+        let mut entry_lines = render_entry_lines_with_search(
+            entry,
+            actual_entry_index,
+            is_subagent_view,
+            scroll,
+            search,
+            styles,
+            10, // Default collapse threshold
+            3,  // Default summary lines
+        );
+
+        // Apply horizontal offset if NoWrap mode and offset > 0 (FR-040)
+        if effective_wrap == WrapMode::NoWrap && horizontal_offset > 0 {
+            entry_lines = entry_lines
+                .into_iter()
+                .map(|line| apply_horizontal_offset(line, horizontal_offset))
+                .collect();
+        }
+
+        // Add wrap continuation indicators if Wrap mode (FR-052)
+        if effective_wrap == WrapMode::Wrap {
+            entry_lines = add_wrap_continuation_indicators(entry_lines, inner_area.width as usize);
+        }
+
+        // Clip lines that are scrolled off the top of the viewport
+        let lines_to_skip = if layout.y_offset == 0 {
+            calculate_lines_to_skip(cumulative_y, scroll.vertical_offset)
+        } else {
+            0
+        };
+
+        // Skip the clipped lines and adjust height
+        if lines_to_skip > 0 {
+            entry_lines = entry_lines.into_iter().skip(lines_to_skip).collect();
+        }
+        let visible_height = (layout.height as usize).saturating_sub(lines_to_skip) as u16;
+
+        // Create Paragraph with appropriate wrap setting
+        let entry_paragraph = match effective_wrap {
+            WrapMode::Wrap => Paragraph::new(entry_lines).wrap(Wrap { trim: false }),
+            WrapMode::NoWrap => Paragraph::new(entry_lines),
+        };
+
+        // Calculate entry area within viewport
+        let entry_area = Rect {
+            x: inner_area.x,
+            y: inner_area.y + layout.y_offset,
+            width: inner_area.width,
+            height: visible_height,
+        };
+
+        frame.render_widget(entry_paragraph, entry_area);
+
+        // Update cumulative_y for next iteration
+        cumulative_y += layout.height as usize;
+    }
 }
 
 /// Apply highlighting to a text string based on match offsets.
