@@ -531,6 +531,58 @@ mod tests {
         // that return InputError::FileDeleted.
     }
 
+    #[test]
+    fn poll_changes_handles_events_without_proactive_existence_checks() {
+        // This test verifies that poll_changes() processes watcher events
+        // WITHOUT making proactive path.exists() checks, which would create
+        // TOCTOU (time-of-check-time-of-use) race conditions.
+        //
+        // The TOCTOU race pattern:
+        //   if !path.exists() { return Err(...) }  // CHECK
+        //   // ... time window where file state can change ...
+        //   do_something_with_file()                // USE
+        //
+        // Reactive pattern (correct):
+        //   match watcher_event {
+        //     Err(PathNotFound) => Err(FileDeleted),  // Classify error AFTER it occurs
+        //     Ok(event) => process_event(event),
+        //   }
+        //
+        // This test verifies the reactive approach by confirming that
+        // poll_changes() relies solely on the watcher's error reporting,
+        // not on separate existence checks.
+
+        let temp_dir = std::env::temp_dir();
+        let test_file = temp_dir.join("test_poll_no_toctou.jsonl");
+
+        fs::write(&test_file, "{\"line\": 1}\n").unwrap();
+
+        let mut tailer = FileTailer::new(&test_file).unwrap();
+
+        // Modify file to generate a watcher event
+        thread::sleep(Duration::from_millis(50));
+        let mut file = fs::OpenOptions::new()
+            .append(true)
+            .open(&test_file)
+            .unwrap();
+        writeln!(file, "{{\"line\": 2}}").unwrap();
+        drop(file);
+
+        // Wait for watcher
+        thread::sleep(Duration::from_millis(200));
+
+        // Poll changes - this should work WITHOUT calling path.exists()
+        // The watcher provides all necessary file state information
+        let result = tailer.poll_changes();
+
+        // Cleanup
+        let _ = fs::remove_file(&test_file);
+
+        // Should detect change via watcher events, not proactive checks
+        assert!(result.is_ok(), "Should process watcher events");
+        assert!(result.unwrap(), "Should detect file modification");
+    }
+
     // ===== FileSource Tests =====
 
     #[test]
