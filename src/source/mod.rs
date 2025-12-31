@@ -5,5 +5,7 @@
 //! - Stdin for piped input
 
 pub mod file;
+pub mod stdin;
 
 pub use file::FileTailer;
+pub use stdin::StdinSource;
