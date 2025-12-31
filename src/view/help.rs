@@ -97,120 +97,156 @@ fn build_help_content() -> Vec<Line<'static>> {
     let desc_style = Style::default().fg(Color::White);
 
     vec![
-        // Navigation
+        // Navigation (cli.md lines 120-131)
         Line::from(vec![Span::styled("Navigation", category_style)]),
         Line::from(vec![
-            Span::styled("  j/↓      ", key_style),
+            Span::styled("  j/↓         ", key_style),
             Span::styled("Scroll down", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  k/↑      ", key_style),
+            Span::styled("  k/↑         ", key_style),
             Span::styled("Scroll up", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  d        ", key_style),
+            Span::styled("  h/←         ", key_style),
+            Span::styled("Scroll left (for long lines)", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  l/→         ", key_style),
+            Span::styled("Scroll right", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  Ctrl+d/Page Down ", key_style),
             Span::styled("Page down", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  u        ", key_style),
+            Span::styled("  Ctrl+u/Page Up   ", key_style),
             Span::styled("Page up", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  g        ", key_style),
+            Span::styled("  g/Home      ", key_style),
             Span::styled("Go to top", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  G        ", key_style),
+            Span::styled("  G/End       ", key_style),
             Span::styled("Go to bottom", desc_style),
         ]),
         Line::from(""),
-        // Pane Focus
+        // Pane Focus (cli.md lines 133-140)
         Line::from(vec![Span::styled("Pane Focus", category_style)]),
         Line::from(vec![
-            Span::styled("  Tab      ", key_style),
-            Span::styled("Cycle panes", desc_style),
+            Span::styled("  Tab         ", key_style),
+            Span::styled("Cycle focus between panes", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  1        ", key_style),
-            Span::styled("Focus Main pane", desc_style),
+            Span::styled("  1           ", key_style),
+            Span::styled("Focus main agent pane", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  2        ", key_style),
-            Span::styled("Focus Subagent pane", desc_style),
+            Span::styled("  2           ", key_style),
+            Span::styled("Focus subagent pane", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  3        ", key_style),
-            Span::styled("Focus Stats pane", desc_style),
+            Span::styled("  3           ", key_style),
+            Span::styled("Focus stats panel", desc_style),
         ]),
         Line::from(""),
-        // Tabs
-        Line::from(vec![Span::styled("Tabs", category_style)]),
+        // Tabs (Subagent Pane) (cli.md lines 142-150)
+        Line::from(vec![Span::styled("Tabs (Subagent Pane)", category_style)]),
         Line::from(vec![
-            Span::styled("  h/←      ", key_style),
+            Span::styled("  [/Shift+Tab ", key_style),
             Span::styled("Previous tab", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  l/→      ", key_style),
+            Span::styled("  ]           ", key_style),
             Span::styled("Next tab", desc_style),
         ]),
-        Line::from(""),
-        // Message Interaction
-        Line::from(vec![Span::styled("Message", category_style)]),
         Line::from(vec![
-            Span::styled("  Enter    ", key_style),
-            Span::styled("Expand/collapse message", desc_style),
-        ]),
-        Line::from(vec![
-            Span::styled("  y        ", key_style),
-            Span::styled("Copy to clipboard", desc_style),
+            Span::styled("  1-9         ", key_style),
+            Span::styled("Select tab by number", desc_style),
         ]),
         Line::from(""),
-        // Search
+        // Message Interaction (cli.md lines 152-158)
+        Line::from(vec![Span::styled("Message Interaction", category_style)]),
+        Line::from(vec![
+            Span::styled("  Enter/Space ", key_style),
+            Span::styled("Toggle expand/collapse message", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  e           ", key_style),
+            Span::styled("Expand all messages", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  c           ", key_style),
+            Span::styled("Collapse all messages", desc_style),
+        ]),
+        Line::from(""),
+        // Search (cli.md lines 160-168)
         Line::from(vec![Span::styled("Search", category_style)]),
         Line::from(vec![
-            Span::styled("  /        ", key_style),
+            Span::styled("  //Ctrl+f    ", key_style),
             Span::styled("Start search", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  n        ", key_style),
+            Span::styled("  Enter       ", key_style),
+            Span::styled("Submit search", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  Esc         ", key_style),
+            Span::styled("Cancel search", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  n           ", key_style),
             Span::styled("Next match", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  N        ", key_style),
+            Span::styled("  N/Shift+n   ", key_style),
             Span::styled("Previous match", desc_style),
         ]),
-        Line::from(vec![
-            Span::styled("  Esc      ", key_style),
-            Span::styled("Exit search", desc_style),
-        ]),
         Line::from(""),
-        // Stats
+        // Stats (cli.md lines 170-177)
         Line::from(vec![Span::styled("Stats", category_style)]),
         Line::from(vec![
-            Span::styled("  s        ", key_style),
+            Span::styled("  s           ", key_style),
             Span::styled("Toggle stats panel", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  f        ", key_style),
-            Span::styled("Cycle stats filter", desc_style),
+            Span::styled("  !           ", key_style),
+            Span::styled("Filter: Global", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  @           ", key_style),
+            Span::styled("Filter: Main agent only", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  #           ", key_style),
+            Span::styled("Filter: Current subagent", desc_style),
         ]),
         Line::from(""),
-        // Live Mode
+        // Live Mode (cli.md lines 179-184)
         Line::from(vec![Span::styled("Live Mode", category_style)]),
         Line::from(vec![
-            Span::styled("  Space    ", key_style),
-            Span::styled("Toggle live mode", desc_style),
+            Span::styled("  f           ", key_style),
+            Span::styled("Toggle follow/live mode", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  a           ", key_style),
+            Span::styled("Toggle auto-scroll", desc_style),
         ]),
         Line::from(""),
-        // Application
+        // Application (cli.md lines 186-192)
         Line::from(vec![Span::styled("Application", category_style)]),
         Line::from(vec![
-            Span::styled("  ?        ", key_style),
-            Span::styled("Toggle help", desc_style),
+            Span::styled("  q/Ctrl+c    ", key_style),
+            Span::styled("Quit", desc_style),
         ]),
         Line::from(vec![
-            Span::styled("  q        ", key_style),
-            Span::styled("Quit", desc_style),
+            Span::styled("  ?           ", key_style),
+            Span::styled("Show help overlay", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  r           ", key_style),
+            Span::styled("Refresh display", desc_style),
         ]),
     ]
 }
