@@ -4,7 +4,7 @@
 //! Triggered by '?' key, dismissed by 'Esc' or '?'.
 
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
@@ -25,7 +25,45 @@ use ratatui::{
 ///
 /// The overlay is centered on the screen with a border and dismissal hint.
 pub fn render_help_overlay(frame: &mut Frame) {
-    todo!("render_help_overlay")
+    let area = frame.area();
+    let popup_area = centered_rect(70, 80, area);
+
+    // Clear the background for the overlay
+    frame.render_widget(Clear, popup_area);
+
+    // Build help content
+    let help_content = build_help_content();
+
+    // Create the help paragraph
+    let help_paragraph = Paragraph::new(help_content)
+        .block(
+            Block::default()
+                .title(" Keyboard Shortcuts ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Cyan)),
+        )
+        .wrap(Wrap { trim: false })
+        .alignment(Alignment::Left);
+
+    frame.render_widget(help_paragraph, popup_area);
+
+    // Render dismissal hint at the bottom
+    let hint_area = Rect {
+        x: popup_area.x,
+        y: popup_area.y + popup_area.height.saturating_sub(1),
+        width: popup_area.width,
+        height: 1,
+    };
+
+    let hint = Paragraph::new(Line::from(vec![Span::styled(
+        " Press Esc or ? to close ",
+        Style::default()
+            .fg(Color::Gray)
+            .add_modifier(Modifier::DIM),
+    )]))
+    .alignment(Alignment::Center);
+
+    frame.render_widget(hint, hint_area);
 }
 
 /// Calculate the centered rect for the help overlay.
@@ -33,14 +71,148 @@ pub fn render_help_overlay(frame: &mut Frame) {
 /// Returns a Rect that is centered on the screen with the specified
 /// percentage of width and height.
 fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
-    todo!("centered_rect")
+    let popup_width = area.width * percent_x / 100;
+    let popup_height = area.height * percent_y / 100;
+    let popup_x = (area.width.saturating_sub(popup_width)) / 2;
+    let popup_y = (area.height.saturating_sub(popup_height)) / 2;
+
+    Rect {
+        x: area.x + popup_x,
+        y: area.y + popup_y,
+        width: popup_width,
+        height: popup_height,
+    }
 }
 
 /// Build the help content lines grouped by category.
 ///
 /// Returns a Vec of Line representing all shortcuts with category headers.
 fn build_help_content() -> Vec<Line<'static>> {
-    todo!("build_help_content")
+    let category_style = Style::default()
+        .fg(Color::Cyan)
+        .add_modifier(Modifier::BOLD);
+    let key_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
+    let desc_style = Style::default().fg(Color::White);
+
+    vec![
+        // Navigation
+        Line::from(vec![Span::styled("Navigation", category_style)]),
+        Line::from(vec![
+            Span::styled("  j/↓      ", key_style),
+            Span::styled("Scroll down", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  k/↑      ", key_style),
+            Span::styled("Scroll up", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  d        ", key_style),
+            Span::styled("Page down", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  u        ", key_style),
+            Span::styled("Page up", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  g        ", key_style),
+            Span::styled("Go to top", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  G        ", key_style),
+            Span::styled("Go to bottom", desc_style),
+        ]),
+        Line::from(""),
+        // Pane Focus
+        Line::from(vec![Span::styled("Pane Focus", category_style)]),
+        Line::from(vec![
+            Span::styled("  Tab      ", key_style),
+            Span::styled("Cycle panes", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  1        ", key_style),
+            Span::styled("Focus Main pane", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  2        ", key_style),
+            Span::styled("Focus Subagent pane", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  3        ", key_style),
+            Span::styled("Focus Stats pane", desc_style),
+        ]),
+        Line::from(""),
+        // Tabs
+        Line::from(vec![Span::styled("Tabs", category_style)]),
+        Line::from(vec![
+            Span::styled("  h/←      ", key_style),
+            Span::styled("Previous tab", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  l/→      ", key_style),
+            Span::styled("Next tab", desc_style),
+        ]),
+        Line::from(""),
+        // Message Interaction
+        Line::from(vec![Span::styled("Message", category_style)]),
+        Line::from(vec![
+            Span::styled("  Enter    ", key_style),
+            Span::styled("Expand/collapse message", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  y        ", key_style),
+            Span::styled("Copy to clipboard", desc_style),
+        ]),
+        Line::from(""),
+        // Search
+        Line::from(vec![Span::styled("Search", category_style)]),
+        Line::from(vec![
+            Span::styled("  /        ", key_style),
+            Span::styled("Start search", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  n        ", key_style),
+            Span::styled("Next match", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  N        ", key_style),
+            Span::styled("Previous match", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  Esc      ", key_style),
+            Span::styled("Exit search", desc_style),
+        ]),
+        Line::from(""),
+        // Stats
+        Line::from(vec![Span::styled("Stats", category_style)]),
+        Line::from(vec![
+            Span::styled("  s        ", key_style),
+            Span::styled("Toggle stats panel", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  f        ", key_style),
+            Span::styled("Cycle stats filter", desc_style),
+        ]),
+        Line::from(""),
+        // Live Mode
+        Line::from(vec![Span::styled("Live Mode", category_style)]),
+        Line::from(vec![
+            Span::styled("  Space    ", key_style),
+            Span::styled("Toggle live mode", desc_style),
+        ]),
+        Line::from(""),
+        // Application
+        Line::from(vec![Span::styled("Application", category_style)]),
+        Line::from(vec![
+            Span::styled("  ?        ", key_style),
+            Span::styled("Toggle help", desc_style),
+        ]),
+        Line::from(vec![
+            Span::styled("  q        ", key_style),
+            Span::styled("Quit", desc_style),
+        ]),
+    ]
 }
 
 // ===== Tests =====

@@ -94,7 +94,7 @@ fn render_help_overlay_contains_pane_focus_shortcuts() {
 
 #[test]
 fn render_help_overlay_contains_search_shortcuts() {
-    let backend = TestBackend::new(80, 30);
+    let backend = TestBackend::new(80, 50);
     let mut terminal = Terminal::new(backend).unwrap();
 
     terminal
@@ -122,7 +122,7 @@ fn render_help_overlay_contains_search_shortcuts() {
 
 #[test]
 fn render_help_overlay_contains_application_shortcuts() {
-    let backend = TestBackend::new(80, 30);
+    let backend = TestBackend::new(80, 50);
     let mut terminal = Terminal::new(backend).unwrap();
 
     terminal
@@ -146,7 +146,7 @@ fn render_help_overlay_contains_application_shortcuts() {
 
 #[test]
 fn render_help_overlay_shows_dismissal_hint() {
-    let backend = TestBackend::new(80, 30);
+    let backend = TestBackend::new(80, 50);
     let mut terminal = Terminal::new(backend).unwrap();
 
     terminal
