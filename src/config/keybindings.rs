@@ -50,6 +50,10 @@ impl Default for KeyBindings {
             KeyEvent::new(KeyCode::Char('G'), KeyModifiers::SHIFT),
             KeyAction::ScrollToBottom,
         );
+        bindings.insert(
+            KeyEvent::new(KeyCode::End, KeyModifiers::NONE),
+            KeyAction::ScrollToLatest,
+        );
 
         // Arrow key scrolling
         bindings.insert(
@@ -214,7 +218,7 @@ impl Default for KeyBindings {
         );
         bindings.insert(
             KeyEvent::new(KeyCode::Char('L'), KeyModifiers::SHIFT),
-            KeyAction::ScrollToLatest,
+            KeyAction::ToggleLogPane,
         );
 
         // Wrap toggle

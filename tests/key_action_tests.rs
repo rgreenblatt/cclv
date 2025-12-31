@@ -405,6 +405,8 @@ fn test_all_actions_have_default_bindings() {
             KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
             KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE),
             KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::Home, KeyModifiers::NONE),
+            KeyEvent::new(KeyCode::End, KeyModifiers::NONE),
         ]);
 
         // Ctrl combinations
