@@ -637,7 +637,12 @@ pub fn render_conversation_view_with_search(
                             }
                         }
                         MessageContent::Blocks(blocks) => {
-                            // For blocks, delegate to existing render logic (no highlighting yet)
+                            // TODO: Add search highlighting for ContentBlock variants
+                            // (ToolUse, ToolResult, Thinking). Requires:
+                            // 1. Extract text from each block type
+                            // 2. Track block_index to match SearchMatch.block_index
+                            // 3. Apply same multi-line highlighting logic per block
+                            // For now, delegate to existing render logic (no highlighting)
                             for block in blocks {
                                 let block_lines = render_content_block(
                                     block,
