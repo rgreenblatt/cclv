@@ -1,0 +1,5 @@
+{"type":"user","message":{"role":"user","content":"test"},"uuid":"abc-123"
+{"type":"assistant","invalid_utf8":"\uDC80\uDC81"}
+{"type":"user"}
+{not valid json at all
+{"type":"assistant","message":{"role":"assistant","content":[]}}
