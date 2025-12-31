@@ -10,10 +10,11 @@ pub use message::ConversationView;
 pub use stats::StatsPanel;
 pub use styles::MessageStyles;
 
+use crate::config::keybindings::KeyBindings;
 use crate::integration;
-use crate::model::{AppError, SessionId};
+use crate::model::{AppError, KeyAction, SessionId};
 use crate::source::InputSource;
-use crate::state::AppState;
+use crate::state::{scroll_handler, AppState};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -52,6 +53,7 @@ where
     app_state: AppState,
     input_source: InputSource,
     line_counter: usize,
+    key_bindings: KeyBindings,
 }
 
 impl TuiApp<CrosstermBackend<Stdout>> {
@@ -87,12 +89,14 @@ impl TuiApp<CrosstermBackend<Stdout>> {
         }
 
         let app_state = AppState::new(session);
+        let key_bindings = KeyBindings::default();
 
         Ok(Self {
             terminal,
             app_state,
             input_source,
             line_counter,
+            key_bindings,
         })
     }
 
@@ -170,67 +174,102 @@ where
     ///
     /// Returns true if app should quit
     fn handle_key(&mut self, key: KeyEvent) -> bool {
-        // Focus cycling - Tab key cycles between Main, Subagent, Stats
-        if key.code == KeyCode::Tab {
-            self.app_state.cycle_focus();
-            return false;
+        // Special case: Ctrl+C should always quit, even if not in bindings
+        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            return true;
         }
 
-        // Direct focus - Number keys 1/2/3
-        if key.code == KeyCode::Char('1') {
-            self.app_state.focus_main();
-            return false;
-        }
-        if key.code == KeyCode::Char('2') {
-            self.app_state.focus_subagent();
-            return false;
-        }
-        if key.code == KeyCode::Char('3') {
-            self.app_state.focus_stats();
-            return false;
-        }
+        // Look up action in key bindings
+        let action = match self.key_bindings.get(key) {
+            Some(action) => action,
+            None => return false, // Unknown key, ignore
+        };
 
-        // FR-038: Toggle auto-scroll on 'a' key
-        if key.code == KeyCode::Char('a') {
-            self.app_state.auto_scroll = !self.app_state.auto_scroll;
-            // If enabling, scroll to bottom immediately
-            if self.app_state.auto_scroll {
+        // Dispatch action
+        match action {
+            // Quit
+            KeyAction::Quit => return true,
+
+            // Focus navigation
+            KeyAction::CycleFocus => {
+                self.app_state.cycle_focus();
+            }
+            KeyAction::FocusMain => {
+                self.app_state.focus_main();
+            }
+            KeyAction::FocusSubagent => {
+                self.app_state.focus_subagent();
+            }
+            KeyAction::FocusStats => {
+                self.app_state.focus_stats();
+            }
+
+            // Auto-scroll
+            KeyAction::ToggleAutoScroll => {
+                self.app_state.auto_scroll = !self.app_state.auto_scroll;
+                // If enabling, scroll to bottom immediately
+                if self.app_state.auto_scroll {
+                    let entry_count = self.app_state.session().main_agent().len();
+                    self.app_state
+                        .main_scroll
+                        .scroll_to_bottom(entry_count.saturating_sub(1));
+                }
+            }
+            KeyAction::ScrollToLatest => {
                 let entry_count = self.app_state.session().main_agent().len();
                 self.app_state
                     .main_scroll
                     .scroll_to_bottom(entry_count.saturating_sub(1));
             }
-            return false;
-        }
 
-        // FR-020: Stats filtering by agent
-        // '!' - Filter stats to Global (all agents)
-        if key.code == KeyCode::Char('!') {
-            self.app_state.stats_filter = crate::model::StatsFilter::Global;
-            return false;
-        }
-
-        // '@' - Filter stats to Main Agent only
-        if key.code == KeyCode::Char('@') {
-            self.app_state.stats_filter = crate::model::StatsFilter::MainAgent;
-            return false;
-        }
-
-        // '#' - Filter stats to current Subagent (if tab selected)
-        if key.code == KeyCode::Char('#') {
-            if let Some(tab_index) = self.app_state.selected_tab {
-                let subagent_ids = self.app_state.session().subagent_ids_ordered();
-                if let Some(&agent_id) = subagent_ids.get(tab_index) {
-                    self.app_state.stats_filter =
-                        crate::model::StatsFilter::Subagent(agent_id.clone());
+            // Stats filters (legacy keybindings not yet in KeyBindings)
+            KeyAction::FilterGlobal => {
+                self.app_state.stats_filter = crate::model::StatsFilter::Global;
+            }
+            KeyAction::FilterMainAgent => {
+                self.app_state.stats_filter = crate::model::StatsFilter::MainAgent;
+            }
+            KeyAction::FilterSubagent => {
+                // Filter to current subagent tab if selected
+                if let Some(tab_index) = self.app_state.selected_tab {
+                    let subagent_ids = self.app_state.session().subagent_ids_ordered();
+                    if let Some(&agent_id) = subagent_ids.get(tab_index) {
+                        self.app_state.stats_filter =
+                            crate::model::StatsFilter::Subagent(agent_id.clone());
+                    }
                 }
             }
-            return false;
+
+            // Scrolling actions - delegate to pure scroll handler
+            KeyAction::ScrollUp
+            | KeyAction::ScrollDown
+            | KeyAction::PageUp
+            | KeyAction::PageDown
+            | KeyAction::ScrollToTop
+            | KeyAction::ScrollToBottom => {
+                // Calculate viewport height from terminal size
+                let viewport_height = self
+                    .terminal
+                    .size()
+                    .map(|rect| rect.height as usize)
+                    .unwrap_or(20)
+                    .saturating_sub(5); // Reserve space for header/footer
+
+                // Clone app_state, apply scroll action, then replace
+                // This is safe because AppState is cheap to clone (Rc internals)
+                let new_state = scroll_handler::handle_scroll_action(
+                    self.app_state.clone(),
+                    action,
+                    viewport_height,
+                );
+                self.app_state = new_state;
+            }
+
+            // Not yet implemented
+            _ => {}
         }
 
-        // Quit on 'q' or Ctrl+C
-        matches!(key.code, KeyCode::Char('q'))
-            || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL))
+        false
     }
 
     /// Render the current frame
@@ -330,12 +369,14 @@ mod tests {
         let session_id = SessionId::new("test-session").unwrap();
         let session = crate::model::Session::new(session_id);
         let app_state = AppState::new(session);
+        let key_bindings = KeyBindings::default();
 
         TuiApp {
             terminal,
             app_state,
             input_source,
             line_counter: 0,
+            key_bindings,
         }
     }
 
@@ -533,15 +574,15 @@ mod tests {
         // Set to a different filter initially
         app.app_state.stats_filter = crate::model::StatsFilter::MainAgent;
 
-        // Press '!' to set Global filter
-        let key = KeyEvent::new(KeyCode::Char('!'), KeyModifiers::NONE);
+        // Press 'f' to set Global filter
+        let key = KeyEvent::new(KeyCode::Char('f'), KeyModifiers::NONE);
         let should_quit = app.handle_key(key);
 
-        assert!(!should_quit, "'!' should not trigger quit");
+        assert!(!should_quit, "'f' should not trigger quit");
         assert_eq!(
             app.app_state.stats_filter,
             crate::model::StatsFilter::Global,
-            "'!' should set stats filter to Global"
+            "'f' should set stats filter to Global"
         );
     }
 
@@ -552,15 +593,15 @@ mod tests {
         // Set to Global initially
         app.app_state.stats_filter = crate::model::StatsFilter::Global;
 
-        // Press '@' to set MainAgent filter
-        let key = KeyEvent::new(KeyCode::Char('@'), KeyModifiers::NONE);
+        // Press 'm' to set MainAgent filter
+        let key = KeyEvent::new(KeyCode::Char('m'), KeyModifiers::NONE);
         let should_quit = app.handle_key(key);
 
-        assert!(!should_quit, "'@' should not trigger quit");
+        assert!(!should_quit, "'m' should not trigger quit");
         assert_eq!(
             app.app_state.stats_filter,
             crate::model::StatsFilter::MainAgent,
-            "'@' should set stats filter to MainAgent"
+            "'m' should set stats filter to MainAgent"
         );
     }
 
@@ -597,15 +638,15 @@ mod tests {
         // Set to Global initially
         app.app_state.stats_filter = crate::model::StatsFilter::Global;
 
-        // Press '#' to set Subagent filter for the selected tab
-        let key = KeyEvent::new(KeyCode::Char('#'), KeyModifiers::NONE);
+        // Press 'S' (Shift+s) to set Subagent filter for the selected tab
+        let key = KeyEvent::new(KeyCode::Char('S'), KeyModifiers::SHIFT);
         let should_quit = app.handle_key(key);
 
-        assert!(!should_quit, "'#' should not trigger quit");
+        assert!(!should_quit, "'S' should not trigger quit");
         assert_eq!(
             app.app_state.stats_filter,
             crate::model::StatsFilter::Subagent(agent_id),
-            "'#' should set stats filter to Subagent with selected tab's agent ID"
+            "'S' should set stats filter to Subagent with selected tab's agent ID"
         );
     }
 
@@ -619,15 +660,15 @@ mod tests {
         // Set to Global initially
         app.app_state.stats_filter = crate::model::StatsFilter::Global;
 
-        // Press '#' when no tab is selected
-        let key = KeyEvent::new(KeyCode::Char('#'), KeyModifiers::NONE);
+        // Press 'S' when no tab is selected
+        let key = KeyEvent::new(KeyCode::Char('S'), KeyModifiers::SHIFT);
         let should_quit = app.handle_key(key);
 
-        assert!(!should_quit, "'#' should not trigger quit");
+        assert!(!should_quit, "'S' should not trigger quit");
         assert_eq!(
             app.app_state.stats_filter,
             crate::model::StatsFilter::Global,
-            "'#' should not change filter when no tab is selected"
+            "'S' should not change filter when no tab is selected"
         );
     }
 
