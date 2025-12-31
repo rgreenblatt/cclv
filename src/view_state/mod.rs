@@ -17,10 +17,12 @@
 //! - `session`: SessionViewState - view-state for single session
 //! - `log`: LogViewState - top-level view-state for entire log
 //! - `cache`: RenderCache - LRU cache for rendered entry output
+//! - `height_index`: HeightIndex - O(log n) prefix sums via Fenwick tree
 
 pub mod cache;
 pub mod conversation;
 pub mod entry_view;
+pub mod height_index;
 pub mod hit_test;
 pub mod layout;
 pub mod layout_params;
