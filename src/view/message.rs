@@ -491,7 +491,11 @@ impl<'a> Widget for ConversationView<'a> {
                 };
 
                 let entry = entry_view.entry();
-                let cumulative_y = entry_view.layout().cumulative_y().get();
+                let cumulative_y = self
+                    .view_state
+                    .entry_cumulative_y(entry_index)
+                    .map(|offset| offset.get())
+                    .unwrap_or(0);
 
                 // FR-074: Detect session boundary and render separator
                 // Only render separator if session changed from previous entry

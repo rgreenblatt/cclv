@@ -224,9 +224,12 @@ fn visible_range_uses_height_index() {
     let viewport_bottom = viewport_top + viewport.height as usize;
 
     for i in range.start_index.get()..range.end_index.get() {
-        let entry = &state.entries[i];
-        let entry_top = entry.layout().cumulative_y().get();
-        let entry_bottom = entry.layout().bottom_y().get();
+        let entry_top = if i == 0 {
+            0
+        } else {
+            state.height_index.prefix_sum(i - 1)
+        };
+        let entry_bottom = state.height_index.prefix_sum(i);
 
         // Entry should overlap viewport
         assert!(

@@ -40,7 +40,7 @@ pub struct EntryView {
     index: EntryIndex,
     /// Precomputed rendered lines (source of truth for height).
     /// These are cached ratatui Lines ready for rendering.
-    rendered_lines: Vec<Line<'static>>,
+    pub(crate) rendered_lines: Vec<Line<'static>>,
     /// Whether this entry is expanded (shows full content).
     /// Collapsed entries show summary + "(+N more lines)" indicator.
     expanded: bool,
@@ -48,10 +48,6 @@ pub struct EntryView {
     /// `None` = use global wrap mode.
     /// `Some(mode)` = override global with this specific mode.
     wrap_override: Option<WrapMode>,
-    /// Temporary field to store cumulative_y during migration.
-    /// This is set by set_layout() and read by layout().
-    /// Will be removed when ConversationViewState is refactored.
-    cumulative_y: usize,
 }
 
 impl EntryView {
@@ -79,7 +75,6 @@ impl EntryView {
             rendered_lines: vec![Line::from("")], // Minimal placeholder (1 line minimum)
             expanded: false,
             wrap_override: None,
-            cumulative_y: 0,
         }
     }
 
@@ -117,7 +112,6 @@ impl EntryView {
             rendered_lines,
             expanded,
             wrap_override: None,
-            cumulative_y: 0,
         }
     }
 
@@ -218,47 +212,6 @@ impl EntryView {
     /// Set the wrap mode override (internal - called by ConversationViewState).
     pub(crate) fn set_wrap_override(&mut self, mode: Option<WrapMode>) {
         self.wrap_override = mode;
-    }
-
-    // TEMPORARY COMPATIBILITY SHIMS (will be removed after ConversationViewState refactoring)
-    // These allow the old layout API to continue working during migration.
-    // NOTE: These are pub(crate) - integration tests should use the public API instead:
-    //   - Use entry.height() instead of entry.layout().height()
-    //   - Use state.entry_cumulative_y(index) instead of entry.layout().cumulative_y()
-
-    /// Temporary compatibility shim for layout access.
-    /// Returns an EntryLayout based on rendered_lines height and stored cumulative_y.
-    #[allow(dead_code)]
-    pub(crate) fn layout(&self) -> super::layout::EntryLayout {
-        use super::layout::EntryLayout;
-        use super::types::LineOffset;
-        // Return layout with height from rendered_lines and stored cumulative_y
-        EntryLayout::new(self.height(), LineOffset::new(self.cumulative_y))
-    }
-
-    /// Temporary compatibility shim for set_layout.
-    /// Creates placeholder rendered_lines to match the layout height and stores cumulative_y.
-    /// This allows old code to continue working during migration.
-    #[allow(dead_code)]
-    pub(crate) fn set_layout(&mut self, layout: super::layout::EntryLayout) {
-        // Temporary fix: create placeholder lines to match expected height
-        // and store cumulative_y for layout() to return.
-        // This maintains compatibility with existing library code that calls:
-        //   let height = height_calculator(...);
-        //   let layout = EntryLayout::new(height, cumulative_y);
-        //   entry.set_layout(layout);
-        //
-        // Future: This will be removed when ConversationViewState is updated
-        // to use entry.recompute_lines() instead of set_layout().
-        let height = layout.height().get() as usize;
-        self.rendered_lines = vec![Line::default(); height];
-        self.cumulative_y = layout.cumulative_y().get();
-    }
-
-    /// Set cumulative_y position without overwriting rendered_lines.
-    /// Used by relayout() after recompute_lines() to maintain layout compatibility.
-    pub(crate) fn set_cumulative_y(&mut self, cumulative_y: usize) {
-        self.cumulative_y = cumulative_y;
     }
 }
 

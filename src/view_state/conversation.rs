@@ -250,24 +250,25 @@ impl ConversationViewState {
     /// - `params`: Current global layout parameters
     /// - `height_calculator`: Function to compute height for an entry
     ///   Receives: entry, expanded state, effective wrap mode
+    ///
+    /// # Deprecated
+    /// This method exists for backward compatibility during migration.
+    /// New code should use `relayout()` instead which doesn't require
+    /// an external height calculator.
     pub fn recompute_layout<F>(&mut self, params: LayoutParams, height_calculator: F)
     where
         F: Fn(&ConversationEntry, bool, WrapMode, u16) -> LineHeight,
     {
-        use super::layout::EntryLayout;
-
-        let mut cumulative_y = 0usize;
+        self.height_index.clear();
 
         for entry_view in &mut self.entries {
             let expanded = entry_view.is_expanded();
             let wrap = entry_view.effective_wrap(params.global_wrap);
             let height = height_calculator(entry_view.entry(), expanded, wrap, params.width);
-            let layout = EntryLayout::new(height, LineOffset::new(cumulative_y));
-            entry_view.set_layout(layout);
-            cumulative_y += height.get() as usize;
+            self.height_index.push(height.get() as usize);
         }
 
-        self.total_height = cumulative_y;
+        self.total_height = self.height_index.total();
         self.last_layout_params = Some(params);
     }
 
@@ -279,6 +280,11 @@ impl ConversationViewState {
     /// - `from_index`: Index of first entry to relayout
     /// - `params`: Current global layout parameters
     /// - `height_calculator`: Function to compute height
+    ///
+    /// # Deprecated
+    /// This method exists for backward compatibility during migration.
+    /// New code should use `toggle_entry_expanded()` or `set_entry_wrap_override()`
+    /// which handle HeightIndex updates atomically.
     pub fn relayout_from<F>(
         &mut self,
         from_index: EntryIndex,
@@ -287,30 +293,38 @@ impl ConversationViewState {
     ) where
         F: Fn(&ConversationEntry, bool, WrapMode, u16) -> LineHeight,
     {
-        use super::layout::EntryLayout;
-
         let idx = from_index.get();
         if idx >= self.entries.len() {
             return;
         }
 
-        // Get cumulative_y from previous entry (or 0 if from_index is 0)
-        let mut cumulative_y = if idx == 0 {
-            0
+        // If HeightIndex is empty or smaller than needed, initialize it first
+        if self.height_index.len() < self.entries.len() {
+            self.height_index.clear();
+            for entry_view in &mut self.entries {
+                let expanded = entry_view.is_expanded();
+                let wrap = entry_view.effective_wrap(params.global_wrap);
+                let height = height_calculator(entry_view.entry(), expanded, wrap, params.width);
+                self.height_index.push(height.get() as usize);
+                // Create placeholder rendered_lines to match calculated height (for backward compatibility)
+                use ratatui::text::Line;
+                entry_view.rendered_lines = vec![Line::default(); height.get() as usize];
+            }
         } else {
-            self.entries[idx - 1].layout().bottom_y().get()
-        };
-
-        for entry_view in &mut self.entries[idx..] {
-            let expanded = entry_view.is_expanded();
-            let wrap = entry_view.effective_wrap(params.global_wrap);
-            let height = height_calculator(entry_view.entry(), expanded, wrap, params.width);
-            let layout = EntryLayout::new(height, LineOffset::new(cumulative_y));
-            entry_view.set_layout(layout);
-            cumulative_y += height.get() as usize;
+            // Update from index onward
+            for i in idx..self.entries.len() {
+                let entry_view = &mut self.entries[i];
+                let expanded = entry_view.is_expanded();
+                let wrap = entry_view.effective_wrap(params.global_wrap);
+                let height = height_calculator(entry_view.entry(), expanded, wrap, params.width);
+                self.height_index.set(i, height.get() as usize);
+                // Create placeholder rendered_lines to match calculated height (for backward compatibility)
+                use ratatui::text::Line;
+                entry_view.rendered_lines = vec![Line::default(); height.get() as usize];
+            }
         }
 
-        self.total_height = cumulative_y;
+        self.total_height = self.height_index.total();
     }
 
     /// Toggle expand state for entry at index and relayout.
@@ -372,7 +386,11 @@ impl ConversationViewState {
 
         // Entry is above viewport - anchor to first visible entry
         let first_visible = visible.start_index;
-        let first_visible_y = self.get(first_visible)?.layout().cumulative_y().get();
+        let first_visible_y = if first_visible.get() == 0 {
+            0
+        } else {
+            self.height_index.prefix_sum(first_visible.get() - 1)
+        };
         let scroll_offset = visible.scroll_offset.get();
         let line_in_entry = first_visible_y.saturating_sub(scroll_offset);
 
@@ -410,16 +428,14 @@ impl ConversationViewState {
     /// # Returns
     /// Range of entry indices that are visible.
     pub fn visible_range(&self, viewport: ViewportDimensions) -> VisibleRange {
-        if self.entries.is_empty() {
+        if self.entries.is_empty() || self.height_index.is_empty() {
             return VisibleRange::default();
         }
 
         let scroll_offset =
             self.scroll
                 .resolve(self.total_height, viewport.height as usize, |idx| {
-                    self.entries
-                        .get(idx.get())
-                        .map(|e| e.layout().cumulative_y())
+                    self.entry_cumulative_y(idx)
                 });
 
         let scroll_line = scroll_offset.get();
@@ -427,15 +443,20 @@ impl ConversationViewState {
 
         // Binary search for first visible entry
         // Find first entry whose bottom_y > scroll_line
-        let start_index = self
-            .entries
-            .partition_point(|e| e.layout().bottom_y().get() <= scroll_line);
+        let indices: Vec<usize> = (0..self.entries.len()).collect();
+        let start_index = indices
+            .partition_point(|&i| self.height_index.prefix_sum(i) <= scroll_line);
 
         // Binary search for first entry past viewport
         // Find first entry whose cumulative_y >= viewport_bottom
-        let end_index = self
-            .entries
-            .partition_point(|e| e.layout().cumulative_y().get() < viewport_bottom);
+        let end_index = indices.partition_point(|&i| {
+            let cumulative_y = if i == 0 {
+                0
+            } else {
+                self.height_index.prefix_sum(i - 1)
+            };
+            cumulative_y < viewport_bottom
+        });
 
         VisibleRange::new(
             EntryIndex::new(start_index),
@@ -469,16 +490,19 @@ impl ConversationViewState {
 
         // Binary search for entry containing absolute_y
         // Find first entry whose bottom_y > absolute_y
-        let index = self
-            .entries
-            .partition_point(|e| e.layout().bottom_y().get() <= absolute_y);
+        let indices: Vec<usize> = (0..self.entries.len()).collect();
+        let index = indices
+            .partition_point(|&i| self.height_index.prefix_sum(i) <= absolute_y);
 
         if index >= self.entries.len() {
             return HitTestResult::miss();
         }
 
-        let entry = &self.entries[index];
-        let entry_y = entry.layout().cumulative_y().get();
+        let entry_y = if index == 0 {
+            0
+        } else {
+            self.height_index.prefix_sum(index - 1)
+        };
 
         if absolute_y < entry_y {
             return HitTestResult::miss();
@@ -491,9 +515,15 @@ impl ConversationViewState {
 
     /// Get cumulative_y for entry at index (for scroll resolution).
     pub fn entry_cumulative_y(&self, index: EntryIndex) -> Option<LineOffset> {
-        self.entries
-            .get(index.get())
-            .map(|e| e.layout().cumulative_y())
+        if index.get() >= self.entries.len() {
+            return None;
+        }
+        let cumulative_y = if index.get() == 0 {
+            0
+        } else {
+            self.height_index.prefix_sum(index.get() - 1)
+        };
+        Some(LineOffset::new(cumulative_y))
     }
 
     /// Get approximate scroll line for active session determination (FR-080).
@@ -541,18 +571,12 @@ impl ConversationViewState {
         self.global_wrap = wrap;
         self.height_index.clear();
 
-        let mut cumulative_y = 0usize;
-
         for entry_view in &mut self.entries {
             let effective_wrap = entry_view.effective_wrap(wrap);
             entry_view.recompute_lines(effective_wrap, width);
 
             let height = entry_view.height().get() as usize;
             self.height_index.push(height);
-
-            // Store cumulative_y for layout() compatibility (without overwriting rendered_lines)
-            entry_view.set_cumulative_y(cumulative_y);
-            cumulative_y += height;
         }
 
         self.total_height = self.height_index.total();
@@ -583,9 +607,6 @@ impl ConversationViewState {
 
         // Update total_height
         self.total_height = self.height_index.total();
-
-        // Update layout shim for backward compatibility (relayout from this index)
-        self.relayout_shim_from(index);
     }
 
     /// Set wrap override for entry. O(log n).
@@ -612,9 +633,6 @@ impl ConversationViewState {
 
         // Update total_height
         self.total_height = self.height_index.total();
-
-        // Update layout shim for backward compatibility (relayout from this index)
-        self.relayout_shim_from(index);
     }
 
     /// Append new entries (streaming mode). O(n log n) where n is new entries.
@@ -636,39 +654,10 @@ impl ConversationViewState {
             // Update HeightIndex
             self.height_index.push(height);
 
-            // Compute cumulative_y for layout shim
-            let cumulative_y = if start_idx + offset == 0 {
-                0
-            } else {
-                self.height_index.prefix_sum(start_idx + offset - 1)
-            };
-
-            // Set layout shim for backward compatibility
-            use super::layout::EntryLayout;
-            use super::types::LineOffset;
-            entry_view.set_layout(EntryLayout::new(entry_view.height(), LineOffset::new(cumulative_y)));
-
             self.entries.push(entry_view);
         }
 
         self.total_height = self.height_index.total();
-    }
-
-    /// Helper to update layout shims from a given index onward (for backward compatibility).
-    /// This maintains cumulative_y for the EntryView::layout() shim.
-    fn relayout_shim_from(&mut self, from_index: usize) {
-        use super::layout::EntryLayout;
-        use super::types::LineOffset;
-
-        for i in from_index..self.entries.len() {
-            let cumulative_y = if i == 0 {
-                0
-            } else {
-                self.height_index.prefix_sum(i - 1)
-            };
-            let entry = &mut self.entries[i];
-            entry.set_layout(EntryLayout::new(entry.height(), LineOffset::new(cumulative_y)));
-        }
     }
 }
 
@@ -848,30 +837,15 @@ mod tests {
 
         // Verify cumulative_y invariant: cumulative_y[i] = sum(height[0..i])
         assert_eq!(
-            state
-                .get(EntryIndex::new(0))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(0)).unwrap().get(),
             0
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(1))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(1)).unwrap().get(),
             5
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(2))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
             10
         );
     }
@@ -1013,30 +987,15 @@ mod tests {
 
         // After relayout from 1: [0, 10, 30], total=40
         assert_eq!(
-            state
-                .get(EntryIndex::new(0))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(0)).unwrap().get(),
             0
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(1))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(1)).unwrap().get(),
             10
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(2))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
             30
         ); // 10 + 20
         assert_eq!(state.total_height(), 40);
@@ -1063,8 +1022,8 @@ mod tests {
         for i in 0..3 {
             let idx = EntryIndex::new(i);
             assert_eq!(
-                state1.get(idx).unwrap().layout().cumulative_y(),
-                state2.get(idx).unwrap().layout().cumulative_y()
+                state1.entry_cumulative_y(idx),
+                state2.entry_cumulative_y(idx)
             );
         }
     }
@@ -1130,21 +1089,11 @@ mod tests {
         // After expanding entry 0: [0, 20], total=30
 
         assert_eq!(
-            state
-                .get(EntryIndex::new(0))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(0)).unwrap().get(),
             0
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(1))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(1)).unwrap().get(),
             20
         );
         assert_eq!(state.total_height(), 30);
@@ -1192,10 +1141,8 @@ mod tests {
         // Record the first visible entry's absolute position in viewport
         let first_visible_entry = range_before.start_index;
         let first_visible_y_before = state
-            .get(first_visible_entry)
+            .entry_cumulative_y(first_visible_entry)
             .unwrap()
-            .layout()
-            .cumulative_y()
             .get();
         let scroll_offset_before = range_before.scroll_offset.get();
         let offset_in_viewport_before = first_visible_y_before.saturating_sub(scroll_offset_before);
@@ -1230,10 +1177,8 @@ mod tests {
         // and it should still be at the same relative position in the viewport
         let range_after = state.visible_range(viewport);
         let first_visible_y_after = state
-            .get(first_visible_entry)
+            .entry_cumulative_y(first_visible_entry)
             .unwrap()
-            .layout()
-            .cumulative_y()
             .get();
         let scroll_offset_after = range_after.scroll_offset.get();
         let offset_in_viewport_after = first_visible_y_after.saturating_sub(scroll_offset_after);
@@ -1685,30 +1630,15 @@ mod tests {
         // Initial: all Wrap mode, heights [10, 10, 10], cumulative_y [0, 10, 20], total=30
 
         assert_eq!(
-            state
-                .get(EntryIndex::new(0))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(0)).unwrap().get(),
             0
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(1))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(1)).unwrap().get(),
             10
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(2))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
             20
         );
         assert_eq!(state.total_height(), 30);
@@ -1723,30 +1653,15 @@ mod tests {
 
         // After: heights [10, 5, 10], cumulative_y [0, 10, 15], total=25
         assert_eq!(
-            state
-                .get(EntryIndex::new(0))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(0)).unwrap().get(),
             0
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(1))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(1)).unwrap().get(),
             10
         );
         assert_eq!(
-            state
-                .get(EntryIndex::new(2))
-                .unwrap()
-                .layout()
-                .cumulative_y()
-                .get(),
+            state.entry_cumulative_y(EntryIndex::new(2)).unwrap().get(),
             15
         ); // Shifted up by 5
         assert_eq!(state.total_height(), 25);
