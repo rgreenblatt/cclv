@@ -26,7 +26,10 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
     let styles = MessageStyles::new();
 
     // Determine if search input should be shown
-    let search_visible = matches!(state.search, SearchState::Typing { .. } | SearchState::Active { .. });
+    let search_visible = matches!(
+        state.search,
+        SearchState::Typing { .. } | SearchState::Active { .. }
+    );
 
     // Split screen vertically: header + main content area + optional search + status bar
     let vertical_chunks = if search_visible {
@@ -65,8 +68,8 @@ pub fn render_layout(frame: &mut Frame, state: &AppState) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),      // Conversation area (flexible)
-                Constraint::Length(10),  // Stats panel (fixed ~10 lines)
+                Constraint::Min(0),     // Conversation area (flexible)
+                Constraint::Length(10), // Stats panel (fixed ~10 lines)
             ])
             .split(content_area);
         (chunks[0], Some(chunks[1]))
@@ -155,7 +158,13 @@ fn render_subagent_pane(frame: &mut Frame, area: Rect, state: &AppState, styles:
         _ => HashSet::new(), // No search active, no matches
     };
 
-    tabs::render_tab_bar(frame, tab_area, &agent_ids, state.selected_tab, &tabs_with_matches);
+    tabs::render_tab_bar(
+        frame,
+        tab_area,
+        &agent_ids,
+        state.selected_tab,
+        &tabs_with_matches,
+    );
 
     // Determine which conversation to display based on selected_tab
     let selected_conversation = if let Some(idx) = state.selected_tab {
@@ -193,11 +202,7 @@ fn render_stats_panel(frame: &mut Frame, area: Rect, state: &AppState) {
     let stats = build_session_stats(state.session());
 
     // Get model ID for pricing calculation
-    let model_id = state
-        .session()
-        .main_agent()
-        .model()
-        .map(|m| m.id());
+    let model_id = state.session().main_agent().model().map(|m| m.id());
 
     // Use default pricing configuration
     let pricing = PricingConfig::default();
@@ -268,13 +273,16 @@ fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u
     // Truncate if terminal is too narrow
     if terminal_width < 60 {
         // Very narrow - show only critical shortcuts
-        format!("q: Quit | ?: Help | {}", match focus {
-            FocusPane::Main => "/: Search",
-            FocusPane::Subagent => "[ ]: Tabs",
-            FocusPane::Stats => "!/@/#: Filter",
-            FocusPane::Search if search_active => "n: Next",
-            FocusPane::Search => "Enter",
-        })
+        format!(
+            "q: Quit | ?: Help | {}",
+            match focus {
+                FocusPane::Main => "/: Search",
+                FocusPane::Subagent => "[ ]: Tabs",
+                FocusPane::Stats => "!/@/#: Filter",
+                FocusPane::Search if search_active => "n: Next",
+                FocusPane::Search => "Enter",
+            }
+        )
     } else if (full_hints.len() as u16) > terminal_width {
         // Moderate width - abbreviate but keep most info
         let abbreviated = match focus {

@@ -11,7 +11,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::Line,
-    widgets::{Block, Borders, Paragraph, Widget},
+    widgets::{Block, Borders, Paragraph, Widget, Wrap},
     Frame,
 };
 use tui_markdown::from_str;
@@ -342,7 +342,6 @@ pub fn render_conversation_view(
     focused: bool,
     global_wrap: WrapMode,
 ) {
-    let _ = global_wrap; // TODO: Use global_wrap to control wrap behavior (LW-008)
     let entry_count = conversation.entries().len();
 
     // Build title with agent info
@@ -474,22 +473,26 @@ pub fn render_conversation_view(
         }
     }
 
-    // Determine scroll indicators (FR-040) - check BEFORE applying offset
-    let horizontal_offset = scroll.horizontal_offset;
-    let has_left_indicator = horizontal_offset > 0;
-    let has_right_indicator = has_long_lines(&lines, viewport_width + horizontal_offset);
+    // Determine scroll indicators and apply horizontal scrolling only when wrap is disabled (FR-040)
+    let title_with_indicators = if global_wrap == WrapMode::NoWrap {
+        let horizontal_offset = scroll.horizontal_offset;
+        let has_left_indicator = horizontal_offset > 0;
+        let has_right_indicator = has_long_lines(&lines, viewport_width + horizontal_offset);
 
-    // Apply horizontal scrolling offset to all lines (FR-039)
-    if horizontal_offset > 0 {
-        lines = lines
-            .into_iter()
-            .map(|line| apply_horizontal_offset(line, horizontal_offset))
-            .collect();
-    }
+        // Apply horizontal scrolling offset to all lines (FR-040)
+        if horizontal_offset > 0 {
+            lines = lines
+                .into_iter()
+                .map(|line| apply_horizontal_offset(line, horizontal_offset))
+                .collect();
+        }
 
-    // Update title with scroll indicators
-    let title_with_indicators =
-        add_scroll_indicators_to_title(title, has_left_indicator, has_right_indicator);
+        // Update title with scroll indicators
+        add_scroll_indicators_to_title(title, has_left_indicator, has_right_indicator)
+    } else {
+        // Wrap enabled - no scroll indicators needed
+        title
+    };
 
     // Rebuild block with updated title
     let block_with_indicators = Block::default()
@@ -497,7 +500,15 @@ pub fn render_conversation_view(
         .title(title_with_indicators)
         .style(Style::default().fg(border_color));
 
-    let paragraph = Paragraph::new(lines).block(block_with_indicators);
+    // Apply wrap mode (FR-039)
+    let paragraph = if global_wrap == WrapMode::Wrap {
+        Paragraph::new(lines)
+            .block(block_with_indicators)
+            .wrap(Wrap { trim: false })
+    } else {
+        Paragraph::new(lines).block(block_with_indicators)
+    };
+
     frame.render_widget(paragraph, area);
 }
 
@@ -527,7 +538,6 @@ pub fn render_conversation_view_with_search(
     global_wrap: WrapMode,
 ) {
     use ratatui::text::Span;
-    let _ = global_wrap; // TODO: Use global_wrap to control wrap behavior (LW-008)
 
     let entry_count = conversation.entries().len();
 
@@ -580,7 +590,11 @@ pub fn render_conversation_view_with_search(
                                 let mut entry_m = Vec::new();
                                 for (idx, m) in matches.iter().enumerate() {
                                     if m.entry_uuid == *log_entry.uuid() && m.block_index == 0 {
-                                        entry_m.push((m.char_offset, m.length, idx == *current_idx));
+                                        entry_m.push((
+                                            m.char_offset,
+                                            m.length,
+                                            idx == *current_idx,
+                                        ));
                                     }
                                 }
                                 entry_m
@@ -614,12 +628,19 @@ pub fn render_conversation_view_with_search(
                                             // Check if match overlaps this line
                                             if match_start < line_end && match_end > line_start {
                                                 // Convert to line-relative offset
-                                                let line_relative_start = match_start.saturating_sub(line_start);
-                                                let line_relative_end = (match_end - line_start).min(line_text.len());
-                                                let line_relative_length = line_relative_end.saturating_sub(line_relative_start);
+                                                let line_relative_start =
+                                                    match_start.saturating_sub(line_start);
+                                                let line_relative_end =
+                                                    (match_end - line_start).min(line_text.len());
+                                                let line_relative_length = line_relative_end
+                                                    .saturating_sub(line_relative_start);
 
                                                 if line_relative_length > 0 {
-                                                    Some((line_relative_start, line_relative_length, *is_current))
+                                                    Some((
+                                                        line_relative_start,
+                                                        line_relative_length,
+                                                        *is_current,
+                                                    ))
                                                 } else {
                                                     None
                                                 }
@@ -690,7 +711,15 @@ pub fn render_conversation_view_with_search(
         .title(title)
         .style(Style::default().fg(border_color));
 
-    let paragraph = Paragraph::new(lines).block(block);
+    // Apply wrap mode (FR-039)
+    let paragraph = if global_wrap == WrapMode::Wrap {
+        Paragraph::new(lines)
+            .block(block)
+            .wrap(Wrap { trim: false })
+    } else {
+        Paragraph::new(lines).block(block)
+    };
+
     frame.render_widget(paragraph, area);
 }
 
@@ -717,10 +746,7 @@ fn apply_highlights_to_text(
     for (offset, length, is_current) in sorted_matches {
         // Add text before match
         if offset > last_pos {
-            spans.push(Span::styled(
-                text[last_pos..offset].to_string(),
-                base_style,
-            ));
+            spans.push(Span::styled(text[last_pos..offset].to_string(), base_style));
         }
 
         // Add highlighted match
@@ -2746,7 +2772,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
-                    WrapMode::default(),
+                    WrapMode::NoWrap, // Horizontal scrolling requires NoWrap mode
                 );
             })
             .expect("Failed to draw");
@@ -2823,7 +2849,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
-                    WrapMode::default(),
+                    WrapMode::NoWrap, // Scroll indicators require NoWrap mode
                 );
             })
             .expect("Failed to draw");
@@ -2883,7 +2909,7 @@ mod tests {
                     &scroll_state,
                     &create_test_styles(),
                     false,
-                    WrapMode::default(),
+                    WrapMode::NoWrap, // Scroll indicators require NoWrap mode
                 );
             })
             .expect("Failed to draw");
@@ -3416,10 +3442,7 @@ mod tests {
     fn render_text_without_search_has_no_highlighting() {
         // ARRANGE: Create conversation with simple text
         let mut conversation = crate::model::AgentConversation::new(None);
-        conversation.add_entry(create_test_log_entry(
-            "entry-1",
-            "This is some test text",
-        ));
+        conversation.add_entry(create_test_log_entry("entry-1", "This is some test text"));
 
         let scroll_state = ScrollState::default();
         let search_state = crate::state::SearchState::Inactive;
@@ -3475,7 +3498,7 @@ mod tests {
                 agent_id: None,
                 entry_uuid: entry_uuid.clone(),
                 block_index: 0,
-                char_offset: 8,  // First "test"
+                char_offset: 8, // First "test"
                 length: 4,
             },
             crate::state::SearchMatch {
@@ -3660,8 +3683,8 @@ mod tests {
     fn apply_highlights_single_line_multiple_matches() {
         let text = "foo bar foo";
         let matches = vec![
-            (0, 3, false),  // first "foo"
-            (8, 3, false),  // second "foo"
+            (0, 3, false), // first "foo"
+            (8, 3, false), // second "foo"
         ];
         let style = Style::default();
 
@@ -3728,14 +3751,8 @@ mod tests {
         let content: String = buffer.content().iter().map(|cell| cell.symbol()).collect();
 
         // ASSERT: Both lines rendered
-        assert!(
-            content.contains("First"),
-            "Should render first line"
-        );
-        assert!(
-            content.contains("Second"),
-            "Should render second line"
-        );
+        assert!(content.contains("First"), "Should render first line");
+        assert!(content.contains("Second"), "Should render second line");
 
         // CRITICAL: "Second" should be highlighted
         let highlighted_cells: Vec<_> = buffer
@@ -3818,10 +3835,7 @@ mod tests {
         // ARRANGE: Matches on both lines
         let mut conversation = crate::model::AgentConversation::new(None);
         let entry_uuid = crate::model::EntryUuid::new("entry-ml3").expect("valid uuid");
-        conversation.add_entry(create_test_log_entry(
-            "entry-ml3",
-            "foo bar\nfoo baz",
-        ));
+        conversation.add_entry(create_test_log_entry("entry-ml3", "foo bar\nfoo baz"));
 
         let scroll_state = ScrollState::default();
 
@@ -3890,10 +3904,7 @@ mod tests {
         // ARRANGE: Current match on line 2
         let mut conversation = crate::model::AgentConversation::new(None);
         let entry_uuid = crate::model::EntryUuid::new("entry-ml4").expect("valid uuid");
-        conversation.add_entry(create_test_log_entry(
-            "entry-ml4",
-            "foo bar\nfoo baz",
-        ));
+        conversation.add_entry(create_test_log_entry("entry-ml4", "foo bar\nfoo baz"));
 
         let scroll_state = ScrollState::default();
 
