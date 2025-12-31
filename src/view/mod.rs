@@ -2,10 +2,12 @@
 
 mod layout;
 mod message;
+mod stats;
 mod styles;
 pub mod tabs;
 
 pub use message::ConversationView;
+pub use stats::StatsPanel;
 pub use styles::MessageStyles;
 
 use crate::integration;
