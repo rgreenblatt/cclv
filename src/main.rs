@@ -1,7 +1,47 @@
 //! Claude Code Log Viewer - Entry Point
 
+use clap::Parser;
+use std::path::PathBuf;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
+
+/// Claude Code Log Viewer - TUI for viewing Claude Code JSONL logs
+#[derive(Parser, Debug)]
+#[command(name = "cclv")]
+#[command(version)]
+#[command(about = "TUI application for viewing Claude Code JSONL session logs")]
+pub struct Args {
+    /// Path to JSONL log file (reads from stdin if not provided)
+    pub file: Option<PathBuf>,
+
+    /// Follow the file for new content (like tail -f)
+    #[arg(short, long)]
+    pub follow: bool,
+
+    /// Start at specific line number (must be positive)
+    #[arg(short, long, default_value = "1", value_parser = clap::value_parser!(u32).range(1..))]
+    pub line: u32,
+
+    /// Start with search query active
+    #[arg(short, long)]
+    pub search: Option<String>,
+
+    /// Show statistics panel on startup
+    #[arg(long)]
+    pub stats: bool,
+
+    /// Disable colors
+    #[arg(long)]
+    pub no_color: bool,
+
+    /// Color theme for syntax highlighting
+    #[arg(long, default_value = "base16-ocean", value_parser = ["base16-ocean", "solarized-dark", "solarized-light", "monokai"])]
+    pub theme: String,
+
+    /// Path to configuration file
+    #[arg(long)]
+    pub config: Option<PathBuf>,
+}
 
 fn main() {
     // Initialize tracing subscriber with env filter
@@ -13,5 +53,178 @@ fn main() {
         )
         .init();
 
+    let _args = Args::parse();
+
     info!(version = env!("CARGO_PKG_VERSION"), "cclv starting");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn test_help_does_not_error() {
+        // Help should succeed (exits with code 0)
+        let result = Args::try_parse_from(["cclv", "--help"]);
+        // Help returns Err with DisplayHelp, which is success
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::DisplayHelp);
+    }
+
+    #[test]
+    fn test_version_does_not_error() {
+        let result = Args::try_parse_from(["cclv", "--version"]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::DisplayVersion);
+    }
+
+    #[test]
+    fn test_no_args_defaults() {
+        let args = Args::parse_from(["cclv"]);
+        assert_eq!(args.file, None);
+        assert_eq!(args.follow, false);
+        assert_eq!(args.line, 1);
+        assert_eq!(args.search, None);
+        assert_eq!(args.stats, false);
+        assert_eq!(args.no_color, false);
+        assert_eq!(args.theme, "base16-ocean");
+        assert_eq!(args.config, None);
+    }
+
+    #[test]
+    fn test_file_path_populates_file_field() {
+        let args = Args::parse_from(["cclv", "test.jsonl"]);
+        assert_eq!(args.file, Some(PathBuf::from("test.jsonl")));
+    }
+
+    #[test]
+    fn test_follow_flag_short() {
+        let args = Args::parse_from(["cclv", "-f"]);
+        assert_eq!(args.follow, true);
+    }
+
+    #[test]
+    fn test_follow_flag_long() {
+        let args = Args::parse_from(["cclv", "--follow"]);
+        assert_eq!(args.follow, true);
+    }
+
+    #[test]
+    fn test_line_short_flag() {
+        let args = Args::parse_from(["cclv", "-l", "50"]);
+        assert_eq!(args.line, 50);
+    }
+
+    #[test]
+    fn test_line_long_flag() {
+        let args = Args::parse_from(["cclv", "--line", "100"]);
+        assert_eq!(args.line, 100);
+    }
+
+    #[test]
+    fn test_line_default_is_one() {
+        let args = Args::parse_from(["cclv"]);
+        assert_eq!(args.line, 1);
+    }
+
+    #[test]
+    fn test_line_rejects_zero() {
+        let result = Args::try_parse_from(["cclv", "-l", "0"]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::ValueValidation);
+    }
+
+    #[test]
+    fn test_line_rejects_negative() {
+        let result = Args::try_parse_from(["cclv", "-l", "-1"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_stats_flag() {
+        let args = Args::parse_from(["cclv", "--stats"]);
+        assert_eq!(args.stats, true);
+    }
+
+    #[test]
+    fn test_no_color_flag() {
+        let args = Args::parse_from(["cclv", "--no-color"]);
+        assert_eq!(args.no_color, true);
+    }
+
+    #[test]
+    fn test_search_short_flag() {
+        let args = Args::parse_from(["cclv", "-s", "error"]);
+        assert_eq!(args.search, Some("error".to_string()));
+    }
+
+    #[test]
+    fn test_search_long_flag() {
+        let args = Args::parse_from(["cclv", "--search", "warning"]);
+        assert_eq!(args.search, Some("warning".to_string()));
+    }
+
+    #[test]
+    fn test_theme_base16_ocean() {
+        let args = Args::parse_from(["cclv", "--theme", "base16-ocean"]);
+        assert_eq!(args.theme, "base16-ocean");
+    }
+
+    #[test]
+    fn test_theme_solarized_dark() {
+        let args = Args::parse_from(["cclv", "--theme", "solarized-dark"]);
+        assert_eq!(args.theme, "solarized-dark");
+    }
+
+    #[test]
+    fn test_theme_solarized_light() {
+        let args = Args::parse_from(["cclv", "--theme", "solarized-light"]);
+        assert_eq!(args.theme, "solarized-light");
+    }
+
+    #[test]
+    fn test_theme_monokai() {
+        let args = Args::parse_from(["cclv", "--theme", "monokai"]);
+        assert_eq!(args.theme, "monokai");
+    }
+
+    #[test]
+    fn test_theme_invalid_rejects() {
+        let result = Args::try_parse_from(["cclv", "--theme", "invalid-theme"]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::InvalidValue);
+    }
+
+    #[test]
+    fn test_config_path() {
+        let args = Args::parse_from(["cclv", "--config", "/custom/config.toml"]);
+        assert_eq!(args.config, Some(PathBuf::from("/custom/config.toml")));
+    }
+
+    #[test]
+    fn test_combined_flags() {
+        let args = Args::parse_from([
+            "cclv",
+            "session.jsonl",
+            "-f",
+            "-l",
+            "42",
+            "-s",
+            "error",
+            "--stats",
+            "--theme",
+            "monokai",
+        ]);
+        assert_eq!(args.file, Some(PathBuf::from("session.jsonl")));
+        assert_eq!(args.follow, true);
+        assert_eq!(args.line, 42);
+        assert_eq!(args.search, Some("error".to_string()));
+        assert_eq!(args.stats, true);
+        assert_eq!(args.theme, "monokai");
+    }
 }
