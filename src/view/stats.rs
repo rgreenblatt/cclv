@@ -268,4 +268,107 @@ mod tests {
 
         // If we get here without panic, test passes
     }
+
+    #[test]
+    fn stats_panel_displays_cache_tokens_when_nonzero() {
+        use crate::model::TokenUsage;
+        use ratatui::buffer::Buffer;
+        use ratatui::layout::Rect;
+        use std::collections::HashMap;
+
+        let stats = SessionStats {
+            total_usage: TokenUsage {
+                input_tokens: 1000,
+                output_tokens: 500,
+                cache_creation_input_tokens: 200,
+                cache_read_input_tokens: 150,
+            },
+            main_agent_usage: TokenUsage::default(),
+            subagent_usage: HashMap::new(),
+            tool_counts: HashMap::new(),
+            subagent_count: 0,
+            entry_count: 5,
+        };
+
+        let filter = StatsFilter::Global;
+        let pricing = PricingConfig::default();
+        let panel = StatsPanel::new(&stats, &filter, &pricing, Some("opus"));
+
+        let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 25));
+        panel.render(Rect::new(0, 0, 50, 25), &mut buffer);
+
+        // Extract rendered text from buffer
+        let content = buffer_to_string(&buffer);
+
+        // Verify cache tokens are displayed
+        assert!(
+            content.contains("Cache:"),
+            "Expected 'Cache:' label in output, got:\n{}",
+            content
+        );
+        assert!(
+            content.contains("350"),  // 200 + 150 = 350 total cache tokens
+            "Expected total cache tokens '350' in output, got:\n{}",
+            content
+        );
+    }
+
+    #[test]
+    fn stats_panel_hides_cache_tokens_when_zero() {
+        use crate::model::TokenUsage;
+        use ratatui::buffer::Buffer;
+        use ratatui::layout::Rect;
+        use std::collections::HashMap;
+
+        let stats = SessionStats {
+            total_usage: TokenUsage {
+                input_tokens: 1000,
+                output_tokens: 500,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+            },
+            main_agent_usage: TokenUsage::default(),
+            subagent_usage: HashMap::new(),
+            tool_counts: HashMap::new(),
+            subagent_count: 0,
+            entry_count: 5,
+        };
+
+        let filter = StatsFilter::Global;
+        let pricing = PricingConfig::default();
+        let panel = StatsPanel::new(&stats, &filter, &pricing, Some("opus"));
+
+        let mut buffer = Buffer::empty(Rect::new(0, 0, 50, 25));
+        panel.render(Rect::new(0, 0, 50, 25), &mut buffer);
+
+        // Extract rendered text from buffer
+        let content = buffer_to_string(&buffer);
+
+        // Verify cache tokens are NOT displayed when zero
+        assert!(
+            !content.contains("Cache:"),
+            "Expected NO 'Cache:' label when cache tokens are zero, got:\n{}",
+            content
+        );
+    }
+
+    /// Helper to extract text content from a ratatui Buffer
+    fn buffer_to_string(buffer: &Buffer) -> String {
+        let area = buffer.area();
+        let mut lines = Vec::new();
+
+        for y in area.top()..area.bottom() {
+            let mut line = String::new();
+            for x in area.left()..area.right() {
+                let cell = &buffer[(x, y)];
+                line.push_str(cell.symbol());
+            }
+            let trimmed = line.trim_end();
+            if !trimmed.is_empty() {
+                lines.push(trimmed.to_string());
+            }
+        }
+
+        lines.join("\n")
+    }
 }
