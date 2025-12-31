@@ -1,4 +1,4 @@
-//! Tests for split pane layout rendering.
+//! Tests for unified conversation layout rendering (FR-083-088).
 
 use super::*;
 use crate::model::{AgentId, ConversationEntry, SessionId};
@@ -1469,22 +1469,13 @@ fn unified_layout_has_no_horizontal_split() {
 
     // EXPECTATION: With unified tabs, there should be NO 60/40 horizontal split.
     // The entire conversation area should be 100% width.
-    // This test will FAIL until we remove calculate_horizontal_constraints
-    // and the horizontal split logic.
 
-    // Strategy: Check that calculate_pane_areas returns only ONE full-width area,
-    // not two split areas.
+    // Strategy: Verify calculate_pane_area returns a single full-width area.
     let frame_area = Rect::new(0, 0, 80, 24); // TestBackend size
-    let (main_area, subagent_area) = calculate_pane_areas(frame_area, &state);
+    let main_area = calculate_pane_area(frame_area, &state);
 
     // After unified layout:
-    // - main_area should be full conversation area width
-    // - subagent_area should be None (no separate pane)
-    assert_eq!(
-        subagent_area, None,
-        "FR-083: Should have no separate subagent pane (unified layout)"
-    );
-
+    // - main_area should be full conversation area width (no horizontal split)
     // Calculate expected conversation area width (accounting for stats panel if visible)
     // For now, just verify main_area width is reasonable (> 40 columns for 80-wide terminal)
     assert!(

@@ -77,8 +77,6 @@ where
     last_tab_area: Option<ratatui::layout::Rect>,
     /// Last rendered main pane area (for entry click detection)
     last_main_area: Option<ratatui::layout::Rect>,
-    /// Last rendered subagent pane area (for entry click detection)
-    last_subagent_area: Option<ratatui::layout::Rect>,
 }
 
 impl TuiApp<CrosstermBackend<Stdout>> {
@@ -132,7 +130,6 @@ impl TuiApp<CrosstermBackend<Stdout>> {
             pending_entries: Vec::new(),
             last_tab_area: None,
             last_main_area: None,
-            last_subagent_area: None,
         })
     }
 
@@ -243,7 +240,6 @@ where
             pending_entries: Vec::new(),
             last_tab_area: None,
             last_main_area: None,
-            last_subagent_area: None,
         }
     }
 
@@ -821,9 +817,8 @@ where
         let frame_area = ratatui::layout::Rect::new(0, 0, size.width, size.height);
         self.last_tab_area = layout::calculate_tab_area(frame_area, &self.app_state);
 
-        let (main_area, subagent_area) = layout::calculate_pane_areas(frame_area, &self.app_state);
+        let main_area = layout::calculate_pane_area(frame_area, &self.app_state);
         self.last_main_area = Some(main_area);
-        self.last_subagent_area = subagent_area;
 
         // Render the frame
         self.terminal.draw(|frame| {
@@ -1059,7 +1054,6 @@ mod tests {
             pending_entries: Vec::new(),
             last_tab_area: None,
             last_main_area: None,
-            last_subagent_area: None,
         }
     }
 
@@ -2408,7 +2402,6 @@ mod tests {
             pending_entries: Vec::new(),
             last_tab_area: None,
             last_main_area: None,
-            last_subagent_area: None,
         };
 
         // Initial relayout at 80 columns

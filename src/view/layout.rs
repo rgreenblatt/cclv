@@ -1,7 +1,7 @@
-//! Split pane layout rendering.
+//! Unified conversation layout rendering.
 //!
-//! Pure layout logic - calculates layout constraints and renders
-//! placeholder widgets for main agent, subagent tabs, and status bar.
+//! Pure layout logic for the unified tab model (FR-083-088). Single conversation pane
+//! with tab bar for switching between main agent and subagent conversations.
 
 use crate::model::{AgentId, PricingConfig};
 use crate::state::{agent_ids_with_matches, AppState, FocusPane, SearchState, WrapMode};
@@ -77,9 +77,8 @@ pub fn calculate_tab_area(frame_area: Rect, state: &AppState) -> Option<Rect> {
 /// Calculate the conversation pane area for mouse click detection.
 ///
 /// FR-083-088: Unified tab model - returns single full-width conversation area.
-/// Returns (conversation_area, None) - second value always None (no horizontal split).
 /// This calculation must match the layout logic in render_layout().
-pub fn calculate_pane_areas(frame_area: Rect, state: &AppState) -> (Rect, Option<Rect>) {
+pub fn calculate_pane_area(frame_area: Rect, state: &AppState) -> Rect {
     // Determine if search input is visible
     let search_visible = matches!(
         state.search,
@@ -111,7 +110,7 @@ pub fn calculate_pane_areas(frame_area: Rect, state: &AppState) -> (Rect, Option
     let content_area = vertical_chunks[1];
 
     // Calculate conversation area (accounting for stats panel)
-    let conversation_area = if state.stats_visible {
+    if state.stats_visible {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(0), Constraint::Length(10)])
@@ -119,10 +118,7 @@ pub fn calculate_pane_areas(frame_area: Rect, state: &AppState) -> (Rect, Option
         chunks[0]
     } else {
         content_area
-    };
-
-    // FR-083: No horizontal split - single full-width conversation area
-    (conversation_area, None)
+    }
 }
 
 /// Render the unified tab layout with tab bar, conversation area, and status bar.
