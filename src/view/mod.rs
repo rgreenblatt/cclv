@@ -117,9 +117,6 @@ impl TuiApp<CrosstermBackend<Stdout>> {
             // Poll for new log entries (accumulates to pending buffer)
             self.poll_input()?;
 
-            // Only render if frame budget elapsed OR keyboard event occurred
-            let should_render = self.should_render_frame();
-
             // Poll for keyboard events (non-blocking with timeout)
             let keyboard_event = if event::poll(FRAME_DURATION)? {
                 if let Event::Key(key) = event::read()? {
@@ -133,6 +130,9 @@ impl TuiApp<CrosstermBackend<Stdout>> {
             } else {
                 false
             };
+
+            // Check if frame budget elapsed AFTER poll (not before)
+            let should_render = self.should_render_frame();
 
             // Render frame if budget elapsed or keyboard event
             if should_render || keyboard_event {
@@ -1006,6 +1006,9 @@ mod tests {
         // we should NOT render after each one.
 
         let mut app = create_test_app();
+
+        // Set last render time to now so timing checks are valid
+        app.set_last_render_time(std::time::Instant::now());
 
         // Simulate 10 entries arriving in quick succession
         for i in 0..10 {

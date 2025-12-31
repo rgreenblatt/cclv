@@ -154,7 +154,7 @@ fn toggle_expand_works_on_subagent_pane() {
         .get(agent_id)
         .unwrap()
         .entries()
-        .get(0)
+        .first()
         .and_then(|e| e.as_valid())
         .unwrap()
         .uuid()
