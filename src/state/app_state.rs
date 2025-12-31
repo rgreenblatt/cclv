@@ -4,7 +4,7 @@
 //! All state transitions are pure functions following Elm architecture.
 
 use crate::model::{EntryUuid, Session, StatsFilter};
-use crate::state::SearchState;
+use crate::state::{LogPaneState, SearchState};
 use std::collections::HashSet;
 
 // ===== AppState =====
@@ -93,11 +93,17 @@ pub struct AppState {
     /// Individual messages can override via `ScrollState::wrap_overrides` (FR-048).
     /// Default is `Wrap` when config is unset (FR-039).
     pub global_wrap: WrapMode,
+
+    /// Toggleable internal logging pane state.
+    /// Maintains a ring buffer of log entries with unread tracking.
+    pub log_pane: LogPaneState,
 }
 
 impl AppState {
     /// Create new AppState with default UI state.
+    #[allow(unreachable_code, unused_variables)]
     pub fn new(session: Session) -> Self {
+        todo!("AppState::new with log_pane field");
         Self {
             session,
             focus: FocusPane::Main,
@@ -111,6 +117,7 @@ impl AppState {
             live_mode: false,
             auto_scroll: true,
             global_wrap: WrapMode::default(),
+            log_pane: LogPaneState::new(1000),
         }
     }
 

@@ -97,6 +97,18 @@ fn app_state_new_defaults_auto_scroll_to_true() {
     assert!(state.auto_scroll);
 }
 
+#[test]
+fn app_state_new_initializes_log_pane_with_default_capacity() {
+    let session = make_test_session();
+    let state = AppState::new(session);
+
+    // Verify log_pane field exists and is initialized
+    assert!(!state.log_pane.is_visible(), "log pane should start hidden");
+    assert_eq!(state.log_pane.unread_count(), 0, "should start with zero unread");
+    assert_eq!(state.log_pane.unread_max_level(), None, "should start with no max level");
+    assert_eq!(state.log_pane.entries().len(), 0, "should start with no entries");
+}
+
 // ===== ScrollState::scroll_up Tests =====
 
 #[test]

@@ -23,7 +23,7 @@ pub struct LogPaneEntry {
 ///
 /// Maintains a ring buffer of log entries with capacity limiting
 /// and unread tracking when the pane is not visible.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LogPaneState {
     /// Ring buffer of log entries (oldest at front, newest at back)
     entries: VecDeque<LogPaneEntry>,
