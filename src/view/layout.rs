@@ -11,7 +11,7 @@ use crate::view::{
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::Line,
+    text::{Line, Span},
     widgets::Paragraph,
     Frame,
 };
@@ -323,42 +323,90 @@ fn build_keyboard_hints(focus: FocusPane, search_active: bool, terminal_width: u
     }
 }
 
+/// Get the color for a log severity level.
+///
+/// Maps tracing::Level to ratatui Color for badge styling:
+/// - ERROR -> Red
+/// - WARN -> Yellow
+/// - INFO -> Cyan
+/// - DEBUG/TRACE -> Gray
+fn severity_color(level: tracing::Level) -> Color {
+    match level {
+        tracing::Level::ERROR => Color::Red,
+        tracing::Level::WARN => Color::Yellow,
+        tracing::Level::INFO => Color::Cyan,
+        tracing::Level::DEBUG | tracing::Level::TRACE => Color::Gray,
+    }
+}
+
+/// Format the unread badge for the status bar based on count and severity.
+///
+/// Returns an empty string if count is 0, otherwise returns a formatted badge
+/// showing the count and severity level.
+///
+/// # Arguments
+/// * `count` - Number of unread log entries
+/// * `max_level` - Highest severity level among unread entries
+///
+/// # Returns
+/// A formatted badge string (e.g., "[2 ERROR]" or "[5 WARN]"), or empty string if count is 0.
+fn format_unread_badge(count: usize, max_level: Option<tracing::Level>) -> String {
+    if count == 0 {
+        return String::new();
+    }
+
+    match max_level {
+        Some(tracing::Level::ERROR) => format!("[{} ERROR]", count),
+        Some(tracing::Level::WARN) => format!("[{} WARN]", count),
+        Some(tracing::Level::INFO) => format!("[{} INFO]", count),
+        Some(tracing::Level::DEBUG) => format!("[{} DEBUG]", count),
+        Some(tracing::Level::TRACE) => format!("[{} TRACE]", count),
+        None => format!("[{}]", count),
+    }
+}
+
 /// Render the status bar with hints and live mode indicator.
 fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
-    let live_indicator = if state.live_mode && state.auto_scroll {
-        "[LIVE] "
-    } else {
-        ""
-    };
+    let mut spans = Vec::new();
 
-    // Build wrap state indicator (FR-051)
-    let wrap_indicator = match state.global_wrap {
+    // Live indicator (green when active)
+    if state.live_mode && state.auto_scroll {
+        spans.push(Span::styled(
+            "[LIVE] ",
+            Style::default().fg(Color::Green),
+        ));
+    }
+
+    // Unread badge (color-coded by severity - FR-057)
+    let count = state.log_pane.unread_count();
+    let max_level = state.log_pane.unread_max_level();
+    if count > 0 {
+        let badge_text = format_unread_badge(count, max_level);
+        let badge_color = max_level.map(severity_color).unwrap_or(Color::Gray);
+        spans.push(Span::styled(
+            badge_text,
+            Style::default().fg(badge_color),
+        ));
+        spans.push(Span::styled(" | ", Style::default().fg(Color::Gray)));
+    }
+
+    // Wrap indicator
+    let wrap_text = match state.global_wrap {
         WrapMode::Wrap => "Wrap: On | ",
         WrapMode::NoWrap => "Wrap: Off | ",
     };
+    spans.push(Span::styled(wrap_text, Style::default().fg(Color::Gray)));
 
-    // Determine if search is active
+    // Calculate available width for hints
+    let used_width: u16 = spans.iter().map(|s| s.content.len() as u16).sum();
+    let available_width = area.width.saturating_sub(used_width);
+
+    // Keyboard hints
     let search_active = matches!(state.search, SearchState::Active { .. });
-
-    // Calculate available width after live indicator and wrap indicator
-    let available_width = area
-        .width
-        .saturating_sub(live_indicator.len() as u16)
-        .saturating_sub(wrap_indicator.len() as u16);
-
-    // Build context-sensitive keyboard hints
     let hints = build_keyboard_hints(state.focus, search_active, available_width);
+    spans.push(Span::styled(hints, Style::default().fg(Color::Gray)));
 
-    // Combine live indicator, wrap indicator, and hints
-    let status_text = format!("{}{}{}", live_indicator, wrap_indicator, hints);
-
-    let style = if state.live_mode && state.auto_scroll {
-        Style::default().fg(Color::Green)
-    } else {
-        Style::default().fg(Color::Gray)
-    };
-
-    let paragraph = Paragraph::new(Line::from(status_text)).style(style);
+    let paragraph = Paragraph::new(Line::from(spans));
     frame.render_widget(paragraph, area);
 }
 

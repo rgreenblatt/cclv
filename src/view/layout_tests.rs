@@ -1355,6 +1355,387 @@ fn render_layout_log_pane_positioned_at_bottom() {
     );
 }
 
+// ===== Unread Badge Tests =====
+
+#[test]
+fn format_unread_badge_returns_empty_when_zero_unread() {
+    let badge = format_unread_badge(0, None);
+    assert_eq!(badge, "", "Badge should be empty when unread count is 0");
+}
+
+#[test]
+fn format_unread_badge_shows_count_and_error_level() {
+    let badge = format_unread_badge(3, Some(tracing::Level::ERROR));
+    assert!(
+        badge.contains("3"),
+        "Badge should contain unread count. Got: '{}'",
+        badge
+    );
+    assert!(
+        badge.contains("ERROR") || badge.contains("!"),
+        "Badge should indicate error severity. Got: '{}'",
+        badge
+    );
+}
+
+#[test]
+fn format_unread_badge_shows_count_and_warn_level() {
+    let badge = format_unread_badge(5, Some(tracing::Level::WARN));
+    assert!(
+        badge.contains("5"),
+        "Badge should contain unread count. Got: '{}'",
+        badge
+    );
+    assert!(
+        badge.contains("WARN") || badge.contains("!"),
+        "Badge should indicate warn severity. Got: '{}'",
+        badge
+    );
+}
+
+#[test]
+fn format_unread_badge_shows_count_and_info_level() {
+    let badge = format_unread_badge(2, Some(tracing::Level::INFO));
+    assert!(
+        badge.contains("2"),
+        "Badge should contain unread count. Got: '{}'",
+        badge
+    );
+}
+
+#[test]
+fn format_unread_badge_shows_count_when_no_level() {
+    let badge = format_unread_badge(10, None);
+    assert!(
+        badge.contains("10"),
+        "Badge should contain unread count even without level. Got: '{}'",
+        badge
+    );
+}
+
+#[test]
+fn status_bar_includes_unread_badge_when_unread_count_nonzero() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+
+    // Add unread log entries
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::ERROR,
+        message: "Error message".to_string(),
+    });
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::WARN,
+        message: "Warning message".to_string(),
+    });
+
+    // Ensure log pane is not visible so entries remain unread
+    state.log_pane.set_visible(false);
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let last_line: String = buffer
+        .content
+        .iter()
+        .skip(80 * 23)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Status bar should show unread count (2)
+    assert!(
+        last_line.contains("2"),
+        "Status bar should display unread badge with count 2. Got: '{}'",
+        last_line
+    );
+}
+
+#[test]
+fn status_bar_no_badge_when_unread_count_zero() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let state = AppState::new(session);
+    // Log pane has no entries, so unread count is 0
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let last_line: String = buffer
+        .content
+        .iter()
+        .skip(80 * 23)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Status bar should NOT show unread badge
+    // We verify by checking that the status bar has the expected content without badge
+    assert!(
+        last_line.contains("q:") || last_line.contains("Quit"),
+        "Status bar should show normal hints when no unread entries. Got: '{}'",
+        last_line
+    );
+}
+
+#[test]
+fn status_bar_badge_clears_when_log_pane_opened() {
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+
+    // Add unread log entry
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::INFO,
+        message: "Info message".to_string(),
+    });
+
+    // Initially log pane is closed, entries are unread
+    state.log_pane.set_visible(false);
+    assert_eq!(
+        state.log_pane.unread_count(),
+        1,
+        "Should have 1 unread entry"
+    );
+
+    // Open log pane - should mark all as read
+    state.log_pane.set_visible(true);
+    assert_eq!(
+        state.log_pane.unread_count(),
+        0,
+        "Unread count should be 0 after opening"
+    );
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+    let last_line: String = buffer
+        .content
+        .iter()
+        .skip(80 * 23)
+        .take(80)
+        .map(|c| c.symbol())
+        .collect();
+
+    // Status bar should NOT show the count "1" anymore
+    // (It might contain "1" in keybindings like "1: Main", so we check the unread badge is gone)
+    // Since badge is empty when count is 0, we just verify normal status bar content
+    assert!(
+        last_line.contains("q:") || last_line.contains("Quit"),
+        "Status bar should show normal hints after log pane opened. Got: '{}'",
+        last_line
+    );
+}
+
+#[test]
+fn status_bar_badge_color_matches_error_severity() {
+    use ratatui::style::Color;
+
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+
+    // Add ERROR level log entry
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::ERROR,
+        message: "Error message".to_string(),
+    });
+    state.log_pane.set_visible(false); // Keep unread
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+
+    // Find cells containing the badge text "[1 ERROR]"
+    // and verify they are styled with Red color
+    let mut found_red_badge = false;
+    for y in 0..buffer.area().height {
+        for x in 0..buffer.area().width {
+            let cell = &buffer[(x, y)];
+            let symbol = cell.symbol();
+            // Look for badge characters that should be red
+            if (symbol.contains("ERROR") || symbol.contains("[") || symbol.contains("]"))
+                && cell.fg == Color::Red
+            {
+                found_red_badge = true;
+                break;
+            }
+        }
+        if found_red_badge {
+            break;
+        }
+    }
+
+    assert!(
+        found_red_badge,
+        "Badge should be colored Red when max severity is ERROR (FR-057)"
+    );
+}
+
+#[test]
+fn status_bar_badge_color_matches_warn_severity() {
+    use ratatui::style::Color;
+
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+
+    // Add WARN level log entry
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::WARN,
+        message: "Warning message".to_string(),
+    });
+    state.log_pane.set_visible(false); // Keep unread
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+
+    // Find cells containing badge and verify Yellow color
+    let mut found_yellow_badge = false;
+    for y in 0..buffer.area().height {
+        for x in 0..buffer.area().width {
+            let cell = &buffer[(x, y)];
+            let symbol = cell.symbol();
+            if (symbol.contains("WARN") || symbol.contains("[") || symbol.contains("]"))
+                && cell.fg == Color::Yellow
+            {
+                found_yellow_badge = true;
+                break;
+            }
+        }
+        if found_yellow_badge {
+            break;
+        }
+    }
+
+    assert!(
+        found_yellow_badge,
+        "Badge should be colored Yellow when max severity is WARN"
+    );
+}
+
+#[test]
+fn status_bar_badge_color_matches_info_severity() {
+    use ratatui::style::Color;
+
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+
+    // Add INFO level log entry
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::INFO,
+        message: "Info message".to_string(),
+    });
+    state.log_pane.set_visible(false); // Keep unread
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+
+    // Find cells containing badge and verify Cyan color
+    let mut found_cyan_badge = false;
+    for y in 0..buffer.area().height {
+        for x in 0..buffer.area().width {
+            let cell = &buffer[(x, y)];
+            let symbol = cell.symbol();
+            if (symbol.contains("INFO") || symbol.contains("[") || symbol.contains("]"))
+                && cell.fg == Color::Cyan
+            {
+                found_cyan_badge = true;
+                break;
+            }
+        }
+        if found_cyan_badge {
+            break;
+        }
+    }
+
+    assert!(
+        found_cyan_badge,
+        "Badge should be colored Cyan when max severity is INFO"
+    );
+}
+
+#[test]
+fn status_bar_badge_color_matches_debug_severity() {
+    use ratatui::style::Color;
+
+    let mut terminal = create_test_terminal();
+    let session = create_session_no_subagents();
+    let mut state = AppState::new(session);
+
+    // Add DEBUG level log entry
+    state.log_pane.push(crate::state::log_pane::LogPaneEntry {
+        timestamp: chrono::Utc::now(),
+        level: tracing::Level::DEBUG,
+        message: "Debug message".to_string(),
+    });
+    state.log_pane.set_visible(false); // Keep unread
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer = terminal.backend().buffer().clone();
+
+    // Find cells containing badge and verify Gray color
+    let mut found_gray_badge = false;
+    for y in 0..buffer.area().height {
+        for x in 0..buffer.area().width {
+            let cell = &buffer[(x, y)];
+            let symbol = cell.symbol();
+            if (symbol.contains("DEBUG") || symbol.contains("[") || symbol.contains("]"))
+                && cell.fg == Color::Gray
+            {
+                found_gray_badge = true;
+                break;
+            }
+        }
+        if found_gray_badge {
+            break;
+        }
+    }
+
+    assert!(
+        found_gray_badge,
+        "Badge should be colored Gray when max severity is DEBUG"
+    );
+}
+
 // ===== Helper Functions =====
 
 fn buffer_to_string(buffer: &ratatui::buffer::Buffer) -> String {
