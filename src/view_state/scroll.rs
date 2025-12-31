@@ -65,11 +65,30 @@ impl ScrollPosition {
     /// # Returns
     /// Absolute line offset from top, clamped to valid range.
     /// Never returns an offset that would cause a blank viewport.
-    pub fn resolve<F>(&self, _total_height: usize, _viewport_height: usize, _entry_lookup: F) -> LineOffset
+    pub fn resolve<F>(&self, total_height: usize, viewport_height: usize, entry_lookup: F) -> LineOffset
     where
         F: Fn(EntryIndex) -> Option<LineOffset>,
     {
-        todo!("ScrollPosition::resolve")
+        let max_offset = total_height.saturating_sub(viewport_height);
+
+        let raw_offset = match self {
+            ScrollPosition::Top => 0,
+            ScrollPosition::Bottom => max_offset,
+            ScrollPosition::AtLine(offset) => offset.get(),
+            ScrollPosition::AtEntry {
+                entry_index,
+                line_in_entry,
+            } => entry_lookup(*entry_index)
+                .map(|y| y.get() + line_in_entry)
+                .unwrap_or(0),
+            ScrollPosition::Fraction(f) => {
+                let f = f.clamp(0.0, 1.0);
+                (f * max_offset as f64).round() as usize
+            }
+        };
+
+        // Clamp to valid range to ensure no blank viewports
+        LineOffset::new(raw_offset.min(max_offset))
     }
 
     /// Create AtEntry position for given entry index.
