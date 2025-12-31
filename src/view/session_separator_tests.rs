@@ -55,7 +55,13 @@ fn renders_separator_when_session_changes() {
         make_valid_entry("uuid-4", "session-2", "Second message in session 2"),
     ];
 
-    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
@@ -93,7 +99,13 @@ fn no_separator_for_first_session() {
         make_valid_entry("uuid-2", "session-1", "Second message"),
     ];
 
-    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
@@ -130,7 +142,13 @@ fn separator_contains_session_id() {
         make_valid_entry("uuid-2", "session-beta", "Message 2"),
     ];
 
-    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
@@ -168,7 +186,13 @@ fn multiple_session_changes_render_multiple_separators() {
         make_valid_entry("uuid-3", "session-3", "Session 3"),
     ];
 
-    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);
@@ -204,7 +228,13 @@ fn separator_styled_with_dim_gray() {
         make_valid_entry("uuid-2", "session-2", "Message 2"),
     ];
 
-    let mut view_state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut view_state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Compute layout
     let params = LayoutParams::new(80, WrapMode::Wrap);

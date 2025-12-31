@@ -77,7 +77,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let follow_override = if args.follow { Some(true) } else { None };
         let stats_override = if args.stats { Some(true) } else { None };
 
-        let config = cclv::config::apply_cli_overrides(with_env, theme_override, follow_override, stats_override);
+        let config = cclv::config::apply_cli_overrides(
+            with_env,
+            theme_override,
+            follow_override,
+            stats_override,
+        );
 
         (config, pricing)
     };

@@ -8,6 +8,7 @@ use crate::model::{
     AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
     MessageContent, Role, SessionId,
 };
+use crate::state::ConversationSelection;
 use crate::view_state::types::EntryIndex;
 use chrono::Utc;
 
@@ -264,7 +265,7 @@ fn test_toggle_wrap_subagent_correct_indexing() {
     }
 
     // Select tab 1 (first subagent tab = subagent index 0 = "alpha")
-    state.selected_tab = Some(1);
+    state.selected_conversation = ConversationSelection::Subagent(agent_alpha.clone());
     state.focus = FocusPane::Subagent;
 
     // Verify initial state: no wrap override on either subagent

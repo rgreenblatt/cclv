@@ -163,7 +163,8 @@ pub fn compute_entry_lines(
             // Split into lines and wrap BEFORE markdown rendering
             // This ensures rendered line count matches height calculation
             let text_lines: Vec<_> = text.lines().collect();
-            let wrapped_lines = wrap_lines(&text_lines, wrap_ctx.mode, width, entry_index.is_some());
+            let wrapped_lines =
+                wrap_lines(&text_lines, wrap_ctx.mode, width, entry_index.is_some());
 
             // If we have search matches AND are expanded, apply highlighting
             // (Don't highlight collapsed view for simplicity)
@@ -243,13 +244,8 @@ pub fn compute_entry_lines(
                     .system_metadata()
                     .and_then(|m| m.model.as_deref());
 
-                let divider = render_token_divider(
-                    usage,
-                    accumulated_tokens,
-                    max_context,
-                    pricing,
-                    model_id,
-                );
+                let divider =
+                    render_token_divider(usage, accumulated_tokens, max_context, pricing, model_id);
                 lines.push(divider);
             } else {
                 // No usage data - fall back to blank separator
@@ -280,13 +276,8 @@ pub fn compute_entry_lines(
                     .system_metadata()
                     .and_then(|m| m.model.as_deref());
 
-                let divider = render_token_divider(
-                    usage,
-                    accumulated_tokens,
-                    max_context,
-                    pricing,
-                    model_id,
-                );
+                let divider =
+                    render_token_divider(usage, accumulated_tokens, max_context, pricing, model_id);
                 lines.push(divider);
             } else {
                 // No usage data - fall back to blank separator
@@ -581,7 +572,8 @@ fn render_block(
             let thinking_lines: Vec<_> = thinking.lines().collect();
 
             // Wrap lines to match height calculation
-            let wrapped_lines = wrap_lines(&thinking_lines, effective_wrap, width, has_entry_prefix);
+            let wrapped_lines =
+                wrap_lines(&thinking_lines, effective_wrap, width, has_entry_prefix);
             let total_lines = wrapped_lines.len();
             let should_collapse = total_lines > collapse_threshold && !expanded;
 

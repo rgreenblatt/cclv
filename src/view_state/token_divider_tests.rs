@@ -196,8 +196,7 @@ fn render_token_divider_uses_dim_gray_style() {
     // We'll verify at least one span has this styling
     let has_dim_style = line.spans.iter().any(|span| {
         use ratatui::style::{Color, Modifier};
-        span.style.fg == Some(Color::DarkGray)
-            || span.style.add_modifier.contains(Modifier::DIM)
+        span.style.fg == Some(Color::DarkGray) || span.style.add_modifier.contains(Modifier::DIM)
     });
 
     assert!(

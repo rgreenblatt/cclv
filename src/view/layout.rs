@@ -253,17 +253,17 @@ fn render_conversation_pane(
         _ => HashSet::new(), // No search active, no matches
     };
 
-    // Render tab bar with Main Agent at position 0
+    // Render tab bar with Main Agent at position 0 (cclv-5ur.53)
     tabs::render_tab_bar(
         frame,
         tab_area,
         &conversation_tabs,
-        state.selected_tab,
+        state.selected_tab_index(),
         &tabs_with_matches,
     );
 
     // Determine which conversation to display using central routing
-    let selected_tab_index = state.selected_tab.unwrap_or(0);
+    let selected_tab_index = state.selected_tab_index().unwrap_or(0);
     let is_main_tab = selected_tab_index == 0;
 
     if let Some(view_state) = state.selected_conversation_view() {
@@ -436,9 +436,9 @@ fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
 /// - [LIVE] indicator when live_mode && auto_scroll are both true
 /// - Agent identifier based on selected tab (Main Agent vs subagent ID)
 fn render_header(frame: &mut Frame, area: Rect, state: &AppState) {
-    // Determine which conversation to show based on selected_tab
+    // Determine which conversation to show based on selected_tab (cclv-5ur.53)
     // Tab 0 = Main Agent, Tabs 1+ = Subagents
-    let selected_tab_index = state.selected_tab.unwrap_or(0);
+    let selected_tab_index = state.selected_tab_index().unwrap_or(0);
 
     let (agent_label, conversation_view) = if selected_tab_index == 0 {
         // Tab 0: Main Agent

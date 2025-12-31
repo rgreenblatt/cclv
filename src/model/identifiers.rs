@@ -113,7 +113,7 @@ impl fmt::Display for SessionId {
 /// # Invariants
 /// - Never empty (enforced by smart constructor)
 /// - Uniquely identifies a subagent within a session
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AgentId(String);
 
 impl AgentId {

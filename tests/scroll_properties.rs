@@ -89,7 +89,8 @@ fn arb_entry_list(max_len: usize) -> impl Strategy<Value = Vec<ConversationEntry
 /// We don't predict heights - we use actual production logic.
 fn arb_conversation_view_state() -> impl Strategy<Value = ConversationViewState> {
     (arb_entry_list(20), arb_wrap_mode()).prop_map(|(entries, wrap_mode)| {
-        let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
+        let mut state =
+            ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
         let params = LayoutParams::new(80, wrap_mode);
         // Use REAL production height calculator - this is still black-box testing
         state.relayout_from(EntryIndex::new(0), params);

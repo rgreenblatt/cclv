@@ -45,9 +45,7 @@ pub fn handle_expand_action(
     match action {
         KeyAction::ToggleExpand => {
             // Toggle the focused message, or entry 0 if no message is focused
-            let idx_to_toggle = conversation
-                .focused_message()
-                .unwrap_or(EntryIndex::new(0));
+            let idx_to_toggle = conversation.focused_message().unwrap_or(EntryIndex::new(0));
 
             // Only toggle if the entry exists
             if idx_to_toggle.get() < conversation.len() {

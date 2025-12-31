@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::model::{AgentId, EntryUuid, SessionId};
-use crate::state::{FocusPane, SearchQuery, SearchState};
+use crate::state::{ConversationSelection, FocusPane, SearchQuery, SearchState};
 
 // ===== Test Helpers =====
 
@@ -248,7 +248,7 @@ fn next_match_selects_correct_subagent_tab() {
         current_match: 0,
     };
     state.focus = FocusPane::Main;
-    state.selected_tab = Some(0); // Start at first tab
+    state.selected_conversation = ConversationSelection::Main; // Start at main conversation
 
     let result = next_match(state);
 
@@ -266,7 +266,7 @@ fn next_match_selects_correct_subagent_tab() {
     let expected_tab = subagent_position + 1; // Convert to global tab index
 
     assert_eq!(
-        result.selected_tab,
+        result.selected_tab_index(),
         Some(expected_tab),
         "Should select tab for agent2 (unified tab model: tab 0 = main)"
     );

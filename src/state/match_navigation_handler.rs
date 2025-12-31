@@ -106,12 +106,6 @@ pub fn prev_match(mut state: AppState) -> AppState {
 
 // ===== Helper Functions =====
 
-/// Find the tab index for a given agent_id.
-/// Returns None if agent_id is not found in subagents.
-fn find_tab_for_agent(state: &AppState, agent_id: &AgentId) -> Option<usize> {
-    state.tab_index_for_agent(agent_id)
-}
-
 /// Switch focus and tab to the correct location for a search match.
 /// If agent_id is None, switches to Main pane.
 /// If agent_id is Some, switches to Subagent pane and selects the correct tab.
@@ -122,13 +116,11 @@ fn switch_to_match_location(mut state: AppState, agent_id: &Option<AgentId>) -> 
             state.focus = FocusPane::Main;
         }
         Some(aid) => {
-            // Match is in subagent - switch to Subagent pane and select tab
+            // Match is in subagent - switch to Subagent pane and select conversation
             state.focus = FocusPane::Subagent;
 
-            // Find and select the tab for this agent
-            if let Some(tab_index) = find_tab_for_agent(&state, aid) {
-                state.selected_tab = Some(tab_index);
-            }
+            // Select the subagent conversation by AgentId (cclv-5ur.53)
+            state.selected_conversation = crate::state::ConversationSelection::Subagent(aid.clone());
         }
     }
     state

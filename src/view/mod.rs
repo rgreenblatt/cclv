@@ -28,6 +28,8 @@ use crate::state::{
     expand_handler, handle_toggle_wrap, next_match, prev_match, scroll_handler,
     search_input_handler, AppState, FocusPane,
 };
+#[cfg(test)]
+use crate::state::ConversationSelection;
 use crossterm::{
     event::{
         self, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
@@ -527,7 +529,8 @@ where
                         }
                     }
                     FocusPane::Subagent => {
-                        if let Some(tab_index) = self.app_state.selected_tab {
+                        // Use selected_tab_index() for positional lookup (cclv-5ur.53)
+                        if let Some(tab_index) = self.app_state.selected_tab_index() {
                             if let Some(view) =
                                 self.app_state.subagent_conversation_view_mut(tab_index)
                             {
@@ -567,7 +570,8 @@ where
                         }
                     }
                     FocusPane::Subagent => {
-                        if let Some(tab_index) = self.app_state.selected_tab {
+                        // Use selected_tab_index() for positional lookup (cclv-5ur.53)
+                        if let Some(tab_index) = self.app_state.selected_tab_index() {
                             if let Some(view) =
                                 self.app_state.subagent_conversation_view_mut(tab_index)
                             {
@@ -1308,7 +1312,8 @@ mod tests {
             .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
 
         // Select the subagent tab (tab 1 in unified tab model: tab 0 = main, tab 1+ = subagents)
-        app.app_state.selected_tab = Some(1);
+        app.app_state.selected_conversation =
+            ConversationSelection::Subagent(agent_id.clone());
 
         // Set to Global initially
         app.app_state.stats_filter = crate::model::StatsFilter::Global;
@@ -1329,8 +1334,8 @@ mod tests {
     fn handle_key_hash_does_nothing_when_no_tab_selected() {
         let mut app = create_test_app();
 
-        // No tab selected
-        app.app_state.selected_tab = None;
+        // Main selected by default (no longer supports None)
+        app.app_state.selected_conversation = ConversationSelection::Main;
 
         // Set to Global initially
         app.app_state.stats_filter = crate::model::StatsFilter::Global;
@@ -1672,9 +1677,9 @@ mod tests {
                 .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
         }
 
-        // Focus on Subagent pane and select first entry
+        // Focus on Subagent pane and select main tab
         app.app_state.focus = FocusPane::Subagent;
-        app.app_state.selected_tab = Some(0);
+        app.app_state.selected_conversation = ConversationSelection::Main;
         if let Some(view) = app.app_state.subagent_conversation_view_mut(0) {
             view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(0)));
         }
@@ -1875,9 +1880,9 @@ mod tests {
                 .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
         }
 
-        // Focus on Subagent pane and select first tab
+        // Focus on Subagent pane and select first tab (Main)
         app.app_state.focus = FocusPane::Subagent;
-        app.app_state.selected_tab = Some(0);
+        app.app_state.selected_conversation = ConversationSelection::Main;
 
         // Press ']' to go to next tab
         let key = KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE);
@@ -1885,7 +1890,7 @@ mod tests {
 
         assert!(!should_quit, "']' should not trigger quit");
         assert_eq!(
-            app.app_state.selected_tab,
+            app.app_state.selected_tab_index(),
             Some(1),
             "']' should call next_tab() and move to tab 1"
         );
@@ -1923,9 +1928,10 @@ mod tests {
                 .add_entries(vec![ConversationEntry::Valid(Box::new(entry))]);
         }
 
-        // Focus on Subagent pane and select second tab
+        // Focus on Subagent pane and select second tab (first subagent)
         app.app_state.focus = FocusPane::Subagent;
-        app.app_state.selected_tab = Some(1);
+        app.app_state.selected_conversation =
+            ConversationSelection::Subagent(agent_id_1.clone());
 
         // Press '[' to go to previous tab
         let key = KeyEvent::new(KeyCode::Char('['), KeyModifiers::NONE);
@@ -1933,7 +1939,7 @@ mod tests {
 
         assert!(!should_quit, "'[' should not trigger quit");
         assert_eq!(
-            app.app_state.selected_tab,
+            app.app_state.selected_tab_index(),
             Some(0),
             "'[' should call prev_tab() and move to tab 0"
         );
@@ -1971,7 +1977,7 @@ mod tests {
 
         // Focus on Subagent pane
         app.app_state.focus = FocusPane::Subagent;
-        app.app_state.selected_tab = Some(0);
+        app.app_state.selected_conversation = ConversationSelection::Main;
 
         // Press '5' to select 5th tab (0-indexed: tab 4)
         let key = KeyEvent::new(KeyCode::Char('5'), KeyModifiers::NONE);
@@ -1979,7 +1985,7 @@ mod tests {
 
         assert!(!should_quit, "'5' should not trigger quit");
         assert_eq!(
-            app.app_state.selected_tab,
+            app.app_state.selected_tab_index(),
             Some(4),
             "'5' should call select_tab(5) and move to 0-indexed tab 4"
         );
@@ -2207,7 +2213,7 @@ mod tests {
         }
 
         // Add entry to subagent pane
-        let agent_id = AgentId::new("test-agent").unwrap();
+        let sub_agent_id = AgentId::new("test-agent").unwrap();
         let sub_uuid = EntryUuid::new("sub-uuid").unwrap();
         let sub_message = Message::new(Role::Assistant, MessageContent::Text("sub".to_string()))
             .with_usage(TokenUsage::default());
@@ -2215,7 +2221,7 @@ mod tests {
             sub_uuid.clone(),
             None,
             SessionId::new("test-session").unwrap(),
-            Some(agent_id),
+            Some(sub_agent_id.clone()),
             Utc::now(),
             EntryType::Assistant,
             sub_message,
@@ -2227,7 +2233,8 @@ mod tests {
         // Focus on Subagent pane and set focused message in view-state
         // Unified tab model (FR-086): tab 0 = main, tab 1 = first subagent
         app.app_state.focus = FocusPane::Subagent;
-        app.app_state.selected_tab = Some(1);
+        app.app_state.selected_conversation =
+            ConversationSelection::Subagent(sub_agent_id.clone());
         if let Some(view) = app.app_state.subagent_conversation_view_mut(0) {
             view.relayout(80, crate::state::WrapMode::Wrap); // Initialize HeightIndex
             view.set_focused_message(Some(crate::view_state::types::EntryIndex::new(0)));

@@ -210,7 +210,7 @@ fn us5_scenario3_navigate_to_match() {
             assert!(!matches.is_empty(), "Should have matches for 'Implemented'");
 
             let initial_match_index = *current_match;
-            let _initial_selected_tab = state_after_search.selected_tab;
+            let _initial_selected_tab = state_after_search.selected_tab_index();
             let _initial_focus = state_after_search.focus;
 
             // WHEN: User presses 'n' to navigate to next match
@@ -254,7 +254,7 @@ fn us5_scenario3_navigate_to_match() {
                         let expected_tab_index = subagent_position + 1; // Convert to global tab index
 
                         assert_eq!(
-                            state_after_n.selected_tab,
+                            state_after_n.selected_tab_index(),
                             Some(expected_tab_index),
                             "Tab should auto-switch to the subagent containing the match"
                         );

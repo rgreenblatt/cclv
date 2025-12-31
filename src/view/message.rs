@@ -90,7 +90,7 @@ impl<'a> ConversationView<'a> {
             summary_lines: 3,
             buffer_size: 20,
             global_wrap: WrapMode::default(), // Default to Wrap
-            max_context_tokens: 200_000, // Default: Opus 4.5 context window
+            max_context_tokens: 200_000,      // Default: Opus 4.5 context window
             pricing: crate::model::PricingConfig::default(),
         }
     }

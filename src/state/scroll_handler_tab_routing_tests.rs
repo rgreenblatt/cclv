@@ -8,8 +8,8 @@
 //! This caused scroll actions to target the wrong conversation when focus != selected_tab.
 
 use super::*;
-use crate::model::{KeyAction, SessionId};
-use crate::state::{AppState, FocusPane};
+use crate::model::{AgentId, KeyAction, SessionId};
+use crate::state::{AppState, ConversationSelection, FocusPane};
 use crate::view_state::scroll::ScrollPosition;
 use crate::view_state::types::LineOffset;
 
@@ -84,7 +84,7 @@ fn scroll_routes_to_selected_tab_0_main_agent() {
 
     // Setup: selected_tab = 0 (main agent), but focus = Subagent
     // This is the bug case: focus != selected_tab
-    state.selected_tab = Some(0);
+    state.selected_conversation = ConversationSelection::Main;
     state.focus = FocusPane::Subagent;
 
     // Set main agent scroll to line 10
@@ -124,7 +124,8 @@ fn scroll_routes_to_selected_tab_1_subagent() {
     let mut state = create_test_state_with_multiple_agents(5, 3, 3);
 
     // Setup: selected_tab = 1 (first subagent), but focus = Main
-    state.selected_tab = Some(1);
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap());
     state.focus = FocusPane::Main;
 
     // Get the first subagent ID (sorted to match tab ordering)
@@ -168,7 +169,8 @@ fn scroll_routes_to_selected_tab_2_second_subagent() {
     let mut state = create_test_state_with_multiple_agents(5, 3, 3);
 
     // Setup: selected_tab = 2 (second subagent)
-    state.selected_tab = Some(2);
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("subagent-2").unwrap());
     state.focus = FocusPane::Main;
 
     // Get the second subagent ID (index 1 in subagent list, sorted to match tab ordering)
@@ -214,7 +216,7 @@ fn scrolling_tab_0_does_not_affect_tab_1() {
     let mut state = create_test_state_with_multiple_agents(5, 3, 3);
 
     // Setup: selected_tab = 0 (main agent)
-    state.selected_tab = Some(0);
+    state.selected_conversation = ConversationSelection::Main;
     state.focus = FocusPane::Main;
 
     // Set initial scroll positions
@@ -277,7 +279,8 @@ fn scrolling_tab_1_does_not_affect_tab_0() {
     let mut state = create_test_state_with_multiple_agents(5, 3, 3);
 
     // Setup: selected_tab = 1 (first subagent)
-    state.selected_tab = Some(1);
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap());
     state.focus = FocusPane::Subagent;
 
     // Set initial scroll positions
@@ -342,7 +345,7 @@ fn scroll_position_preserved_when_switching_tabs() {
     let mut state = create_test_state_with_multiple_agents(5, 3, 3);
 
     // Setup: Start at tab 0, scroll it
-    state.selected_tab = Some(0);
+    state.selected_conversation = ConversationSelection::Main;
     state.focus = FocusPane::Main;
 
     state
@@ -367,7 +370,8 @@ fn scroll_position_preserved_when_switching_tabs() {
 
     // Switch to tab 1 (simulate user pressing Tab key)
     let mut state = state;
-    state.selected_tab = Some(1);
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap());
 
     // Scroll tab 1
     let viewport = crate::view_state::types::ViewportDimensions::new(80, 10);
@@ -375,7 +379,7 @@ fn scroll_position_preserved_when_switching_tabs() {
 
     // Switch back to tab 0
     let mut state = state;
-    state.selected_tab = Some(0);
+    state.selected_conversation = ConversationSelection::Main;
 
     // Verify: Main agent scroll position is STILL 11 (preserved)
     let main_scroll = state.log_view().current_session().unwrap().main().scroll();
@@ -398,7 +402,8 @@ fn scroll_defaults_to_main_when_selected_tab_is_none() {
     let mut state = create_test_state_with_multiple_agents(5, 3, 3);
 
     // Setup: selected_tab = None (should default to tab 0 = main agent)
-    state.selected_tab = None;
+    // Default is Main, which is what we want to test
+    // state.selected_conversation = ConversationSelection::Main;
     state.focus = FocusPane::Main;
 
     // Set main agent scroll to line 5

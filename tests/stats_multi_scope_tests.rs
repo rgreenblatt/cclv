@@ -6,9 +6,9 @@
 //! 3. Global totals (all sessions - future multi-session)
 
 use cclv::model::{
-    AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
-    MessageContent, PricingConfig, Role, SessionId, SessionStats, StatsFilter, ToolCall,
-    ToolName, ToolUseId, TokenUsage,
+    AgentId, ContentBlock, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent,
+    PricingConfig, Role, SessionId, SessionStats, StatsFilter, TokenUsage, ToolCall, ToolName,
+    ToolUseId,
 };
 use cclv::view::MultiScopeStatsPanel;
 use chrono::Utc;
@@ -229,7 +229,8 @@ fn multi_scope_panel_session_scope_always_shows_global_totals() {
 
     // Test with MainAgent focused
     let focused_main = StatsFilter::MainAgent;
-    let panel_main = MultiScopeStatsPanel::new(&stats, &focused_main, &pricing, Some("opus"), false);
+    let panel_main =
+        MultiScopeStatsPanel::new(&stats, &focused_main, &pricing, Some("opus"), false);
 
     let mut terminal_main = Terminal::new(TestBackend::new(100, 40)).unwrap();
     terminal_main

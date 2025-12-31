@@ -42,7 +42,7 @@ fn compute_test_lines(
         is_subagent_view,
         search_state,
         focused,
-        0,      // accumulated_tokens (default for tests)
+        0,       // accumulated_tokens (default for tests)
         200_000, // max_context_tokens (default)
         &crate::model::PricingConfig::default(),
     )

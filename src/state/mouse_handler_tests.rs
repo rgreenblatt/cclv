@@ -5,7 +5,7 @@ use crate::model::{
     AgentId, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message,
     MessageContent, Role, SessionId,
 };
-use crate::state::AppState;
+use crate::state::{AppState, ConversationSelection};
 use chrono::Utc;
 use ratatui::layout::Rect;
 
@@ -270,7 +270,7 @@ fn handle_mouse_click_switches_to_clicked_tab() {
     let mut state = state;
     state.focus = crate::state::FocusPane::Subagent;
     state.select_tab(1); // 1-indexed
-    assert_eq!(state.selected_tab, Some(0));
+    assert_eq!(state.selected_tab_index(), Some(0));
 
     // Tab area
     let tab_area = Rect::new(0, 0, 60, 3);
@@ -279,7 +279,7 @@ fn handle_mouse_click_switches_to_clicked_tab() {
     let updated_state = handle_mouse_click(state, 25, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab,
+        updated_state.selected_tab_index(),
         Some(1),
         "Clicking second tab should switch selection to index 1"
     );
@@ -298,7 +298,8 @@ fn handle_mouse_click_preserves_state_when_clicking_outside_tabs() {
     let updated_state = handle_mouse_click(state.clone(), 100, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab, state.selected_tab,
+        updated_state.selected_tab_index(),
+        state.selected_tab_index(),
         "Clicking outside tabs should preserve selection"
     );
 }
@@ -307,9 +308,8 @@ fn handle_mouse_click_preserves_state_when_clicking_outside_tabs() {
 fn handle_mouse_click_switches_from_none_to_first_tab() {
     let state = create_app_state_with_tabs(vec!["agent-1", "agent-2"]);
 
-    // Start with no tab selected
-    let mut state = state;
-    state.selected_tab = None;
+    // Start with main selected (default)
+    let state = state;
 
     let tab_area = Rect::new(0, 0, 40, 3);
 
@@ -317,7 +317,7 @@ fn handle_mouse_click_switches_from_none_to_first_tab() {
     let updated_state = handle_mouse_click(state, 5, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab,
+        updated_state.selected_tab_index(),
         Some(0),
         "Clicking first tab when none selected should select it"
     );
@@ -336,7 +336,7 @@ fn handle_mouse_click_can_switch_to_last_tab() {
     let updated_state = handle_mouse_click(state, 50, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab,
+        updated_state.selected_tab_index(),
         Some(2),
         "Should switch to third tab"
     );
@@ -352,7 +352,8 @@ fn handle_mouse_click_with_no_tabs_preserves_state() {
     let updated_state = handle_mouse_click(state.clone(), 20, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab, state.selected_tab,
+        updated_state.selected_tab_index(),
+        state.selected_tab_index(),
         "With no tabs, state should be unchanged"
     );
 }
@@ -370,7 +371,7 @@ fn handle_mouse_click_clicking_same_tab_is_idempotent() {
     let updated_state = handle_mouse_click(state.clone(), 30, 1, tab_area);
 
     assert_eq!(
-        updated_state.selected_tab,
+        updated_state.selected_tab_index(),
         Some(1),
         "Clicking already-selected tab should keep it selected"
     );
@@ -478,7 +479,8 @@ fn detect_entry_click_detects_subagent_pane_entry() {
     let mut state = create_app_state_with_tabs(vec!["agent-1"]);
 
     // Select the first subagent tab (index 1: main is 0, first subagent is 1)
-    state.selected_tab = Some(1);
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("agent-1").unwrap());
     init_layout_for_state(&mut state);
 
     // Unified conversation area (FR-083: no split)

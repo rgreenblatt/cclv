@@ -56,7 +56,8 @@ fn us3_scenario1_click_specific_entry_not_adjacent() {
         make_entry("entry-4"),
     ];
 
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
+    let mut state =
+        ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -118,7 +119,8 @@ fn us3_scenario2_click_expand_collapse_indicator() {
         make_entry("entry-2"),
     ];
 
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
+    let mut state =
+        ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -168,7 +170,8 @@ fn us3_scenario3_scrolled_middle_hit_test_correct() {
         .map(|i| make_entry(&format!("entry-{}", i)))
         .collect();
 
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
+    let mut state =
+        ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -214,7 +217,8 @@ fn us3_scenario4_variable_heights_boundary_clicks() {
         .map(|i| make_entry(&format!("entry-{}", i)))
         .collect();
 
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
+    let mut state =
+        ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 
@@ -272,7 +276,8 @@ fn us3_performance_hit_test_o_log_n() {
         .map(|i| make_entry(&format!("entry-{}", i)))
         .collect();
 
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
+    let mut state =
+        ConversationViewState::new(None, None, entries, 200_000, PricingConfig::default());
     let params = LayoutParams::new(80, WrapMode::Wrap);
     state.relayout_from(EntryIndex::new(0), params);
 

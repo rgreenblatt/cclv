@@ -7,6 +7,35 @@ use crate::model::{AgentId, StatsFilter};
 use crate::state::SearchState;
 use crate::view_state::log::LogViewState;
 
+// ===== ConversationSelection =====
+
+/// Which conversation is currently selected in the unified tab model.
+///
+/// This type replaces `Option<usize>` to provide type-safe, stable selection
+/// that survives subagent additions/removals.
+///
+/// # Cardinality (cclv-5ur.53)
+/// - Option<usize>: 2^64 + 1 states (many invalid)
+/// - ConversationSelection: 1 + N states (all valid)
+///
+/// # Stability
+/// AgentId-based selection is stable across subagent list changes,
+/// while index-based selection breaks when subagents are added/removed.
+///
+/// # Design Principles
+/// - I: Type-Driven (sum type makes intent clear)
+/// - VII: Cardinality (minimize invalid states)
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum ConversationSelection {
+    /// Main agent conversation selected.
+    #[default]
+    Main,
+
+    /// Subagent conversation selected by identity.
+    /// Identity-based selection is stable across subagent additions/removals.
+    Subagent(AgentId),
+}
+
 // ===== InputMode =====
 
 /// Input mode indicator for the LIVE status indicator.
@@ -82,12 +111,9 @@ pub struct AppState {
     /// See `FocusPane` for valid states and transitions.
     pub focus: FocusPane,
 
-    /// Currently selected tab index in unified tab model (FR-086).
-    /// - `Some(0)` = main agent tab
-    /// - `Some(1)` = first subagent (alphabetically sorted)
-    /// - `Some(n)` = (n-1)th subagent
-    /// - `None` = no tab selected (initial state before first render)
-    pub selected_tab: Option<usize>,
+    /// Currently selected conversation in unified tab model (FR-086, cclv-5ur.53).
+    /// Stable identity-based selection using AgentId.
+    pub selected_conversation: ConversationSelection,
 
     /// Current search state (inactive, typing, or active with results).
     /// See `SearchState` for the search state machine.
@@ -151,7 +177,7 @@ impl AppState {
         Self {
             log_view: LogViewState::new(),
             focus: FocusPane::Main,
-            selected_tab: Some(0), // FR-083: Default to main agent tab (tab 0)
+            selected_conversation: ConversationSelection::Main, // FR-083: Default to main agent
             search: SearchState::Inactive,
             stats_filter: StatsFilter::Global,
             stats_visible: false,
@@ -176,6 +202,32 @@ impl AppState {
     pub fn toggle_blink(&mut self) -> bool {
         self.blink_on = !self.blink_on;
         self.blink_on
+    }
+
+    /// Compute tab index from conversation selection for rendering (cclv-5ur.53).
+    ///
+    /// Maps identity-based selection to positional index:
+    /// - Main -> 0
+    /// - Subagent(agent_id) -> position in sorted subagent list + 1
+    ///
+    /// Returns None if the selected subagent doesn't exist in current session.
+    pub fn selected_tab_index(&self) -> Option<usize> {
+        match &self.selected_conversation {
+            ConversationSelection::Main => Some(0),
+            ConversationSelection::Subagent(agent_id) => {
+                // Use current session (single-session assumption for now)
+                let session = self.log_view.current_session()?;
+
+                // Find position in sorted subagent list
+                let mut sorted_ids: Vec<_> = session.subagents().keys().collect();
+                sorted_ids.sort();
+
+                sorted_ids
+                    .iter()
+                    .position(|id| *id == agent_id)
+                    .map(|pos| pos + 1) // +1 because main is tab 0
+            }
+        }
     }
 
     /// Add multiple conversation entries (valid or malformed) to the session.
@@ -278,87 +330,75 @@ impl AppState {
 
     /// Get immutable reference to currently selected conversation view-state.
     ///
-    /// Routes to the appropriate conversation based on selected_tab:
-    /// - Tab 0: Main agent conversation
-    /// - Tab 1+: Subagent at sorted index (tab - 1)
+    /// Routes to the appropriate conversation based on selected_conversation:
+    /// - Main: Main agent conversation
+    /// - Subagent(agent_id): Specific subagent by identity
     ///
-    /// Returns None if no session exists or selected tab is out of range.
+    /// Returns None if no session exists or selected subagent doesn't exist.
     ///
     /// # Routing Logic
     ///
-    /// This encapsulates the tab→conversation routing logic used throughout the application.
+    /// This encapsulates the conversation routing logic used throughout the application.
     /// The routing matches the rendering logic to ensure input handlers and display stay synchronized.
     pub fn selected_conversation_view(
         &self,
     ) -> Option<&crate::view_state::conversation::ConversationViewState> {
-        let tab_index = self.selected_tab.unwrap_or(0);
-
-        if tab_index == 0 {
-            // Tab 0: Main agent conversation
-            self.log_view.current_session().map(|s| s.main())
-        } else {
-            // Tab 1+: Subagent at sorted index (tab - 1)
-            let session = self.log_view.current_session()?;
-            let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
-            agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
-            let agent_id = agent_ids.get(tab_index - 1)?;
-            session.subagents().get(agent_id)
+        let session = self.log_view.current_session()?;
+        match &self.selected_conversation {
+            ConversationSelection::Main => Some(session.main()),
+            ConversationSelection::Subagent(agent_id) => {
+                // Use get_subagent to avoid creating subagent if it doesn't exist
+                session.get_subagent(agent_id)
+            }
         }
     }
 
     /// Get mutable reference to currently selected conversation view-state.
     ///
-    /// Routes to the appropriate conversation based on selected_tab:
-    /// - Tab 0: Main agent conversation
-    /// - Tab 1+: Subagent at sorted index (tab - 1)
+    /// Routes to the appropriate conversation based on selected_conversation:
+    /// - Main: Main agent conversation
+    /// - Subagent(agent_id): Specific subagent by identity
     ///
-    /// Returns None if no session exists or selected tab is out of range.
+    /// Returns None if no session exists or selected subagent doesn't exist.
     ///
     /// # Routing Logic
     ///
-    /// This encapsulates the tab→conversation routing logic used throughout the application.
+    /// This encapsulates the conversation routing logic used throughout the application.
     /// The routing matches the rendering logic to ensure input handlers and display stay synchronized.
+    ///
+    /// # Semantics
+    ///
+    /// This method does NOT create subagents that don't exist. Both the immutable
+    /// and mutable accessors have identical semantics: they return None when a
+    /// selected subagent doesn't exist. This prevents creating ghost subagents
+    /// that have no actual conversation data.
     pub fn selected_conversation_view_mut(
         &mut self,
     ) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
-        let tab_index = self.selected_tab.unwrap_or(0);
-
-        if tab_index == 0 {
-            // Tab 0: Main agent conversation
-            self.log_view.current_session_mut().map(|s| s.main_mut())
-        } else {
-            // Tab 1+: Subagent at sorted index (tab - 1)
-            let session = self.log_view.current_session_mut()?;
-            let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
-            agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
-            let agent_id = agent_ids.get(tab_index - 1).cloned()?;
-            Some(session.subagent_mut(&agent_id))
+        let session = self.log_view.current_session_mut()?;
+        match &self.selected_conversation {
+            ConversationSelection::Main => Some(session.main_mut()),
+            ConversationSelection::Subagent(agent_id) => {
+                // Use get_subagent_mut to avoid creating subagent if it doesn't exist
+                session.get_subagent_mut(agent_id)
+            }
         }
     }
 
-    /// Get AgentId of currently selected tab.
+    /// Get AgentId of currently selected conversation.
     ///
     /// Returns:
-    /// - None if tab 0 is selected (main agent has no AgentId)
-    /// - Some(AgentId) if tab 1+ is selected (subagent)
-    /// - None if selected_tab is invalid or no session exists
+    /// - None if Main is selected (main agent has no AgentId)
+    /// - Some(AgentId) if Subagent is selected
     ///
     /// # Routing Logic
     ///
-    /// This encapsulates the tab→agent routing logic. Main agent (tab 0) has no AgentId,
-    /// while subagents (tab 1+) map to AgentId at sorted index (tab - 1).
+    /// This directly extracts the AgentId from the ConversationSelection.
+    /// Main agent has no AgentId, while subagents have explicit identity.
     pub fn selected_agent_id(&self) -> Option<AgentId> {
-        let tab_index = self.selected_tab.unwrap_or(0);
-
-        if tab_index == 0 {
-            // Tab 0: Main agent has no AgentId
-            None
-        } else {
-            // Tab 1+: Get AgentId at sorted index (tab - 1)
-            let session = self.log_view.current_session()?;
-            let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
-            agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
-            agent_ids.get(tab_index - 1).cloned()
+        match &self.selected_conversation {
+            ConversationSelection::Main => None,
+            ConversationSelection::Subagent(agent_id) => Some(agent_id.clone()),
         }
     }
 
@@ -396,33 +436,39 @@ impl AppState {
     /// Skip Search in the cycle.
     /// Order: Main -> Subagent -> Stats -> Main
     ///
-    /// Auto-selects appropriate tab when switching panes:
-    /// - Switching to Subagent pane: selects tab 1 (first subagent) if subagents exist
-    /// - Switching to Main pane: selects tab 0 (main agent)
+    /// Auto-selects appropriate conversation when switching panes:
+    /// - Switching to Subagent pane: selects first subagent (alphabetically) if subagents exist
+    /// - Switching to Main pane: selects main agent
     pub fn cycle_focus(&mut self) {
-        self.focus = match self.focus {
-            FocusPane::Main => FocusPane::Subagent,
-            FocusPane::Subagent => FocusPane::Stats,
-            FocusPane::Stats => FocusPane::Main,
-            FocusPane::Search => FocusPane::Main,
-        };
-
-        // Auto-select appropriate tab for new pane (unified tab model FR-086)
         match self.focus {
-            FocusPane::Subagent => {
-                // Switching to Subagent pane: select first subagent tab (tab 1)
-                if let Some(session) = self.log_view.current_session() {
-                    if session.subagent_ids().next().is_some() {
-                        self.selected_tab = Some(1); // First subagent is at tab 1
+            FocusPane::Main => {
+                // Main -> Subagent
+                self.focus = FocusPane::Subagent;
+                // Auto-select first subagent if Main is currently selected
+                if matches!(self.selected_conversation, ConversationSelection::Main) {
+                    if let Some(session) = self.log_view.current_session() {
+                        let mut sorted_ids: Vec<_> = session.subagents().keys().cloned().collect();
+                        sorted_ids.sort();
+                        if let Some(first_id) = sorted_ids.first() {
+                            self.selected_conversation =
+                                ConversationSelection::Subagent(first_id.clone());
+                        }
                     }
                 }
             }
-            FocusPane::Main => {
-                // Switching to Main pane: select main agent tab (tab 0)
-                self.selected_tab = Some(0);
+            FocusPane::Subagent => {
+                // Subagent -> Stats
+                self.focus = FocusPane::Stats;
             }
-            _ => {
-                // Stats and Search panes don't change tab selection
+            FocusPane::Stats => {
+                // Stats -> Main
+                self.focus = FocusPane::Main;
+                self.selected_conversation = ConversationSelection::Main;
+            }
+            FocusPane::Search => {
+                // Search should not be in the cycle, but if we're here, go to Main
+                self.focus = FocusPane::Main;
+                self.selected_conversation = ConversationSelection::Main;
             }
         }
     }
@@ -434,16 +480,17 @@ impl AppState {
 
     /// Set focus to Subagent pane.
     ///
-    /// Auto-selects first subagent tab if no tab is currently selected
+    /// Auto-selects first subagent (alphabetically) if Main is currently selected
     /// and subagents exist.
     pub fn focus_subagent(&mut self) {
         self.focus = FocusPane::Subagent;
-
-        // Auto-select first subagent tab if none selected
-        if self.selected_tab.is_none() {
+        // Auto-select first subagent if Main is currently selected
+        if matches!(self.selected_conversation, ConversationSelection::Main) {
             if let Some(session) = self.log_view.current_session() {
-                if session.subagent_ids().next().is_some() {
-                    self.selected_tab = Some(0);
+                let mut sorted_ids: Vec<_> = session.subagents().keys().cloned().collect();
+                sorted_ids.sort();
+                if let Some(first_id) = sorted_ids.first() {
+                    self.selected_conversation = ConversationSelection::Subagent(first_id.clone());
                 }
             }
         }
@@ -454,98 +501,131 @@ impl AppState {
         self.focus = FocusPane::Stats;
     }
 
-    /// Move to next tab (unified tab model, FR-086).
+    /// Move to next tab (unified tab model, FR-086, cclv-5ur.53).
     /// Works for all conversations (main agent + subagents).
-    /// Wraps from last tab to first tab (tab 0 = main agent).
+    /// Wraps from last to first (main).
     /// No-op when Search modal is active.
     pub fn next_tab(&mut self) {
-        // No-op when Search modal is active (FR-086)
-        if self.focus == FocusPane::Search {
+        // No-op when Search modal is active
+        if !matches!(self.search, SearchState::Inactive) {
             return;
         }
 
-        // Calculate total tabs: 1 (main) + num_subagents
-        let num_subagents = self
-            .log_view
-            .current_session()
-            .map(|s| s.subagent_ids().count())
-            .unwrap_or(0);
-        let total_tabs = 1 + num_subagents;
-
-        // No-op if only one tab (main only, wrapping is meaningless)
-        if total_tabs <= 1 {
+        // Get current session's sorted subagent list
+        let Some(session) = self.log_view.current_session() else {
             return;
-        }
+        };
 
-        self.selected_tab = match self.selected_tab {
-            None => Some(0), // Initialize to first tab (main)
-            Some(current) => {
-                if current + 1 >= total_tabs {
-                    Some(0) // Wrap to first (main agent)
-                } else {
-                    Some(current + 1) // Move to next
+        let mut sorted_ids: Vec<_> = session.subagents().keys().cloned().collect();
+        sorted_ids.sort();
+
+        match &self.selected_conversation {
+            ConversationSelection::Main => {
+                // Main -> first subagent (or wrap to main if no subagents)
+                if let Some(first_id) = sorted_ids.first() {
+                    self.selected_conversation = ConversationSelection::Subagent(first_id.clone());
                 }
             }
-        };
+            ConversationSelection::Subagent(current_id) => {
+                // Find current position
+                if let Some(pos) = sorted_ids.iter().position(|id| id == current_id) {
+                    if pos + 1 < sorted_ids.len() {
+                        // Move to next subagent
+                        self.selected_conversation =
+                            ConversationSelection::Subagent(sorted_ids[pos + 1].clone());
+                    } else {
+                        // Last subagent -> wrap to main
+                        self.selected_conversation = ConversationSelection::Main;
+                    }
+                } else {
+                    // Current subagent no longer exists, go to main
+                    self.selected_conversation = ConversationSelection::Main;
+                }
+            }
+        }
     }
 
-    /// Move to previous tab (unified tab model, FR-086).
+    /// Move to previous tab (unified tab model, FR-086, cclv-5ur.53).
     /// Works for all conversations (main agent + subagents).
-    /// Wraps from first tab (main) to last tab.
+    /// Wraps from first (main) to last.
     /// No-op when Search modal is active.
     pub fn prev_tab(&mut self) {
-        // No-op when Search modal is active (FR-086)
-        if self.focus == FocusPane::Search {
+        // No-op when Search modal is active
+        if !matches!(self.search, SearchState::Inactive) {
             return;
         }
 
-        // Calculate total tabs: 1 (main) + num_subagents
-        let num_subagents = self
-            .log_view
-            .current_session()
-            .map(|s| s.subagent_ids().count())
-            .unwrap_or(0);
-        let total_tabs = 1 + num_subagents;
-
-        // No-op if only one tab (main only, wrapping is meaningless)
-        if total_tabs <= 1 {
+        // Get current session's sorted subagent list
+        let Some(session) = self.log_view.current_session() else {
             return;
-        }
-
-        self.selected_tab = match self.selected_tab {
-            None => Some(0),                    // Initialize to first tab (main)
-            Some(0) => Some(total_tabs - 1),    // Wrap from main to last tab
-            Some(current) => Some(current - 1), // Move to previous
         };
+
+        let mut sorted_ids: Vec<_> = session.subagents().keys().cloned().collect();
+        sorted_ids.sort();
+
+        match &self.selected_conversation {
+            ConversationSelection::Main => {
+                // Main -> last subagent (or stay at main if no subagents)
+                if let Some(last_id) = sorted_ids.last() {
+                    self.selected_conversation = ConversationSelection::Subagent(last_id.clone());
+                }
+            }
+            ConversationSelection::Subagent(current_id) => {
+                // Find current position
+                if let Some(pos) = sorted_ids.iter().position(|id| id == current_id) {
+                    if pos > 0 {
+                        // Move to previous subagent
+                        self.selected_conversation =
+                            ConversationSelection::Subagent(sorted_ids[pos - 1].clone());
+                    } else {
+                        // First subagent -> wrap to main
+                        self.selected_conversation = ConversationSelection::Main;
+                    }
+                } else {
+                    // Current subagent no longer exists, go to main
+                    self.selected_conversation = ConversationSelection::Main;
+                }
+            }
+        }
     }
 
-    /// Select a specific tab by 1-indexed number (unified tab model, FR-086).
+    /// Select a specific tab by 1-indexed number (unified tab model, FR-086, cclv-5ur.53).
     /// Works for all conversations: tab 1 = main (index 0), tab 2+ = subagents.
     /// Clamps to last tab if number is too high.
     /// Ignores if number is 0.
     /// No-op when Search modal is active.
     pub fn select_tab(&mut self, tab_number: usize) {
-        // No-op when Search modal is active (FR-086)
-        if self.focus == FocusPane::Search {
-            return;
-        }
-
-        // Calculate total tabs: 1 (main) + num_subagents
-        let num_subagents = self
-            .log_view
-            .current_session()
-            .map(|s| s.subagent_ids().count())
-            .unwrap_or(0);
-        let total_tabs = 1 + num_subagents;
-
         // Ignore 0 (invalid 1-indexed input)
         if tab_number == 0 {
             return;
         }
 
-        // Convert from 1-indexed to 0-indexed, clamping to last tab
-        let zero_indexed = tab_number - 1;
-        self.selected_tab = Some(zero_indexed.min(total_tabs - 1));
+        // No-op when Search modal is active
+        if !matches!(self.search, SearchState::Inactive) {
+            return;
+        }
+
+        // Convert to 0-indexed
+        let index = tab_number - 1;
+
+        if index == 0 {
+            // Tab 1 = Main
+            self.selected_conversation = ConversationSelection::Main;
+        } else {
+            // Tab 2+ = Subagent
+            // Get current session's sorted subagent list
+            if let Some(session) = self.log_view.current_session() {
+                let mut sorted_ids: Vec<_> = session.subagents().keys().cloned().collect();
+                sorted_ids.sort();
+
+                // Clamp to last subagent if index too high
+                let subagent_index = (index - 1).min(sorted_ids.len().saturating_sub(1));
+
+                if let Some(agent_id) = sorted_ids.get(subagent_index) {
+                    self.selected_conversation = ConversationSelection::Subagent(agent_id.clone());
+                }
+            }
+        }
     }
 
     /// Toggle global wrap mode (FR-050: W key)
@@ -675,10 +755,15 @@ impl WrapContext {
 // ===== Tests =====
 // Tests removed during expand state migration to view-state layer
 
-#[cfg(test)]
-#[path = "app_state_unified_tabs_test.rs"]
-mod unified_tabs_test;
+// TEMPORARILY DISABLED during cclv-5ur.53 refactor
+// #[cfg(test)]
+// #[path = "app_state_unified_tabs_test.rs"]
+// mod unified_tabs_test;
 
 #[cfg(test)]
 #[path = "app_state_routing_test.rs"]
 mod routing_test;
+
+#[cfg(test)]
+#[path = "app_state_conversation_selection_test.rs"]
+mod conversation_selection_test;

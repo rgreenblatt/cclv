@@ -102,7 +102,8 @@ fn test_tooluse_defaults_to_nowrap_despite_global_wrap() {
     let entry = create_test_entry_with_tooluse("tooluse-1", long_path);
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
+    let mut view_state =
+        ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport (60 chars)
     view_state.relayout(60, WrapMode::Wrap);
@@ -155,7 +156,8 @@ fn test_tooluse_respects_explicit_wrap_override() {
     let entry = create_test_entry_with_tooluse("tooluse-2", long_path);
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
+    let mut view_state =
+        ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);
@@ -191,7 +193,9 @@ fn test_tooluse_respects_explicit_wrap_override() {
     let path_continuation_line = output.lines().position(|line| line.contains("exceeds"));
 
     assert!(
-        path_start_line.is_some() && path_continuation_line.is_some() && path_start_line != path_continuation_line,
+        path_start_line.is_some()
+            && path_continuation_line.is_some()
+            && path_start_line != path_continuation_line,
         "Per-entry Wrap override should cause ToolUse JSON to wrap.\n\
          Expected: Long path split across multiple lines\n\
          Actual: Path on single line despite explicit Wrap override\n\n\
@@ -206,7 +210,8 @@ fn test_toolresult_defaults_to_nowrap_despite_global_wrap() {
     let entry = create_test_entry_with_toolresult("toolresult-1", long_line);
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
+    let mut view_state =
+        ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport (60 chars)
     view_state.relayout(60, WrapMode::Wrap);
@@ -260,7 +265,8 @@ fn test_toolresult_respects_explicit_wrap_override() {
     let entry = create_test_entry_with_toolresult("toolresult-2", long_line);
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
+    let mut view_state =
+        ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap
     let params = LayoutParams::new(60, WrapMode::Wrap);
@@ -319,7 +325,8 @@ fn test_text_block_still_respects_global_wrap() {
     );
 
     let conversation = vec![ConversationEntry::Valid(Box::new(entry))];
-    let mut view_state = ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
+    let mut view_state =
+        ConversationViewState::new(None, None, conversation, 200_000, PricingConfig::default());
 
     // Set global wrap to Wrap and use NARROW viewport
     view_state.relayout(60, WrapMode::Wrap);

@@ -151,11 +151,12 @@ pub fn detect_entry_click(
     use crate::view_state::hit_test::HitTestResult;
 
     // Get scroll offset
-    let scroll_offset = conv_view.scroll().resolve(
-        conv_view.total_height(),
-        inner_height as usize,
-        |idx| conv_view.entry_cumulative_y(idx),
-    );
+    let scroll_offset =
+        conv_view
+            .scroll()
+            .resolve(conv_view.total_height(), inner_height as usize, |idx| {
+                conv_view.entry_cumulative_y(idx)
+            });
 
     // Calculate viewport-relative position
     let viewport_y = click_y.saturating_sub(inner_y);
@@ -249,10 +250,15 @@ pub fn handle_mouse_click(
     // Detect which tab was clicked
     let click_result = detect_tab_click(click_x, click_y, tab_area, &agent_ids);
 
-    // Update state if a tab was clicked
+    // Update state if a tab was clicked (cclv-5ur.53: convert index to ConversationSelection)
     match click_result {
         TabClickResult::TabClicked(index) => {
-            state.selected_tab = Some(index);
+            // Tab 0 = Main, Tab 1+ = Subagent by sorted position
+            if index == 0 {
+                state.selected_conversation = crate::state::ConversationSelection::Main;
+            } else if let Some(agent_id) = agent_ids.get(index - 1) {
+                state.selected_conversation = crate::state::ConversationSelection::Subagent((*agent_id).clone());
+            }
             state
         }
         TabClickResult::NoTab => state,

@@ -81,7 +81,15 @@ fn with_rendered_lines_computes_for_valid_entry() {
     let entry = make_valid_entry();
     let index = EntryIndex::new(0);
 
-    let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Verify rendered_lines is not empty (should have separator at minimum)
     let lines = view.rendered_lines();
@@ -96,7 +104,15 @@ fn with_rendered_lines_computes_for_malformed_entry() {
     let entry = make_malformed_entry();
     let index = EntryIndex::new(0);
 
-    let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Malformed entries should have minimal rendering (just separator)
     let lines = view.rendered_lines();
@@ -117,7 +133,15 @@ fn with_rendered_lines_uses_collapsed_state_by_default() {
     let entry = make_entry_with_thinking(&thinking_text);
     let index = EntryIndex::new(0);
 
-    let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Should be collapsed by default: 3 summary + 1 indicator + 1 separator = 5 lines
     let lines = view.rendered_lines();
@@ -134,7 +158,15 @@ fn with_rendered_lines_uses_collapsed_state_by_default() {
 fn height_returns_line_count_from_rendered_lines() {
     let entry = make_valid_entry();
     let index = EntryIndex::new(0);
-    let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     let height = view.height();
     let lines = view.rendered_lines();
@@ -151,7 +183,15 @@ fn height_returns_one_for_minimal_entry() {
     // Malformed entry has 1 line (separator only)
     let entry = make_malformed_entry();
     let index = EntryIndex::new(0);
-    let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     let height = view.height();
     assert_eq!(
@@ -172,7 +212,15 @@ fn height_reflects_collapsed_vs_expanded_difference() {
     let index = EntryIndex::new(0);
 
     // Collapsed view
-    let view_collapsed = EntryView::with_rendered_lines(entry.clone(), index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view_collapsed = EntryView::with_rendered_lines(
+        entry.clone(),
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
     let height_collapsed = view_collapsed.height();
 
     // Create expanded view by recomputing after expansion
@@ -192,7 +240,15 @@ fn height_reflects_collapsed_vs_expanded_difference() {
 fn rendered_lines_returns_reference_to_lines() {
     let entry = make_valid_entry();
     let index = EntryIndex::new(0);
-    let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     let lines: &[Line<'static>] = view.rendered_lines();
     assert!(
@@ -205,7 +261,15 @@ fn rendered_lines_returns_reference_to_lines() {
 fn rendered_lines_has_static_lifetime() {
     let entry = make_valid_entry();
     let index = EntryIndex::new(0);
-    let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // This compiles only if the returned slice has 'static lifetime
     let lines: &[Line<'static>] = view.rendered_lines();
@@ -225,7 +289,15 @@ fn recompute_lines_updates_rendered_lines() {
     let entry = make_entry_with_thinking(&thinking_text);
     let index = EntryIndex::new(0);
 
-    let mut view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let mut view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     let initial_height = view.height();
     assert_eq!(initial_height.get(), 5, "Initial collapsed height");
@@ -250,7 +322,15 @@ fn recompute_lines_updates_rendered_lines() {
 fn recompute_lines_with_different_width() {
     let entry = make_valid_entry();
     let index = EntryIndex::new(0);
-    let mut view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let mut view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Recompute with different width (wrapping behavior might change)
     view.recompute_lines(WrapMode::Wrap, 40, false);
@@ -280,7 +360,15 @@ fn height_and_rendered_lines_stay_consistent() {
     ];
 
     for (i, entry) in entries.into_iter().enumerate() {
-        let view = EntryView::with_rendered_lines(entry, EntryIndex::new(i), WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+        let view = EntryView::with_rendered_lines(
+            entry,
+            EntryIndex::new(i),
+            WrapMode::Wrap,
+            80,
+            0,
+            200_000,
+            crate::model::PricingConfig::default(),
+        );
         let height = view.height().get();
         let line_count = view.rendered_lines().len() as u16;
 
@@ -298,8 +386,24 @@ fn constructor_parameters_affect_rendering() {
     let entry = make_valid_entry();
     let index = EntryIndex::new(0);
 
-    let view1 = EntryView::with_rendered_lines(entry.clone(), index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
-    let view2 = EntryView::with_rendered_lines(entry.clone(), index, WrapMode::NoWrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view1 = EntryView::with_rendered_lines(
+        entry.clone(),
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
+    let view2 = EntryView::with_rendered_lines(
+        entry.clone(),
+        index,
+        WrapMode::NoWrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // For now, WrapMode doesn't affect output (deferred to 14.6)
     // But constructor should accept the parameter
@@ -362,7 +466,15 @@ fn recompute_lines_respects_global_wrap_mode() {
     // ACCEPTANCE: wrap_lines() returns one line per source line when WrapMode::NoWrap
     let entry = make_entry_with_long_line();
     let index = EntryIndex::new(0);
-    let mut view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 40, 0, 200_000, crate::model::PricingConfig::default());
+    let mut view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        40,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Initial: Global Wrap mode (should wrap 100-char line)
     let initial_lines = view.rendered_lines().len();
@@ -390,7 +502,15 @@ fn recompute_lines_respects_per_entry_wrap_override() {
     // ACCEPTANCE: EntryView.effective_wrap(global_wrap) is checked before rendering
     let entry = make_entry_with_long_line();
     let index = EntryIndex::new(0);
-    let mut view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 40, 0, 200_000, crate::model::PricingConfig::default());
+    let mut view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        40,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Set per-entry override to NoWrap
     view.set_wrap_override(Some(WrapMode::NoWrap));
@@ -412,7 +532,15 @@ fn recompute_lines_override_none_uses_global() {
     // ACCEPTANCE: When wrap_override is None, use global wrap mode
     let entry = make_entry_with_long_line();
     let index = EntryIndex::new(0);
-    let mut view = EntryView::with_rendered_lines(entry, index, WrapMode::NoWrap, 40, 0, 200_000, crate::model::PricingConfig::default());
+    let mut view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::NoWrap,
+        40,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Ensure no override set
     assert_eq!(
@@ -437,7 +565,15 @@ fn recompute_lines_override_none_uses_global() {
 fn effective_wrap_returns_override_when_set() {
     let entry = make_valid_entry();
     let index = EntryIndex::new(0);
-    let mut view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let mut view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Set override
     view.set_wrap_override(Some(WrapMode::NoWrap));
@@ -454,7 +590,15 @@ fn effective_wrap_returns_override_when_set() {
 fn effective_wrap_returns_global_when_no_override() {
     let entry = make_valid_entry();
     let index = EntryIndex::new(0);
-    let view = EntryView::with_rendered_lines(entry, index, WrapMode::Wrap, 80, 0, 200_000, crate::model::PricingConfig::default());
+    let view = EntryView::with_rendered_lines(
+        entry,
+        index,
+        WrapMode::Wrap,
+        80,
+        0,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // No override set
     assert_eq!(

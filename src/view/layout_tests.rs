@@ -1,8 +1,8 @@
 //! Tests for split pane layout rendering.
 
 use super::*;
-use crate::model::{ConversationEntry, SessionId};
-use crate::state::{AppState, InputMode, WrapMode};
+use crate::model::{AgentId, ConversationEntry, SessionId};
+use crate::state::{AppState, ConversationSelection, InputMode, WrapMode};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 
@@ -319,7 +319,8 @@ fn render_layout_uses_selected_tab_to_display_correct_subagent() {
     let entries = create_entries_with_multiple_subagents();
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.selected_tab = Some(1); // Select second subagent (by index)
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap()); // Select first subagent
 
     terminal
         .draw(|frame| {
@@ -528,7 +529,8 @@ fn render_header_shows_subagent_id_when_subagent_focused() {
     let mut state = AppState::new();
     state.add_entries(entries);
     state.focus = FocusPane::Subagent;
-    state.selected_tab = Some(1); // First subagent (tab 0 is Main Agent, tab 1+ are subagents)
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap()); // First subagent
 
     terminal
         .draw(|frame| {
@@ -561,7 +563,8 @@ fn render_header_uses_selected_tab_not_focus() {
     // but we've selected a subagent tab.
     // Header should show "Subagent X", not "Main Agent"
     state.focus = FocusPane::Stats;
-    state.selected_tab = Some(1); // First subagent tab selected (tab 0 is Main Agent, tab 1+ are subagents)
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap()); // First subagent tab selected
 
     terminal
         .draw(|frame| {
@@ -1499,7 +1502,7 @@ fn unified_tab_bar_includes_main_agent_at_position_zero() {
     let entries = create_entries_with_multiple_subagents();
     let mut state = AppState::new();
     state.add_entries(entries);
-    state.selected_tab = Some(0); // Select main agent tab
+    state.selected_conversation = ConversationSelection::Main; // Select main agent tab
 
     terminal
         .draw(|frame| {
@@ -1578,7 +1581,7 @@ fn unified_layout_selected_tab_controls_conversation_display() {
     init_layout_for_state(&mut state);
 
     // Test 1: selected_tab = 0 should show main agent
-    state.selected_tab = Some(0);
+    state.selected_conversation = ConversationSelection::Main;
     terminal
         .draw(|frame| {
             render_layout(frame, &state);
@@ -1594,7 +1597,8 @@ fn unified_layout_selected_tab_controls_conversation_display() {
     );
 
     // Test 2: selected_tab = 1 should show first subagent
-    state.selected_tab = Some(1);
+    state.selected_conversation =
+        ConversationSelection::Subagent(AgentId::new("subagent-1").unwrap());
     terminal
         .draw(|frame| {
             render_layout(frame, &state);
@@ -1622,7 +1626,7 @@ fn unified_tabs_work_with_main_pane_focused() {
 
     // Focus on Main pane (not Subagent)
     state.focus = FocusPane::Main;
-    state.selected_tab = Some(0); // Main agent
+    state.selected_conversation = ConversationSelection::Main; // Main agent
 
     terminal
         .draw(|frame| {

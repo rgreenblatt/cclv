@@ -275,7 +275,7 @@ fn us3_scenario4_filter_subagent() {
 
     // Verify a subagent tab is selected
     assert!(
-        state_after_tab.selected_tab.is_some(),
+        state_after_tab.selected_tab_index().is_some(),
         "A subagent tab should be selected"
     );
 
@@ -290,12 +290,13 @@ fn us3_scenario4_filter_subagent() {
             // Unified tab model (FR-086): tab 0 = main, tab 1+ = subagents
             let subagent_ids: Vec<_> = state_after_filter.session_view().subagent_ids().collect();
             let tab_index = state_after_filter
-                .selected_tab
+                .selected_tab_index()
                 .expect("Tab should be selected");
 
             // Convert from global tab index to subagent position
             // tab 1 -> subagent[0], tab 2 -> subagent[1], etc.
-            let subagent_position = tab_index.checked_sub(1)
+            let subagent_position = tab_index
+                .checked_sub(1)
                 .expect("Tab index should be >= 1 for subagents");
             let expected_agent_id = subagent_ids
                 .get(subagent_position)

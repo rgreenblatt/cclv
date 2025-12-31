@@ -2251,7 +2251,7 @@ fn bug_header_shows_wrong_agent_for_tab_zero() {
 
     // Verify initial state: selected_tab should be Some(0) (main agent tab)
     assert_eq!(
-        app.app_state().selected_tab,
+        app.app_state().selected_tab_index(),
         Some(0),
         "Test precondition: selected_tab should default to Some(0)"
     );
@@ -2337,7 +2337,7 @@ fn bug_tab_cycling_limited_to_three_subagents() {
     app.render_test().expect("Initial render should succeed");
 
     // Track which tabs we visit
-    let mut visited_tabs: Vec<Option<usize>> = vec![app.app_state().selected_tab];
+    let mut visited_tabs: Vec<Option<usize>> = vec![app.app_state().selected_tab_index()];
 
     // Press ']' to cycle through all tabs (should visit Main + all subagents)
     // With 7 subagents, we need 8 presses to cycle back to Main
@@ -2345,7 +2345,7 @@ fn bug_tab_cycling_limited_to_three_subagents() {
     for _ in 0..total_tabs {
         let key_event = KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE);
         app.handle_key_test(key_event);
-        visited_tabs.push(app.app_state().selected_tab);
+        visited_tabs.push(app.app_state().selected_tab_index());
     }
 
     // Count unique tabs visited (excluding the final return to start)
@@ -2421,7 +2421,7 @@ fn bug_subagent_scroll_does_not_work() {
 
     // Verify we're on a subagent tab
     assert!(
-        app.app_state().selected_tab.unwrap_or(0) > 0,
+        app.app_state().selected_tab_index().unwrap_or(0) > 0,
         "Should be on a subagent tab after pressing ']'"
     );
 
@@ -2432,7 +2432,7 @@ fn bug_subagent_scroll_does_not_work() {
     insta::assert_snapshot!("bug_subagent_scroll_before", output_before.clone());
 
     // Get scroll position before
-    let selected_tab = app.app_state().selected_tab.unwrap_or(0);
+    let selected_tab = app.app_state().selected_tab_index().unwrap_or(0);
 
     // Get the subagent's conversation view state
     let mut sorted_agent_ids: Vec<_> = app.app_state().session_view().subagent_ids().collect();
@@ -2555,7 +2555,7 @@ fn bug_subagent_entry_expand_collapse_not_working() {
     app.handle_key_test(key_event);
 
     // Verify we're on a subagent tab
-    let selected_tab = app.app_state().selected_tab.unwrap_or(0);
+    let selected_tab = app.app_state().selected_tab_index().unwrap_or(0);
     assert!(
         selected_tab > 0,
         "Should be on a subagent tab after pressing ']'"
@@ -2623,7 +2623,13 @@ fn bug_subagent_entry_expand_collapse_not_working() {
             .chars()
             .filter(|c| !['│', '┌', '┐', '└', '┘', '─', ' '].contains(c))
             .collect();
-        if content.len() == 1 && content.chars().next().map(|c| c.is_ascii_lowercase()).unwrap_or(false) {
+        if content.len() == 1
+            && content
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_lowercase())
+                .unwrap_or(false)
+        {
             consecutive_single_letters += 1;
             max_consecutive = max_consecutive.max(consecutive_single_letters);
         } else {
@@ -2662,7 +2668,8 @@ fn bug_subagent_entry_expand_collapse_not_working() {
 
     // BUG: Subagent entry should have toggled, but main entry toggled instead
     assert_ne!(
-        subagent_entry_0_expanded_before, subagent_entry_0_expanded_after,
+        subagent_entry_0_expanded_before,
+        subagent_entry_0_expanded_after,
         "BUG: Subagent entry expand/collapse does not work.\n\
          Pressed Enter while on subagent tab {} (agent: {}).\n\
          Subagent entry 0 expanded before: {}\n\
@@ -2707,7 +2714,9 @@ fn bug_subagent_mouse_click_expand_not_working() {
     use cclv::source::{FileSource, InputSource, StdinSource};
     use cclv::state::AppState;
     use cclv::view::TuiApp;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+    use crossterm::event::{
+        KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+    };
     use std::path::PathBuf;
 
     // Load fixture with subagent entries
@@ -2746,7 +2755,7 @@ fn bug_subagent_mouse_click_expand_not_working() {
     // Get the subagent's conversation view state
     let mut sorted_agent_ids: Vec<_> = app.app_state().session_view().subagent_ids().collect();
     sorted_agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
-    let selected_tab = app.app_state().selected_tab.unwrap_or(0);
+    let selected_tab = app.app_state().selected_tab_index().unwrap_or(0);
     let agent_id = sorted_agent_ids[selected_tab - 1].clone();
 
     // Get expanded state of entry 0 in subagent BEFORE mouse click
@@ -2763,8 +2772,8 @@ fn bug_subagent_mouse_click_expand_not_working() {
     // The conversation pane starts at row 5 (after header + tab bar)
     let mouse_event = MouseEvent {
         kind: MouseEventKind::Down(MouseButton::Left),
-        column: 10,  // Inside the content area
-        row: 6,      // First entry area
+        column: 10, // Inside the content area
+        row: 6,     // First entry area
         modifiers: KeyModifiers::NONE,
     };
     app.handle_mouse_test(mouse_event);
@@ -2789,7 +2798,8 @@ fn bug_subagent_mouse_click_expand_not_working() {
 
     // BUG ASSERTION: Mouse click should toggle expand state
     assert_ne!(
-        expanded_before, expanded_after,
+        expanded_before,
+        expanded_after,
         "BUG: Mouse click on subagent entry does NOT toggle expand/collapse.\n\
          Clicked on entry 0 in subagent tab (agent: {}).\n\
          Expanded before click: {}\n\

@@ -110,10 +110,10 @@ fn us4_scenario2_arrow_keys_switch_tabs() {
     );
 
     // VERIFY: A subagent tab is selected
-    let initial_tab = state_after_tab.selected_tab;
+    let initial_selection = state_after_tab.selected_conversation.clone();
     assert!(
-        initial_tab.is_some(),
-        "Should have a subagent tab selected when focused"
+        !matches!(initial_selection, cclv::state::ConversationSelection::Main),
+        "Should have a subagent selected when focused on subagent pane"
     );
 
     // WHEN: User presses ] to switch to next tab
@@ -122,7 +122,7 @@ fn us4_scenario2_arrow_keys_switch_tabs() {
     // VERIFY: Tab selection changed
     let state_after_next = harness.state();
     assert_ne!(
-        state_after_next.selected_tab, initial_tab,
+        state_after_next.selected_conversation, initial_selection,
         "] key should switch to next subagent tab"
     );
 
@@ -132,7 +132,7 @@ fn us4_scenario2_arrow_keys_switch_tabs() {
     // VERIFY: Tab switched back
     let state_after_prev = harness.state();
     assert_eq!(
-        state_after_prev.selected_tab, initial_tab,
+        state_after_prev.selected_conversation, initial_selection,
         "[ key should switch back to previous tab"
     );
 
@@ -636,7 +636,7 @@ fn mouse_click_switches_tabs() {
 
     let state_before_click = harness.state();
     assert_eq!(
-        state_before_click.selected_tab,
+        state_before_click.selected_tab_index(),
         Some(0),
         "Should start with first tab selected"
     );
@@ -656,7 +656,7 @@ fn mouse_click_switches_tabs() {
     let state_after_click = harness.state();
 
     assert_eq!(
-        state_after_click.selected_tab,
+        state_after_click.selected_tab_index(),
         Some(1),
         "Mouse click should switch to second tab"
     );

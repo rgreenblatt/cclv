@@ -103,7 +103,7 @@ fn us2_scenario2_switch_subagent_tabs() {
 
     // VERIFY: Subagent tab is selected
     assert!(
-        state_after_tab.selected_tab.is_some(),
+        state_after_tab.selected_tab_index().is_some(),
         "Should have a subagent tab selected"
     );
 

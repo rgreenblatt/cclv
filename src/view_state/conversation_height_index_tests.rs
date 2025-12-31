@@ -44,7 +44,13 @@ fn make_valid_entry(uuid: &str) -> ConversationEntry {
 
 #[test]
 fn new_state_has_empty_height_index() {
-    let state = ConversationViewState::new(None, None, vec![], 200_000, crate::model::PricingConfig::default());
+    let state = ConversationViewState::new(
+        None,
+        None,
+        vec![],
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // HeightIndex should be initialized but empty
     assert_eq!(state.height_index.len(), 0);
@@ -58,7 +64,13 @@ fn relayout_populates_height_index() {
         make_valid_entry("uuid-2"),
         make_valid_entry("uuid-3"),
     ];
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Before relayout: index should be empty
     assert_eq!(state.height_index.len(), 0);
@@ -93,7 +105,13 @@ fn toggle_entry_expanded_updates_height_index() {
         make_valid_entry("uuid-2"),
         make_valid_entry("uuid-3"),
     ];
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Initial relayout
     state.relayout(80, WrapMode::Wrap);
@@ -136,7 +154,13 @@ fn toggle_entry_expanded_updates_height_index() {
 #[test]
 fn set_entry_wrap_override_updates_height_index() {
     let entries = vec![make_valid_entry("uuid-1"), make_valid_entry("uuid-2")];
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Initial relayout with Wrap mode
     state.relayout(80, WrapMode::Wrap);
@@ -159,7 +183,13 @@ fn set_entry_wrap_override_updates_height_index() {
 
 #[test]
 fn append_entries_updates_height_index() {
-    let mut state = ConversationViewState::new(None, None, vec![make_valid_entry("uuid-1")], 200_000, crate::model::PricingConfig::default());
+    let mut state = ConversationViewState::new(
+        None,
+        None,
+        vec![make_valid_entry("uuid-1")],
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     // Initial relayout
     state.relayout(80, WrapMode::Wrap);
@@ -202,7 +232,13 @@ fn visible_range_uses_height_index() {
     let entries: Vec<_> = (0..10)
         .map(|i| make_valid_entry(&format!("uuid-{}", i)))
         .collect();
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     state.relayout(80, WrapMode::Wrap);
 
@@ -247,7 +283,13 @@ fn total_height_equals_height_index_total() {
         make_valid_entry("uuid-2"),
         make_valid_entry("uuid-3"),
     ];
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     state.relayout(80, WrapMode::Wrap);
 
@@ -267,7 +309,13 @@ fn height_index_invariant_maintained_across_operations() {
     let entries: Vec<_> = (0..5)
         .map(|i| make_valid_entry(&format!("uuid-{}", i)))
         .collect();
-    let mut state = ConversationViewState::new(None, None, entries, 200_000, crate::model::PricingConfig::default());
+    let mut state = ConversationViewState::new(
+        None,
+        None,
+        entries,
+        200_000,
+        crate::model::PricingConfig::default(),
+    );
 
     state.relayout(80, WrapMode::Wrap);
     verify_height_index_invariant(&state);

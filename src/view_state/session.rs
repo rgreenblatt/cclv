@@ -104,7 +104,9 @@ impl SessionViewState {
 
             // Propagate viewport dimensions to newly created subagent
             if self.viewport_width > 0 {
-                self.subagents.get_mut(id).unwrap()
+                self.subagents
+                    .get_mut(id)
+                    .unwrap()
                     .relayout(self.viewport_width, self.global_wrap);
             }
         }
@@ -120,6 +122,15 @@ impl SessionViewState {
     /// Returns None if subagent hasn't been initialized yet.
     pub fn get_subagent(&self, id: &AgentId) -> Option<&ConversationViewState> {
         self.subagents.get(id)
+    }
+
+    /// Get mutable subagent view-state without creating it.
+    /// Returns None if subagent hasn't been initialized yet.
+    ///
+    /// This is the mutable counterpart to `get_subagent()`, with identical semantics:
+    /// it does NOT create the subagent if it doesn't exist.
+    pub fn get_subagent_mut(&mut self, id: &AgentId) -> Option<&mut ConversationViewState> {
+        self.subagents.get_mut(id)
     }
 
     /// List all known subagent IDs.
@@ -628,7 +639,9 @@ mod tests {
 
         // After adding: subagent should exist and have the model
         assert!(state.has_subagent(&agent_id));
-        let subagent = state.get_subagent(&agent_id).expect("subagent should exist");
+        let subagent = state
+            .get_subagent(&agent_id)
+            .expect("subagent should exist");
 
         assert!(
             subagent.model().is_some(),
@@ -674,7 +687,9 @@ mod tests {
         // Add first entry (should set model)
         state.add_subagent_entry(agent_id.clone(), first_entry);
 
-        let subagent = state.get_subagent(&agent_id).expect("subagent should exist");
+        let subagent = state
+            .get_subagent(&agent_id)
+            .expect("subagent should exist");
         assert_eq!(
             subagent.model().unwrap().id(),
             "claude-haiku-4-5-20251001",
@@ -703,7 +718,9 @@ mod tests {
         // Add second entry (should NOT overwrite model)
         state.add_subagent_entry(agent_id.clone(), second_entry);
 
-        let subagent = state.get_subagent(&agent_id).expect("subagent should exist");
+        let subagent = state
+            .get_subagent(&agent_id)
+            .expect("subagent should exist");
         assert_eq!(
             subagent.model().unwrap().id(),
             "claude-haiku-4-5-20251001",
@@ -743,7 +760,9 @@ mod tests {
         state.add_subagent_entry(agent_id.clone(), user_entry);
 
         // Subagent should exist but have no model
-        let subagent = state.get_subagent(&agent_id).expect("subagent should exist");
+        let subagent = state
+            .get_subagent(&agent_id)
+            .expect("subagent should exist");
         assert!(
             subagent.model().is_none(),
             "Subagent should have no model from user message"

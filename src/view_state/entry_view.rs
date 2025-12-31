@@ -346,7 +346,13 @@ mod legacy_tests {
         let index = EntryIndex::new(0);
 
         // NEW API: EntryView::new creates minimal placeholder
-        let view = EntryView::new(entry, index, 0, 200_000, crate::model::PricingConfig::default());
+        let view = EntryView::new(
+            entry,
+            index,
+            0,
+            200_000,
+            crate::model::PricingConfig::default(),
+        );
 
         assert_eq!(view.index(), index);
         assert!(
