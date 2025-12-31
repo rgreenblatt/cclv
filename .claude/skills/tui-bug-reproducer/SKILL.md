@@ -322,6 +322,54 @@ Add failing snapshot test demonstrating BRIEF_ISSUE.
 - Bead: BEAD_ID tracks the bug
 ```
 
+## Translating tmux Observations to Tests
+
+After reproducing a bug via tmux, translate observations to programmatic tests.
+
+### Terminal Dimensions
+
+```bash
+tmux display -t PANE -p '#{pane_width}x#{pane_height}'
+# Output: 80x24 → TestBackend::new(80, 24)
+```
+
+### tmux Capture → Test Assertion
+
+tmux output ≈ `buffer_to_string()` in tests:
+
+```rust
+let buffer = app.terminal().backend().buffer();
+let output = buffer_to_string(buffer);
+
+// Assert expected content visible
+assert!(output.contains("expected text"));
+```
+
+### Mouse Events: tmux → crossterm
+
+tmux mouse sequences use 1-indexed coordinates, crossterm uses 0-indexed:
+
+```rust
+use crossterm::event::{MouseEvent, MouseEventKind, MouseButton, KeyModifiers};
+
+// Click at (x=50, y=13) from tmux → (column=49, row=12) 0-indexed
+let mouse = MouseEvent {
+    kind: MouseEventKind::Down(MouseButton::Left),
+    column: 49,  // x - 1
+    row: 12,     // y - 1
+    modifiers: KeyModifiers::NONE,
+};
+app.handle_mouse_test(mouse);
+
+// Scroll down
+let scroll = MouseEvent {
+    kind: MouseEventKind::ScrollDown,
+    column: 49,
+    row: 19,
+    modifiers: KeyModifiers::NONE,
+};
+```
+
 ## Checklist
 
 Before completing:

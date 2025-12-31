@@ -120,39 +120,6 @@ echo "$output" | grep -c "^│[[:space:]]*│$"
 echo "$output" | grep -q "Expected Text"
 ```
 
-## Creating Reproducers
-
-After observing bug via tmux:
-
-1. **Document observed behavior** from captures
-2. **Identify minimal reproduction** (which keys/actions trigger it)
-3. **Write programmatic test** using TestBackend
-4. **Verify test fails** the same way TUI does
-
-### Example: Blank Screen Bug
-
-**Observed via tmux**:
-```bash
-# Launch - screen blank
-tmux send-keys -t 5 "cargo run -- file.jsonl" Enter
-sleep 1 && tmux capture-pane -t 5 -p  # Empty!
-
-# Press Enter - content appears
-tmux send-keys -t 5 Enter
-sleep 0.3 && tmux capture-pane -t 5 -p  # Now shows UI
-```
-
-**Resulting test**:
-```rust
-#[test]
-fn bug_initial_screen_blank() {
-    let app = TuiApp::new_for_test(...);
-    // Don't call render - check buffer is empty
-    let buffer = app.terminal().backend().buffer();
-    assert!(!buffer_to_string(buffer).is_empty());  // FAILS
-}
-```
-
 ## Tips
 
 - **Always add sleep** after send-keys before capture (TUI needs time to render)
@@ -207,7 +174,6 @@ tmux send-keys -t 5 -l $'\e[<64;50;20M'
 
 ### Known Limitations
 
-- **Tab clicking**: Not working in cclv (needs app-side investigation)
 - Requires app to have mouse capture enabled (`crossterm::event::EnableMouseCapture`)
 - The `-l` flag is critical (literal mode, no tmux key interpretation)
 
@@ -219,89 +185,6 @@ tmux display -t 5 -p '#{pane_width}x#{pane_height}'
 
 # Capture and count rows to find target
 tmux capture-pane -t 5 -p | head -20 | nl
-```
-
-## Translating to TestBackend Tests
-
-After reproducing a bug via tmux, create a programmatic test.
-
-### Get Terminal Dimensions
-
-```bash
-tmux display -t 5 -p '#{pane_width}x#{pane_height}'
-# Output: 80x24 → TestBackend::new(80, 24)
-```
-
-### Map tmux Capture to Test Assertion
-
-tmux output ≈ `buffer_to_string()` in tests:
-
-```rust
-let buffer = app.terminal().backend().buffer();
-let output = buffer_to_string(buffer);
-
-// Assert expected content visible
-assert!(output.contains("expected text"));
-```
-
-### Map Mouse Events to Test Code
-
-tmux mouse sequences → crossterm `MouseEvent`:
-
-```rust
-use crossterm::event::{MouseEvent, MouseEventKind, MouseButton};
-
-// Click at (x=50, y=13) from tmux → (column=49, row=12) 0-indexed
-let mouse = MouseEvent {
-    kind: MouseEventKind::Down(MouseButton::Left),
-    column: 49,  // x - 1
-    row: 12,     // y - 1
-    modifiers: KeyModifiers::NONE,
-};
-app.handle_mouse_test(mouse);
-
-// Scroll down
-let scroll = MouseEvent {
-    kind: MouseEventKind::ScrollDown,
-    column: 49,
-    row: 19,
-    modifiers: KeyModifiers::NONE,
-};
-```
-
-### Example: Entry Expand Bug
-
-**Observed via tmux**:
-```bash
-# Entry shows "(+50 more lines)" - collapsed
-tmux capture-pane -t 5 -p | grep "more lines"
-
-# Click to expand
-tmux send-keys -t 5 -l $'\e[<0;50;15M' && tmux send-keys -t 5 -l $'\e[<0;50;15m'
-sleep 0.3 && tmux capture-pane -t 5 -p
-
-# Still shows "(+50 more lines)" - BUG!
-```
-
-**Resulting test**:
-```rust
-#[test]
-fn bug_entry_expand_not_working() {
-    // ... setup with fixture ...
-
-    // Simulate click on entry
-    let mouse = MouseEvent {
-        kind: MouseEventKind::Down(MouseButton::Left),
-        column: 49, row: 14,
-        modifiers: KeyModifiers::NONE,
-    };
-    app.handle_mouse_test(mouse);
-    app.render_test().unwrap();
-
-    let output = buffer_to_string(app.terminal().backend().buffer());
-    // Should NOT contain "more lines" after expand
-    assert!(!output.contains("more lines"), "Entry should be expanded");
-}
 ```
 
 ## Cleanup
