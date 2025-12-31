@@ -1,5 +1,7 @@
 //! TUI rendering and terminal management (impure shell)
 
+mod layout;
+
 use crate::integration;
 use crate::model::{AppError, SessionId};
 use crate::source::InputSource;
@@ -150,8 +152,8 @@ where
 
     /// Render the current frame
     fn draw(&mut self) -> Result<(), TuiError> {
-        self.terminal.draw(|_frame| {
-            // Blank screen for now - just clear the terminal
+        self.terminal.draw(|frame| {
+            layout::render_layout(frame, &self.app_state);
         })?;
         Ok(())
     }
