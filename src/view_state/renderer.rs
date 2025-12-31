@@ -614,37 +614,42 @@ fn render_block(
 
 /// Width of the entry index prefix in characters.
 ///
-/// The entry index prefix format is "│NNNN " where:
+/// The entry index prefix format is "│NNNNNN " where:
 /// - "│" = 1 char (separator)
-/// - "NNNN" = 4 chars (right-aligned number)
+/// - "NNNNNN" = 6 chars (right-aligned number)
 /// - " " = 1 char (trailing space)
 ///
-/// Total = 6 characters
+/// Total = 8 characters
+///
+/// SC-001: Support up to 100,000 entries (indices 0-99999, display 1-100000).
+/// Maximum display number is 100000 (6 digits), requiring {:>6} format.
 ///
 /// This constant is used by wrap_lines() to account for the prefix width
 /// when calculating content width, preventing horizontal overflow.
-const INDEX_PREFIX_WIDTH: usize = 6;
+const INDEX_PREFIX_WIDTH: usize = 8;
 
 /// Format entry index for the first line of an entry.
 ///
-/// Converts 0-based index to 1-based display number, formats as "│ NNN "
-/// where NNN is right-aligned in 4 characters.
+/// Converts 0-based index to 1-based display number, formats as "│NNNNNN "
+/// where NNNNNN is right-aligned in 6 characters.
 ///
 /// # Arguments
 /// * `entry_index` - 0-based index of the entry in the conversation
 ///
 /// # Returns
-/// Formatted string like "│   1 ", "│  42 ", "│1000 "
+/// Formatted string like "│     1 ", "│    42 ", "│  1000 ", "│100000 "
+/// Always exactly 8 characters for consistent alignment.
 ///
 /// # Examples
 /// ```ignore
-/// format_entry_index(0)   => "│   1 "
-/// format_entry_index(41)  => "│  42 "
-/// format_entry_index(999) => "│1000 "
+/// format_entry_index(0)     => "│     1 "
+/// format_entry_index(41)    => "│    42 "
+/// format_entry_index(999)   => "│  1000 "
+/// format_entry_index(99999) => "│100000 "
 /// ```
 fn format_entry_index(entry_index: usize) -> String {
     let display_num = entry_index + 1; // Convert 0-based to 1-based
-    format!("│{:>4} ", display_num)
+    format!("│{:>6} ", display_num)
 }
 
 /// Format continuation indent for lines after the first line of an entry.
@@ -653,14 +658,14 @@ fn format_entry_index(entry_index: usize) -> String {
 /// lines align with the content of the first line.
 ///
 /// # Returns
-/// String "│     " (6 characters: │ + 4 spaces for number + 1 trailing space)
+/// String "│       " (8 characters: │ + 6 spaces for number + 1 trailing space)
 ///
 /// # Examples
 /// ```ignore
-/// format_continuation_indent() => "│     "
+/// format_continuation_indent() => "│       "
 /// ```
 fn format_continuation_indent() -> String {
-    "│     ".to_string()
+    "│       ".to_string()
 }
 
 /// Prepend the entry index to a line as a styled prefix.

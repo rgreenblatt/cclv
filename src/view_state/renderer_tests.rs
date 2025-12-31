@@ -856,13 +856,13 @@ fn test_entry_index_0_shows_as_1_prefix() {
         10,
         3,
         &styles,
-        Some(0), // Entry index 0 should display as "│   1 " on first line
+        Some(0), // Entry index 0 should display as "│     1" on first line
         false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
         false, // Not focused
     );
 
-    // ASSERTION: First (and only) content line should have "│   1 " prefix
+    // ASSERTION: First (and only) content line should have "│     1" prefix
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -870,8 +870,8 @@ fn test_entry_index_0_shows_as_1_prefix() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│   1 "),
-        "Line should start with '│   1 ', got: '{}'",
+        first_line_text.starts_with("│     1"),
+        "Line should start with '│     1', got: '{}'",
         first_line_text
     );
 
@@ -906,13 +906,13 @@ fn test_entry_index_41_shows_as_42_prefix() {
         10,
         3,
         &styles,
-        Some(41), // Entry index 41 should display as "│  42 "
+        Some(41), // Entry index 41 should display as "│    42"
         false,    // Not a subagent view
         &crate::state::SearchState::Inactive,
         false, // Not focused
     );
 
-    // ASSERTION: First (and only) content line should have "│  42 " prefix (right-aligned in 4 chars)
+    // ASSERTION: First (and only) content line should have "│    42" prefix (right-aligned in 4 chars)
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -920,8 +920,8 @@ fn test_entry_index_41_shows_as_42_prefix() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│  42 "),
-        "Line should start with '│  42 ', got: '{}'",
+        first_line_text.starts_with("│    42"),
+        "Line should start with '│    42', got: '{}'",
         first_line_text
     );
 }
@@ -941,13 +941,13 @@ fn test_entry_index_999_shows_as_1000_prefix() {
         10,
         3,
         &styles,
-        Some(999), // Entry index 999 should display as "│1000 " (4 digits)
+        Some(999), // Entry index 999 should display as "│  1000" (4 digits)
         false,     // Not a subagent view
         &crate::state::SearchState::Inactive,
         false, // Not focused
     );
 
-    // ASSERTION: First (and only) content line should have "│1000 " prefix (right-aligned in 4 chars)
+    // ASSERTION: First (and only) content line should have "│  1000" prefix (right-aligned in 4 chars)
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -955,8 +955,8 @@ fn test_entry_index_999_shows_as_1000_prefix() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│1000 "),
-        "Line should start with '│1000 ', got: '{}'",
+        first_line_text.starts_with("│  1000"),
+        "Line should start with '│  1000', got: '{}'",
         first_line_text
     );
 }
@@ -1024,7 +1024,7 @@ fn test_entry_index_prefix_on_multiline_entry() {
         false, // Not focused
     );
 
-    // ASSERTION: First line should have "│   1 " prefix, continuation lines "│     "
+    // ASSERTION: First line should have "│     1" prefix, continuation lines "│       "
     // Total lines = 5 content + 1 separator = 6
     assert_eq!(lines.len(), 6, "Should have 5 content lines + 1 separator");
 
@@ -1036,12 +1036,12 @@ fn test_entry_index_prefix_on_multiline_entry() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│   1 "),
-        "First line should start with '│   1 ', got: '{}'",
+        first_line_text.starts_with("│     1"),
+        "First line should start with '│     1', got: '{}'",
         first_line_text
     );
 
-    // Continuation lines should have blank indent
+    // Continuation lines should have blank indent (8 chars to match entry prefix width)
     for i in 1..5 {
         let line_text: String = lines[i]
             .spans
@@ -1050,8 +1050,8 @@ fn test_entry_index_prefix_on_multiline_entry() {
             .collect();
 
         assert!(
-            line_text.starts_with("│     "),
-            "Continuation line {} should start with '│     ', got: '{}'",
+            line_text.starts_with("│       "),
+            "Continuation line {} should start with '│       ' (8 chars), got: '{}'",
             i,
             line_text
         );
@@ -1147,7 +1147,7 @@ fn test_initial_prompt_label_does_not_appear_in_main_view() {
     );
 
     // ASSERTION: Should NOT have Initial Prompt label
-    // First line should be the content with index prefix "│   1 First entry in main view"
+    // First line should be the content with index prefix "│     1First entry in main view"
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -1161,8 +1161,8 @@ fn test_initial_prompt_label_does_not_appear_in_main_view() {
     );
 
     assert!(
-        first_line_text.starts_with("│   1 "),
-        "First line should start with entry index prefix '│   1 ', got: '{}'",
+        first_line_text.starts_with("│     1"),
+        "First line should start with entry index prefix '│     1', got: '{}'",
         first_line_text
     );
 }
@@ -1202,8 +1202,8 @@ fn test_initial_prompt_label_only_for_first_entry_in_subagent() {
     );
 
     assert!(
-        first_line_text.starts_with("│   2 "),
-        "Second entry should have index prefix '│   2 ', got: '{}'",
+        first_line_text.starts_with("│     2"),
+        "Second entry should have index prefix '│     2 ', got: '{}'",
         first_line_text
     );
 }
@@ -1274,7 +1274,7 @@ fn test_entry_index_prefix_on_collapsed_entry() {
     // ASSERTION: Should have 3 summary lines + 1 collapse indicator + 1 separator = 5 total
     assert_eq!(lines.len(), 5, "Collapsed entry should have 5 lines");
 
-    // First line should have entry number "│  10 "
+    // First line should have entry number "│    10 " (8 chars with {:>6})
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -1282,12 +1282,12 @@ fn test_entry_index_prefix_on_collapsed_entry() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│  10 "),
-        "First line should start with '│  10 ', got: '{}'",
+        first_line_text.starts_with("│    10"),
+        "First line should start with '│    10', got: '{}'",
         first_line_text
     );
 
-    // Continuation lines (2nd summary line, 3rd summary line, collapse indicator) should have "│     "
+    // Continuation lines (2nd summary line, 3rd summary line, collapse indicator) should have "│       "
     for i in 1..4 {
         let line_text: String = lines[i]
             .spans
@@ -1296,8 +1296,8 @@ fn test_entry_index_prefix_on_collapsed_entry() {
             .collect();
 
         assert!(
-            line_text.starts_with("│     "),
-            "Continuation line {} should start with '│     ', got: '{}'",
+            line_text.starts_with("│       "),
+            "Continuation line {} should start with '│       ' (8 chars), got: '{}'",
             i,
             line_text
         );
@@ -1840,13 +1840,13 @@ fn test_entry_index_appears_only_on_first_line() {
         10,
         3,
         &styles,
-        Some(570), // Entry index 570 should display as "│ 571 " on first line only
+        Some(570), // Entry index 570 should display as "│   571 " on first line only
         false,     // Not a subagent view
         &crate::state::SearchState::Inactive,
         false, // Not focused
     );
 
-    // ASSERTION 1: First content line should have entry number "│ 571 " (with space, no separator after)
+    // ASSERTION 1: First content line should have entry number "│   571 " (8 chars with {:>6})
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -1854,12 +1854,12 @@ fn test_entry_index_appears_only_on_first_line() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│ 571 "),
-        "First line should start with '│ 571 ' (space after number, no │ separator), got: '{}'",
+        first_line_text.starts_with("│   571"),
+        "First line should start with '│   571' (8 chars with 6-digit field), got: '{}'",
         first_line_text
     );
 
-    // ASSERTION 2: Continuation lines (lines 1-4) should have blank indent matching width "│     "
+    // ASSERTION 2: Continuation lines (lines 1-4) should have blank indent matching width "│       "
     // They should NOT have the entry number or any │ separator after the leading │
     for i in 1..5 {
         let line_text: String = lines[i]
@@ -1869,14 +1869,14 @@ fn test_entry_index_appears_only_on_first_line() {
             .collect();
 
         assert!(
-            line_text.starts_with("│     "),
-            "Continuation line {} should start with '│     ' (6 chars total: │ + 5 spaces), got: '{}'",
+            line_text.starts_with("│       "),
+            "Continuation line {} should start with '│       ' (8 chars total: │ + 7 spaces), got: '{}'",
             i,
             line_text
         );
 
         // Verify it does NOT contain the number "571"
-        let prefix = &line_text[..6.min(line_text.len())]; // First 6 chars
+        let prefix = &line_text[..8.min(line_text.len())]; // First 8 chars
         assert!(
             !prefix.contains("571"),
             "Continuation line {} should NOT contain entry number in prefix, got: '{}'",
@@ -1902,7 +1902,7 @@ fn test_entry_index_format_no_separator_after_number() {
         10,
         3,
         &styles,
-        Some(570), // Entry index 570 -> display as "│ 571 "
+        Some(570), // Entry index 570 -> display as "│   571 " (8 chars)
         false,
         &crate::state::SearchState::Inactive,
         false,
@@ -1914,10 +1914,10 @@ fn test_entry_index_format_no_separator_after_number() {
         .map(|span| span.content.as_ref())
         .collect();
 
-    // Should be "│ 571 Single line" NOT "│ 571│Single line"
+    // Should be "│   571 Single line" NOT "│   571│Single line"
     assert!(
-        first_line_text.starts_with("│ 571 "),
-        "Entry index should be '│ 571 ' (space not separator), got: '{}'",
+        first_line_text.starts_with("│   571"),
+        "Entry index should be '│   571 ' (space not separator), got: '{}'",
         first_line_text
     );
 
@@ -1962,13 +1962,13 @@ fn test_tool_use_multiline_entry_index_on_first_line_only() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│ 100 "),
-        "First line (header) should start with '│ 100 ', got: '{}'",
+        first_line_text.starts_with("│   100"),
+        "First line (header) should start with '│   100 ', got: '{}'",
         first_line_text
     );
 
-    // Subsequent lines should have continuation indent (│     + content indent from ToolUse)
-    // ToolUse adds "  " indent, so continuation should be "│       " (6 + 2 = 8 total)
+    // Subsequent lines should have continuation indent (│       + content indent from ToolUse)
+    // ToolUse adds "  " indent, so continuation should be "│       " + "  " (8 + 2 = 10 total)
     for i in 1..lines.len().min(5) {
         let line_text: String = lines[i]
             .spans
@@ -1981,8 +1981,8 @@ fn test_tool_use_multiline_entry_index_on_first_line_only() {
         }
 
         assert!(
-            line_text.starts_with("│     "),
-            "Continuation line {} should start with '│     ' (no number), got: '{}'",
+            line_text.starts_with("│       "),
+            "Continuation line {} should start with '│       ' (8 chars, no number), got: '{}'",
             i,
             line_text
         );
@@ -1996,16 +1996,16 @@ fn test_tool_use_multiline_entry_index_on_first_line_only() {
 
 #[test]
 fn test_wrapped_lines_with_prefix_fit_within_viewport() {
-    // RED TEST: Bug cclv-5ur.45 - Line wrap doesn't account for 6-char entry index prefix
+    // RED TEST: Bug cclv-5ur.45 - Line wrap doesn't account for 8-char entry index prefix
     //
     // Current behavior:
     // - wrap_lines() calculates content_width = width - 2 (for borders only)
-    // - Entry index prefix "│NNNN " (6 chars) is added AFTER wrapping
-    // - Result: wrapped line (78 chars) + prefix (6 chars) = 84 chars > 78 viewport
+    // - Entry index prefix "│NNNNNN " (8 chars) is added AFTER wrapping
+    // - Result: wrapped line (78 chars) + prefix (8 chars) = 86 chars > 78 viewport
     //
     // Expected behavior:
-    // - wrap_lines() should calculate content_width = width - 2 (borders) - 6 (prefix)
-    // - Result: wrapped line (72 chars) + prefix (6 chars) = 78 chars = viewport width
+    // - wrap_lines() should calculate content_width = width - 2 (borders) - 8 (prefix)
+    // - Result: wrapped line (70 chars) + prefix (8 chars) = 78 chars = viewport width
 
     // Create entry with text that will wrap
     let long_line = "x".repeat(100);
@@ -2025,7 +2025,7 @@ fn test_wrapped_lines_with_prefix_fit_within_viewport() {
         collapse_threshold,
         summary_lines,
         &styles,
-        Some(0), // Entry index 0 -> "│   1 " (6 chars)
+        Some(0), // Entry index 0 -> "│     1 " (8 chars)
         false,   // Not a subagent view
         &crate::state::SearchState::Inactive,
         false, // Not focused
@@ -2053,13 +2053,13 @@ fn test_wrapped_lines_with_prefix_fit_within_viewport() {
         max_line_width <= content_area_width,
         "Bug cclv-5ur.45: Wrapped lines with entry index prefix exceed viewport width.\n\
          Viewport width: {}, Content area (minus borders): {}, Max line width: {}\n\
-         Expected: wrapped content ({} - 2 borders - 6 prefix = {} chars) + prefix (6 chars) = {} chars total\n\
+         Expected: wrapped content ({} - 2 borders - 8 prefix = {} chars) + prefix (8 chars) = {} chars total\n\
          Lines:\n{}",
         viewport_width,
         content_area_width,
         max_line_width,
         viewport_width,
-        viewport_width - 2 - 6,
+        viewport_width - 2 - 8,
         viewport_width - 2,
         lines
             .iter()
@@ -2084,19 +2084,19 @@ fn test_wrapped_lines_with_prefix_fit_within_viewport() {
 
 #[test]
 fn test_entry_index_10000_formats_correctly() {
-    // RED TEST: Bug cclv-5ur.55 - Entry index 9999 (displayed as 10000) overflows
+    // RED TEST: Bug cclv-5ur.55 - Entry index 9999 (displayed as 10000) needs consistent width
     //
-    // Current behavior:
+    // Current behavior (BROKEN):
     // - format_entry_index() uses {:>4} (4-digit field)
     // - Entry 9999 displays as 10000 (5 digits)
-    // - Format produces "│10000 " (7 chars) instead of expected 6 chars
+    // - Format produces "│10000 " (7 chars) - OVERFLOW!
     // - INDEX_PREFIX_WIDTH = 6 is violated
     //
     // Expected behavior (SC-001: support 100,000 entries):
-    // - format_entry_index() should use {:>5} (5-digit field)
-    // - Entry 9999 displays as 10000, formats as "│10000 " (7 chars)
-    // - INDEX_PREFIX_WIDTH should be 7
-    // - Continuation indent should be "│      " (7 chars)
+    // - format_entry_index() should use {:>6} (6-digit field)
+    // - Entry 9999 displays as 10000, formats as "│ 10000 " (8 chars)
+    // - INDEX_PREFIX_WIDTH should be 8
+    // - Continuation indent should be "│       " (8 chars)
 
     let text = "Test message";
     let entry = create_entry_with_text(text);
@@ -2110,13 +2110,13 @@ fn test_entry_index_10000_formats_correctly() {
         10,
         3,
         &styles,
-        Some(9999), // Entry index 9999 should display as "│10000 " (5 digits)
+        Some(9999), // Entry index 9999 should display as "│ 10000 " (8 chars with {:>6})
         false,
         &crate::state::SearchState::Inactive,
         false,
     );
 
-    // ASSERTION: Entry index should format as "│10000 " (7 chars with 5-digit field)
+    // ASSERTION: Entry index should format as "│ 10000 " (8 chars with 6-digit field)
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -2124,18 +2124,18 @@ fn test_entry_index_10000_formats_correctly() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│10000 "),
-        "Entry 9999 should display as '│10000 ' (7 chars: │ + 5 digits + space), got: '{}'",
+        first_line_text.starts_with("│ 10000"),
+        "Entry 9999 should display as '│ 10000 ' (8 chars: │ + 6-digit field), got: '{}'",
         first_line_text
     );
 
-    // Verify the prefix is exactly 7 characters (visual chars, not bytes)
+    // Verify the prefix is exactly 8 characters (visual chars, not bytes)
     let prefix = &lines[0].spans[0].content;
     let prefix_char_count = prefix.chars().count();
     assert_eq!(
         prefix_char_count,
-        7,
-        "Index prefix should be exactly 7 visual chars for 5-digit numbers, got {} chars: '{}'",
+        8,
+        "Index prefix should be exactly 8 visual chars for 6-digit field, got {} chars: '{}'",
         prefix_char_count,
         prefix
     );
@@ -2164,7 +2164,7 @@ fn test_entry_index_99999_formats_correctly() {
     // Wait, that doesn't make sense. Entry 99999 would display as 100000, which is 6 digits.
     //
     // Let me recalculate:
-    // - Entry index 9999 → display 10000 (5 digits) → "{:>5}" → "10000" → "│10000 " = 7 chars
+    // - Entry index 9999 → display 10000 (5 digits) → "{:>5}" → "10000" → "│ 10000" = 7 chars
     // - Entry index 99999 → display 100000 (6 digits) → "{:>5}" → "100000" (overflow!) → "│100000 " = 8 chars
     //
     // So we need {:>6} to handle 100,000 entries properly! No wait...
@@ -2259,13 +2259,13 @@ fn test_multiline_entry_continuation_indent_matches_prefix_width() {
         10,
         3,
         &styles,
-        Some(9999), // Entry index 9999 -> display as 10000 (5 digits)
+        Some(9999), // Entry index 9999 -> display as 10000 (6-digit field, 8 chars total)
         false,
         &crate::state::SearchState::Inactive,
         false,
     );
 
-    // First line should have "│10000 " (7 chars)
+    // First line should have "│ 10000 " (8 chars)
     let first_line_text: String = lines[0]
         .spans
         .iter()
@@ -2273,8 +2273,8 @@ fn test_multiline_entry_continuation_indent_matches_prefix_width() {
         .collect();
 
     assert!(
-        first_line_text.starts_with("│10000 "),
-        "First line should start with '│10000 ' (7 chars), got: '{}'",
+        first_line_text.starts_with("│ 10000"),
+        "First line should start with '│ 10000 ' (8 chars), got: '{}'",
         first_line_text
     );
 
@@ -2312,9 +2312,9 @@ fn test_entry_index_prefix_width_consistent_for_all_indices() {
     // RED TEST: Entry index prefix must be consistent width for ALL indices 0-99999
     //
     // Bug: Current {:>4} format produces variable-width prefixes:
-    // - Entry 0 → "│   1 " (6 chars)
-    // - Entry 999 → "│1000 " (6 chars)
-    // - Entry 9999 → "│10000 " (7 chars) ← OVERFLOW!
+    // - Entry 0 → "│     1" (6 chars)
+    // - Entry 999 → "│  1000" (6 chars)
+    // - Entry 9999 → "│ 10000" (7 chars) ← OVERFLOW!
     // - Entry 99999 → "│100000 " (8 chars) ← OVERFLOW!
     //
     // Expected: All entries should produce SAME width prefix for alignment
