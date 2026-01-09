@@ -3658,3 +3658,125 @@ fn bug_help_popup_no_scroll() {
          The help popup has more content than fits in viewport but cannot be scrolled."
     );
 }
+
+// ===== Session Tab Navigation Bug Tests =====
+
+/// Bug reproduction: Tab navigation broken after changing sessions
+///
+/// EXPECTED: After selecting a different session via session modal:
+///   1. Screen immediately shows content (Main agent view or subagent if that was focused)
+///   2. Tab cycles through Main and subagent tabs, each showing their content
+///
+/// ACTUAL: After selecting a different session:
+///   1. Screen is completely blank (no content rendered)
+///   2. Tab to subagent tab shows blank content even though subagent has entries
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/session_tab_nav_repro.jsonl
+/// 2. App starts showing Session 2/2 (the latest)
+/// 3. Press 'S' to open session modal
+/// 4. Press 'k' to navigate to Session 1
+/// 5. Press Enter to select Session 1
+/// 6. Observe: Screen is blank (BUG #1)
+/// 7. Press Tab to switch to Main
+/// 8. Observe: Main content appears
+/// 9. Press Tab to switch to subagent tab
+/// 10. Observe: Subagent tab is blank even though it has content (BUG #2)
+#[test]
+#[ignore = "cclv-463.3: Tab navigation broken after changing sessions"]
+fn bug_session_tab_navigation_blank_after_change() {
+    use crate::test_harness::AcceptanceTestHarness;
+    use crossterm::event::KeyCode;
+
+    // Load fixture with 2 sessions, session 1 has Main + subagent
+    let mut harness = AcceptanceTestHarness::from_fixture_with_size(
+        "tests/fixtures/session_tab_nav_repro.jsonl",
+        80,
+        24,
+    )
+    .expect("Failed to load fixture");
+
+    // Initial render - should show Session 2/2 (latest)
+    let initial = harness.render_to_string();
+    assert!(
+        initial.contains("Session 2/2") || initial.contains("Session 2 main"),
+        "Should start on latest session (Session 2)\n\nActual:\n{initial}"
+    );
+
+    // Take snapshot of initial state
+    insta::assert_snapshot!("bug_session_tab_nav_initial", initial);
+
+    // Open session modal with 'S'
+    harness.send_key(KeyCode::Char('S'));
+    let with_modal = harness.render_to_string();
+    assert!(
+        with_modal.contains("Session List"),
+        "Session modal should be visible"
+    );
+
+    // Navigate to Session 1 (press k to go up)
+    harness.send_key(KeyCode::Char('k'));
+
+    // Select Session 1 with Enter
+    harness.send_key(KeyCode::Enter);
+
+    // Capture state immediately after session change
+    let after_session_change = harness.render_to_string();
+
+    // Take snapshot - captures buggy blank state
+    insta::assert_snapshot!("bug_session_tab_nav_after_change", after_session_change.clone());
+
+    // BUG #1: Screen should NOT be blank after changing sessions
+    // The content area should show the Main agent view (or previously focused pane)
+    let is_blank = !after_session_change.contains("Session 1")
+        && !after_session_change.contains("user message")
+        && !after_session_change.contains("main agent");
+    assert!(
+        !is_blank || after_session_change.contains("Session 1"),
+        "BUG #1: Screen is blank after changing sessions.\n\
+         Expected: Content should be visible for Session 1\n\
+         Actual: Screen appears blank with no visible entries\n\n\
+         Actual output:\n{after_session_change}"
+    );
+
+    // Press Tab to switch panes
+    harness.send_key(KeyCode::Tab);
+    let after_first_tab = harness.render_to_string();
+
+    // Take snapshot after first Tab
+    insta::assert_snapshot!("bug_session_tab_nav_after_first_tab", after_first_tab.clone());
+
+    // After Tab, Main agent content should be visible
+    assert!(
+        after_first_tab.contains("Session 1 user message")
+            || after_first_tab.contains("Session 1 main agent"),
+        "After Tab, Main agent content should be visible.\n\
+         Expected: 'Session 1 user message' or 'Session 1 main agent response'\n\
+         Actual output:\n{after_first_tab}"
+    );
+
+    // Press Tab again to switch to subagent tab
+    harness.send_key(KeyCode::Tab);
+    let after_second_tab = harness.render_to_string();
+
+    // Take snapshot - should show subagent content but shows blank
+    insta::assert_snapshot!("bug_session_tab_nav_after_second_tab", after_second_tab.clone());
+
+    // BUG #2: After second Tab, should show subagent content, not Main
+    // The panel title should be "subagent-a [Sonnet]" with subagent's entries
+    // NOT "Main [Opus]" which means Tab isn't actually cycling
+    let showing_subagent_panel = after_second_tab.contains("subagent-a [Sonnet]")
+        || after_second_tab.contains("subagent-a (1 entries)")
+        || after_second_tab.contains("Session 1 subagent message");
+
+    assert!(
+        showing_subagent_panel,
+        "BUG #2: Tab does not cycle to subagent view after session change.\n\
+         Expected: Panel title should be 'subagent-a [Sonnet] (1 entries)' with subagent content\n\
+         Actual: Panel still shows 'Main [Opus] (2 entries)' with Main agent content\n\n\
+         After pressing Tab twice, we should have cycled through:\n\
+           Main (first) -> subagent-a (second) -> Main (third) -> ...\n\n\
+         But the view is stuck on Main. Tab cycles don't work after session change.\n\n\
+         Actual output:\n{after_second_tab}"
+    );
+}
