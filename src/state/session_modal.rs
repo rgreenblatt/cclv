@@ -10,7 +10,6 @@ use crate::view_state::types::SessionIndex;
 /// - Total: 1 + session_count states (all valid)
 /// - Precision: 1.0
 #[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
 pub struct SessionModalState {
     /// Whether the modal is visible.
     visible: bool,
@@ -26,67 +25,81 @@ pub struct SessionModalState {
 impl SessionModalState {
     /// Create new modal state (closed).
     pub fn new() -> Self {
-        todo!("SessionModalState::new")
+        Self::default()
     }
 
     /// Check if modal is visible.
     pub fn is_visible(&self) -> bool {
-        todo!("SessionModalState::is_visible")
+        self.visible
     }
 
     /// Open the modal, pre-selecting the given session.
-    pub fn open(&mut self, _current_session_index: usize) {
-        todo!("SessionModalState::open")
+    pub fn open(&mut self, current_session_index: usize) {
+        self.visible = true;
+        self.selected_index = current_session_index;
+        self.scroll_offset = 0;
     }
 
     /// Close the modal.
     pub fn close(&mut self) {
-        todo!("SessionModalState::close")
+        self.visible = false;
     }
 
     /// Toggle modal visibility.
-    pub fn toggle(&mut self, _current_session_index: usize) {
-        todo!("SessionModalState::toggle")
+    pub fn toggle(&mut self, current_session_index: usize) {
+        if self.visible {
+            self.close();
+        } else {
+            self.open(current_session_index);
+        }
     }
 
     /// Currently selected index.
     pub fn selected_index(&self) -> usize {
-        todo!("SessionModalState::selected_index")
+        self.selected_index
     }
 
     /// Move selection up, clamping at 0.
     pub fn select_prev(&mut self) {
-        todo!("SessionModalState::select_prev")
+        self.selected_index = self.selected_index.saturating_sub(1);
     }
 
     /// Move selection down, clamping at max.
-    pub fn select_next(&mut self, _session_count: usize) {
-        todo!("SessionModalState::select_next")
+    pub fn select_next(&mut self, session_count: usize) {
+        if session_count > 0 {
+            self.selected_index = (self.selected_index + 1).min(session_count - 1);
+        }
     }
 
     /// Jump to first session.
     pub fn select_first(&mut self) {
-        todo!("SessionModalState::select_first")
+        self.selected_index = 0;
     }
 
     /// Jump to last session.
-    pub fn select_last(&mut self, _session_count: usize) {
-        todo!("SessionModalState::select_last")
+    pub fn select_last(&mut self, session_count: usize) {
+        if session_count > 0 {
+            self.selected_index = session_count - 1;
+        }
     }
 
     /// Get selected session index, validated against session count.
-    pub fn selected_session_index(&self, _session_count: usize) -> Option<SessionIndex> {
-        todo!("SessionModalState::selected_session_index")
+    pub fn selected_session_index(&self, session_count: usize) -> Option<SessionIndex> {
+        SessionIndex::new(self.selected_index, session_count)
     }
 
     /// Scroll offset for rendering.
     pub fn scroll_offset(&self) -> usize {
-        todo!("SessionModalState::scroll_offset")
+        self.scroll_offset
     }
 
     /// Update scroll offset to keep selection visible.
-    pub fn adjust_scroll(&mut self, _visible_rows: usize) {
-        todo!("SessionModalState::adjust_scroll")
+    pub fn adjust_scroll(&mut self, visible_rows: usize) {
+        if self.selected_index < self.scroll_offset {
+            self.scroll_offset = self.selected_index;
+        } else if self.selected_index >= self.scroll_offset + visible_rows {
+            self.scroll_offset = self.selected_index - visible_rows + 1;
+        }
     }
 }
 
