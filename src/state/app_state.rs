@@ -673,7 +673,63 @@ impl AppState {
     ///
     /// Uses the currently viewed session for session-scoped filters.
     pub fn cycle_stats_filter(&mut self) {
-        todo!("cycle_stats_filter")
+        // Get the currently viewed session ID for session-scoped filters
+        let session_count = self.log_view.session_count();
+        let current_session_idx = self.viewed_session.effective_index(session_count);
+
+        let current_session = current_session_idx.and_then(|idx| self.log_view.get_session(idx.get()));
+
+        // Get sorted list of subagent IDs from current session
+        let subagent_ids: Vec<AgentId> = current_session
+            .map(|s| {
+                let mut ids: Vec<_> = s.subagent_ids().cloned().collect();
+                ids.sort();
+                ids
+            })
+            .unwrap_or_default();
+
+        // Get current session ID (needed for session-scoped filters)
+        let session_id = current_session.map(|s| s.session_id().clone());
+
+        // Cycle according to the specification
+        self.stats_filter = match &self.stats_filter {
+            StatsFilter::AllSessionsCombined => {
+                // AllSessionsCombined → Session(current)
+                if let Some(id) = session_id {
+                    StatsFilter::Session(id)
+                } else {
+                    // No sessions exist, stay at AllSessionsCombined
+                    StatsFilter::AllSessionsCombined
+                }
+            }
+            StatsFilter::Session(_) => {
+                // Session → MainAgent(current)
+                if let Some(id) = session_id {
+                    StatsFilter::MainAgent(id)
+                } else {
+                    // No sessions exist, wrap to AllSessionsCombined
+                    StatsFilter::AllSessionsCombined
+                }
+            }
+            StatsFilter::MainAgent(_) => {
+                // MainAgent → Subagent(first) or AllSessionsCombined if no subagents
+                if let Some(first) = subagent_ids.first() {
+                    StatsFilter::Subagent(first.clone())
+                } else {
+                    StatsFilter::AllSessionsCombined
+                }
+            }
+            StatsFilter::Subagent(agent_id) => {
+                // Subagent → next Subagent or AllSessionsCombined
+                let idx = subagent_ids.iter().position(|id| id == agent_id);
+                match idx {
+                    Some(i) if i + 1 < subagent_ids.len() => {
+                        StatsFilter::Subagent(subagent_ids[i + 1].clone())
+                    }
+                    _ => StatsFilter::AllSessionsCombined,
+                }
+            }
+        };
     }
 
     /// Update stats filter when session changes (cclv-463.5.5).
@@ -687,8 +743,14 @@ impl AppState {
     /// - Session(old) → Session(new)
     /// - MainAgent(old) → MainAgent(new)
     /// - Subagent(id) → unchanged (identity-based, not session-scoped)
-    pub fn on_session_change(&mut self, _new_session_id: SessionId) {
-        todo!("on_session_change")
+    pub fn on_session_change(&mut self, new_session_id: SessionId) {
+        // Update session-scoped filters to use new session
+        self.stats_filter = match &self.stats_filter {
+            StatsFilter::AllSessionsCombined => StatsFilter::AllSessionsCombined,
+            StatsFilter::Session(_) => StatsFilter::Session(new_session_id),
+            StatsFilter::MainAgent(_) => StatsFilter::MainAgent(new_session_id),
+            StatsFilter::Subagent(id) => StatsFilter::Subagent(id.clone()),
+        };
     }
 }
 

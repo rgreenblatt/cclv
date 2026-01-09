@@ -10,9 +10,9 @@ use crate::parser;
 
 /// Helper to add a test session with entries to the state.
 fn add_test_session(state: &mut AppState, session_id: SessionId) {
-    // Create a minimal user message entry for the session
+    // Create a minimal user message entry for the session (main agent - no agentId field)
     let json = format!(
-        r#"{{"timestamp":"2024-01-01T00:00:00Z","type":"user_message","role":"user","content":[{{"type":"text","text":"Test message"}}],"session_id":"{}","uuid":"test-uuid-{}"}}"#,
+        r#"{{"type":"user","message":{{"role":"user","content":"Test message"}},"session_id":"{}","uuid":"test-uuid-{}","timestamp":"2024-01-01T00:00:00Z"}}"#,
         session_id.as_str(),
         session_id.as_str()
     );
@@ -32,10 +32,10 @@ fn add_test_session_with_subagents(
     // Add entries for each subagent
     for (i, agent_id) in subagent_ids.iter().enumerate() {
         let json = format!(
-            r#"{{"timestamp":"2024-01-01T00:00:0{}Z","type":"user_message","role":"user","content":[{{"type":"text","text":"Subagent message"}}],"session_id":"{}","agent_id":"{}","uuid":"test-uuid-sub-{}"}}"#,
-            i,
+            r#"{{"type":"user","message":{{"role":"user","content":"Subagent message"}},"session_id":"{}","agentId":"{}","uuid":"test-uuid-sub-{}","timestamp":"2024-01-01T00:00:0{}Z"}}"#,
             session_id.as_str(),
             agent_id.as_str(),
+            i,
             i
         );
         let entry = ConversationEntry::from(parser::parse_entry_graceful(&json, i + 2));
