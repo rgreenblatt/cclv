@@ -17,7 +17,6 @@ use std::collections::HashMap;
 /// subagent arrives. This ensures view-state exists before rendering, avoiding
 /// mutable access during immutable render pass.
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Temporary for stub phase (cclv-463.6.3)
 pub struct SessionViewState {
     /// Session identifier.
     session_id: SessionId,
@@ -64,7 +63,7 @@ impl SessionViewState {
     ///
     /// Returns None if no entries have been added yet.
     pub fn start_time(&self) -> Option<DateTime<Utc>> {
-        todo!("start_time getter")
+        self.start_time
     }
 
     /// Reference to main conversation view-state.
@@ -198,6 +197,13 @@ impl SessionViewState {
     /// # Start Time Tracking (cclv-463.6.3)
     /// If this is the first entry added to the session, captures its timestamp as start_time.
     pub fn add_main_entry(&mut self, entry: ConversationEntry) {
+        // Track start time from first entry (cclv-463.6.3)
+        if self.start_time.is_none() {
+            if let Some(timestamp) = entry.timestamp() {
+                self.start_time = Some(timestamp);
+            }
+        }
+
         // Extract model from assistant message if present
         if let ConversationEntry::Valid(log_entry) = &entry {
             if let Some(model) = log_entry.message().model() {
@@ -206,17 +212,13 @@ impl SessionViewState {
                 self.main.set_model_if_none(model_clone);
                 self.main
                     .append_entries(vec![entry], &crate::state::SearchState::Inactive);
-                // Track start time from first entry (cclv-463.6.3) - STUB
-                todo!("Track start_time from first entry");
+                return;
             }
         }
 
         // No model to extract, just append
         self.main
             .append_entries(vec![entry], &crate::state::SearchState::Inactive);
-
-        // Track start time from first entry (cclv-463.6.3) - STUB
-        todo!("Track start_time from first entry");
     }
 
     /// Add entry to subagent conversation.
@@ -229,6 +231,13 @@ impl SessionViewState {
     /// # Start Time Tracking (cclv-463.6.3)
     /// If this is the first entry added to the session, captures its timestamp as start_time.
     pub fn add_subagent_entry(&mut self, agent_id: AgentId, entry: ConversationEntry) {
+        // Track start time from first entry (cclv-463.6.3)
+        if self.start_time.is_none() {
+            if let Some(timestamp) = entry.timestamp() {
+                self.start_time = Some(timestamp);
+            }
+        }
+
         // Extract model from assistant message if present (cclv-5ur.40.13)
         if let ConversationEntry::Valid(log_entry) = &entry {
             if let Some(model) = log_entry.message().model() {
@@ -237,17 +246,13 @@ impl SessionViewState {
                 let subagent = self.subagent_mut(&agent_id);
                 subagent.set_model_if_none(model_clone);
                 subagent.append_entries(vec![entry], &crate::state::SearchState::Inactive);
-                // Track start time from first entry (cclv-463.6.3) - STUB
-                todo!("Track start_time from first entry");
+                return;
             }
         }
 
         // No model to extract, just append
         self.subagent_mut(&agent_id)
             .append_entries(vec![entry], &crate::state::SearchState::Inactive);
-
-        // Track start time from first entry (cclv-463.6.3) - STUB
-        todo!("Track start_time from first entry");
     }
 
     /// Start line offset (for multi-session positioning).

@@ -50,12 +50,8 @@ pub fn render_session_modal(frame: &mut Frame, state: &AppState) {
             // Get subagent count
             let subagent_count = session_view.subagents().len();
 
-            // Get start time (first entry timestamp if available)
-            let start_time = session_view
-                .main()
-                .entries()
-                .first()
-                .and_then(|entry_view| entry_view.entry().timestamp());
+            // Get start time from SessionViewState (cclv-463.6.3)
+            let start_time = session_view.start_time();
 
             SessionSummary::new(
                 index,
