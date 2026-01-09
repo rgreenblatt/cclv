@@ -48,16 +48,16 @@ pub trait SessionScrollExt {
 }
 
 impl SessionScrollExt for SessionScrollStates {
-    fn scroll_offset_for(&self, _session_id: &SessionId) -> usize {
-        todo!("scroll_offset_for")
+    fn scroll_offset_for(&self, session_id: &SessionId) -> usize {
+        self.get(session_id).map(|s| s.offset).unwrap_or(0)
     }
 
-    fn is_session_visited(&self, _session_id: &SessionId) -> bool {
-        todo!("is_session_visited")
+    fn is_session_visited(&self, session_id: &SessionId) -> bool {
+        self.contains_key(session_id)
     }
 
-    fn save_scroll_state(&mut self, _session_id: SessionId, _offset: usize) {
-        todo!("save_scroll_state")
+    fn save_scroll_state(&mut self, session_id: SessionId, offset: usize) {
+        self.insert(session_id, ScrollState::new(offset));
     }
 }
 
