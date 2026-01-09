@@ -97,6 +97,82 @@ fn bug_stats_should_update_when_switching_tabs() {
     );
 }
 
+/// Bug reproduction: stats show ZEROS after switching sessions via modal
+///
+/// When the user switches sessions via the session list modal (S key),
+/// the stats pane shows zeros instead of the new session's actual statistics.
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/stats_multi_session_repro.jsonl
+/// 2. Press 's' to toggle stats pane - observe non-zero stats for Beta session
+/// 3. Press 'S' to open session list modal
+/// 4. Press 'g' to go to top (select Alpha session)
+/// 5. Press Enter to switch to Alpha session
+/// 6. Observe: Stats pane shows Input: 0, Output: 0, Total: 0, Cost: $0.00
+///
+/// Expected: Stats should show Alpha session tokens (2,500 input for Main)
+/// Actual: Stats show zeros
+#[test]
+#[ignore = "cclv-cym: stats pane shows zeros after session modal switch"]
+fn bug_stats_show_zeros_after_session_modal_switch() {
+    // GIVEN: Log file with two sessions (Alpha first, Beta second)
+    // By default, Beta session is displayed (most recent)
+    let mut harness =
+        AcceptanceTestHarness::from_fixture_with_size(MULTI_SESSION_FIXTURE, 100, 30)
+            .expect("Should load multi-session fixture");
+
+    // Enable stats pane
+    harness.send_key(KeyCode::Char('s'));
+
+    // Verify we're on Beta session initially and stats are non-zero
+    let initial_output = harness.render_to_string();
+    assert!(
+        initial_output.contains("Beta session"),
+        "Initial state should show Beta session (most recent)\n\
+         Actual output:\n{}",
+        initial_output
+    );
+
+    // Open session modal
+    harness.send_key(KeyCode::Char('S'));
+
+    // Go to top of list (Alpha session, the first/oldest session)
+    harness.send_key(KeyCode::Char('g'));
+
+    // Select Alpha session
+    harness.send_key(KeyCode::Enter);
+
+    // WHEN: Rendering after session switch via modal
+    let output_after_switch = harness.render_to_string();
+
+    // Snapshot captures the buggy state
+    insta::assert_snapshot!("bug_stats_zeros_after_modal_switch", output_after_switch);
+
+    // Verify we actually switched to Alpha session
+    assert!(
+        output_after_switch.contains("Alpha session"),
+        "Should have switched to Alpha session\n\
+         Actual output:\n{}",
+        output_after_switch
+    );
+
+    // THEN: Stats should show Alpha session tokens, NOT zeros
+    // Alpha Main has 2500 input tokens
+    // BUG: Stats currently show "Input: 0" instead of "Input: 2,500"
+    assert!(
+        !output_after_switch.contains("Input:  0")
+            && !output_after_switch.contains("Total:  0")
+            && !output_after_switch.contains("$0.00"),
+        "BUG: Stats pane shows zeros after switching sessions via modal.\n\
+         Expected: Stats should show Alpha session tokens (Input: 2,500)\n\
+         Actual: Stats show zeros (Input: 0, Total: 0, Cost: $0.00)\n\
+         \n\
+         The stats pane does not update correctly when switching sessions via the session list modal.\n\
+         Actual output:\n{}",
+        output_after_switch
+    );
+}
+
 /// Bug reproduction: multi-session log file shows wrong session stats
 ///
 /// When a log file contains multiple sessions, the conversation pane shows
