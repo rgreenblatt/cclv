@@ -509,8 +509,12 @@ impl AppState {
             return;
         }
 
-        // Get current session's sorted subagent list
-        let Some(session) = self.log_view.current_session() else {
+        // Get viewed session's sorted subagent list
+        let session_count = self.log_view.session_count();
+        let Some(session_idx) = self.viewed_session.effective_index(session_count) else {
+            return;
+        };
+        let Some(session) = self.log_view.get_session(session_idx.get()) else {
             return;
         };
 
@@ -556,8 +560,12 @@ impl AppState {
             return;
         }
 
-        // Get current session's sorted subagent list
-        let Some(session) = self.log_view.current_session() else {
+        // Get viewed session's sorted subagent list
+        let session_count = self.log_view.session_count();
+        let Some(session_idx) = self.viewed_session.effective_index(session_count) else {
+            return;
+        };
+        let Some(session) = self.log_view.get_session(session_idx.get()) else {
             return;
         };
 
@@ -617,16 +625,19 @@ impl AppState {
             self.selected_conversation = ConversationSelection::Main;
         } else {
             // Tab 2+ = Subagent
-            // Get current session's sorted subagent list
-            if let Some(session) = self.log_view.current_session() {
-                let mut sorted_ids: Vec<_> = session.subagents().keys().cloned().collect();
-                sorted_ids.sort();
+            // Get viewed session's sorted subagent list
+            let session_count = self.log_view.session_count();
+            if let Some(session_idx) = self.viewed_session.effective_index(session_count) {
+                if let Some(session) = self.log_view.get_session(session_idx.get()) {
+                    let mut sorted_ids: Vec<_> = session.subagents().keys().cloned().collect();
+                    sorted_ids.sort();
 
-                // Clamp to last subagent if index too high
-                let subagent_index = (index - 1).min(sorted_ids.len().saturating_sub(1));
+                    // Clamp to last subagent if index too high
+                    let subagent_index = (index - 1).min(sorted_ids.len().saturating_sub(1));
 
-                if let Some(agent_id) = sorted_ids.get(subagent_index) {
-                    self.selected_conversation = ConversationSelection::Subagent(agent_id.clone());
+                    if let Some(agent_id) = sorted_ids.get(subagent_index) {
+                        self.selected_conversation = ConversationSelection::Subagent(agent_id.clone());
+                    }
                 }
             }
         }

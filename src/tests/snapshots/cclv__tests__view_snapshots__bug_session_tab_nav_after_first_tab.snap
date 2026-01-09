@@ -5,11 +5,11 @@ expression: after_first_tab.clone()
 ┌Conversations─────────────────────────────────────────────────────────────────┐
 │ Main │ subagent-a                                                            │
 └──────────────────────────────────────────────────────────────────────────────┘
-┌Main [Opus] (2 entries)───────────────────────────────────────────────────────┐
-││  1 Session 1 user message                                                   │
+┌subagent-a [Sonnet] (1 entries)───────────────────────────────────────────────┐
+││  1 Session 1 subagent message                                               │
+│── ↓5/5 ↑20/20 / $0.00 | Context: 25 (0%) ──                                  │
 │                                                                              │
-││  2 Session 1 main agent response                                            │
-│── ↓10/10 ↑15/15 / $0.00 | Context: 25 (0%) ──                                │
+│                                                                              │
 │                                                                              │
 │                                                                              │
 │                                                                              │

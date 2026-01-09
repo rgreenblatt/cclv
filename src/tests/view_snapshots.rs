@@ -3738,44 +3738,43 @@ fn bug_session_tab_navigation_blank_after_change() {
          Actual output:\n{after_session_change}"
     );
 
-    // Press Tab to switch panes
+    // Press Tab to cycle to first subagent
     harness.send_key(KeyCode::Tab);
     let after_first_tab = harness.render_to_string();
 
-    // Take snapshot after first Tab
+    // Take snapshot after first Tab - should show subagent-a
     insta::assert_snapshot!("bug_session_tab_nav_after_first_tab", after_first_tab.clone());
 
-    // After Tab, Main agent content should be visible
+    // After first Tab, should show subagent-a content (Main -> subagent-a)
+    let showing_subagent = after_first_tab.contains("subagent-a [Sonnet]")
+        || after_first_tab.contains("subagent-a (1 entries)")
+        || after_first_tab.contains("Session 1 subagent message");
     assert!(
-        after_first_tab.contains("Session 1 user message")
-            || after_first_tab.contains("Session 1 main agent"),
-        "After Tab, Main agent content should be visible.\n\
-         Expected: 'Session 1 user message' or 'Session 1 main agent response'\n\
+        showing_subagent,
+        "After first Tab, subagent-a content should be visible.\n\
+         Expected: 'subagent-a [Sonnet]' with subagent content\n\
          Actual output:\n{after_first_tab}"
     );
 
-    // Press Tab again to switch to subagent tab
+    // Press Tab again to cycle back to Main
     harness.send_key(KeyCode::Tab);
     let after_second_tab = harness.render_to_string();
 
-    // Take snapshot - should show subagent content but shows blank
+    // Take snapshot - should show Main again (completing the cycle)
     insta::assert_snapshot!("bug_session_tab_nav_after_second_tab", after_second_tab.clone());
 
-    // BUG #2: After second Tab, should show subagent content, not Main
-    // The panel title should be "subagent-a [Sonnet]" with subagent's entries
-    // NOT "Main [Opus]" which means Tab isn't actually cycling
-    let showing_subagent_panel = after_second_tab.contains("subagent-a [Sonnet]")
-        || after_second_tab.contains("subagent-a (1 entries)")
-        || after_second_tab.contains("Session 1 subagent message");
+    // After second Tab, should be back on Main (subagent-a -> Main)
+    let showing_main = after_second_tab.contains("Main [Opus]")
+        || after_second_tab.contains("Session 1 user message")
+        || after_second_tab.contains("Session 1 main agent");
 
     assert!(
-        showing_subagent_panel,
-        "BUG #2: Tab does not cycle to subagent view after session change.\n\
-         Expected: Panel title should be 'subagent-a [Sonnet] (1 entries)' with subagent content\n\
-         Actual: Panel still shows 'Main [Opus] (2 entries)' with Main agent content\n\n\
-         After pressing Tab twice, we should have cycled through:\n\
-           Main (first) -> subagent-a (second) -> Main (third) -> ...\n\n\
-         But the view is stuck on Main. Tab cycles don't work after session change.\n\n\
+        showing_main,
+        "After second Tab, should cycle back to Main agent.\n\
+         Expected: 'Main [Opus] (2 entries)' with Main agent content\n\
+         Actual: Tab cycling not working correctly\n\n\
+         After pressing Tab twice from Main, we should have cycled:\n\
+           Main (start) -> subagent-a (first Tab) -> Main (second Tab)\n\n\
          Actual output:\n{after_second_tab}"
     );
 }
