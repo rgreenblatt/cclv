@@ -296,8 +296,9 @@ fn render_session_modal_styles_current_marker_yellow_italic() {
     let session_idx = SessionIndex::new(1, 3).unwrap();
     state.viewed_session = crate::state::ViewedSession::Pinned(session_idx);
 
-    // Open modal
-    state.session_modal.open(1);
+    // Open modal with selection on a DIFFERENT session (session 1, index 0)
+    // This way we can test the [CURRENT] marker styling without highlight override
+    state.session_modal.open(0);
 
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).unwrap();
