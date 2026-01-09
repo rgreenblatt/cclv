@@ -519,7 +519,78 @@ impl SessionModalState {
 
 ---
 
-## 6. AppState Additions
+## 6. SessionScrollStates (FR-010)
+
+Per-session scroll position tracking with first-visit vs return-visit semantics.
+
+```rust
+// ===== src/state/session_scroll.rs (new file) =====
+
+use std::collections::HashMap;
+use crate::model::SessionId;
+
+/// Per-session scroll state storage (FR-010).
+///
+/// Implements "preserve on return" semantics:
+/// - Key absent = session never visited → first visit shows top (offset 0)
+/// - Key present = session previously visited → return restores stored offset
+///
+/// # Cardinality
+/// - States: 0 to S entries (S = session count)
+/// - Each entry: SessionId → usize offset
+/// - Precision: 1.0 (all states valid)
+///
+/// # Invariant
+/// Offsets are only stored for sessions that have been visited and scrolled.
+/// A session with offset 0 that was visited will have an entry; an unvisited
+/// session will have no entry (distinguishing "visited at top" from "never visited").
+pub type SessionScrollStates = HashMap<SessionId, ScrollState>;
+
+/// Scroll state for a single session.
+#[derive(Debug, Clone, Default)]
+pub struct ScrollState {
+    /// Vertical scroll offset (line number at top of viewport).
+    pub offset: usize,
+    // Future: could add horizontal offset, selected entry, etc.
+}
+
+impl ScrollState {
+    pub fn new(offset: usize) -> Self {
+        Self { offset }
+    }
+}
+
+/// Extension trait for managing session scroll states.
+pub trait SessionScrollExt {
+    /// Get scroll offset for a session.
+    /// Returns 0 for unvisited sessions (first-visit behavior).
+    fn scroll_offset_for(&self, session_id: &SessionId) -> usize;
+
+    /// Check if a session has been visited.
+    fn is_session_visited(&self, session_id: &SessionId) -> bool;
+
+    /// Save scroll state when leaving a session.
+    fn save_scroll_state(&mut self, session_id: SessionId, offset: usize);
+}
+
+impl SessionScrollExt for SessionScrollStates {
+    fn scroll_offset_for(&self, session_id: &SessionId) -> usize {
+        self.get(session_id).map(|s| s.offset).unwrap_or(0)
+    }
+
+    fn is_session_visited(&self, session_id: &SessionId) -> bool {
+        self.contains_key(session_id)
+    }
+
+    fn save_scroll_state(&mut self, session_id: SessionId, offset: usize) {
+        self.insert(session_id, ScrollState::new(offset));
+    }
+}
+```
+
+---
+
+## 7. AppState Additions
 
 Fields added to AppState for session navigation.
 
@@ -537,6 +608,12 @@ pub struct AppState {
     /// Which session is currently being viewed.
     /// Controls which session's content is displayed and whether live tailing is enabled.
     pub viewed_session: ViewedSession,
+
+    /// Per-session scroll positions (FR-010).
+    /// Tracks scroll offset for each visited session.
+    /// Key absence = unvisited (first visit shows top).
+    /// Key presence = visited (return restores offset).
+    pub session_scroll_states: SessionScrollStates,
 }
 ```
 
@@ -553,6 +630,9 @@ AppState
 ├── viewed_session: ViewedSession
 │   ├── Latest                      # Follow newest session
 │   └── Pinned(SessionIndex)        # View specific historical session
+├── session_scroll_states: SessionScrollStates  # FR-010: per-session scroll
+│   └── HashMap<SessionId, ScrollState>
+│       └── ScrollState { offset: usize }
 ├── stats_filter: StatsFilter
 │   ├── AllSessionsCombined         # All sessions, all agents
 │   ├── Session(SessionId)          # One session, all its agents
@@ -567,7 +647,9 @@ AppState
 Supporting Types:
 ├── SessionIndex (usize newtype, validated, 0-indexed)
 ├── SessionSummary { index, session_id, message_count, start_time, subagent_count }
-└── ViewedSession { Latest | Pinned(SessionIndex) }
+├── ViewedSession { Latest | Pinned(SessionIndex) }
+├── SessionScrollStates = HashMap<SessionId, ScrollState>
+└── ScrollState { offset: usize }
 ```
 
 ---
@@ -586,6 +668,8 @@ Supporting Types:
 | `StatsFilter::Subagent` | subagent_count | subagent_count | 1.0 |
 | `StatsFilter` (sum) | 1 + 2S + A | 1 + 2S + A | 1.0 |
 | `SessionModalState` | 1 + S | 1 + S | ~1.0 |
+| `SessionScrollStates` | 2^S | 2^S | 1.0 (all subsets valid) |
+| `ScrollState` | usize | usize | 1.0 |
 
 All types achieve precision ≈ 1.0 through:
 - Smart constructors (`SessionIndex::new`)
@@ -615,6 +699,14 @@ All types achieve precision ≈ 1.0 through:
 // 5. Stats filter aggregation is exhaustive
 // AllSessionsCombined.usage == sum(Session(s).usage for all s)
 // Session(s).usage == MainAgent(s).usage + sum(Subagent(a).usage for a in s)
+
+// 6. First-visit scroll behavior (FR-010)
+// forall session_id not in session_scroll_states: scroll_offset_for(session_id) == 0
+// forall session_id in session_scroll_states: scroll_offset_for(session_id) == stored_offset
+
+// 7. Scroll state persistence on session switch
+// Let old_offset = current scroll position, old_session = current session
+// After switch: session_scroll_states.get(old_session) == Some(old_offset)
 ```
 
 ---
@@ -635,11 +727,14 @@ All types achieve precision ≈ 1.0 through:
 3. **New `AppState` fields**
    - Add `session_modal: SessionModalState::new()`
    - Add `viewed_session: ViewedSession::default()`
+   - Add `session_scroll_states: SessionScrollStates::new()` (empty HashMap)
 
 ### Affected Files
 
 - `src/model/stats.rs` - StatsFilter definition
 - `src/state/app_state.rs` - AppState fields
+- `src/state/session_scroll.rs` - **NEW**: SessionScrollStates, ScrollState, SessionScrollExt trait
+- `src/state/mod.rs` - Export new session_scroll module
 - `src/view/stats.rs` - Stats rendering
 - `src/view/stats_multi_scope.rs` - Multi-scope stats
 - `src/tests/stats_multi_scope_tests.rs` - Stats tests

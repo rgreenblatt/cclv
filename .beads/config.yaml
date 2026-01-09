@@ -11,10 +11,10 @@
 # Use no-db mode: load from JSONL, no SQLite, write back after each command
 # When true, bd will use .beads/issues.jsonl as the source of truth
 # instead of SQLite database
-no-db: true
+# no-db: false
 
 # Disable daemon for RPC communication (forces direct database access)
-no-daemon: true
+# no-daemon: false
 
 # Disable auto-flush of database to JSONL after mutations
 # no-auto-flush: false

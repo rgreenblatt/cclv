@@ -35,7 +35,7 @@ As a user viewing the session list modal, I want to select a session and have th
 
 1. **Given** the session list modal is open showing multiple sessions, **When** the user selects a session using keyboard navigation and confirms, **Then** the modal closes and the main view displays the selected session's conversation
 2. **Given** the session list modal is open, **When** the user presses Escape or the dismiss hotkey, **Then** the modal closes without changing the active session
-3. **Given** a session is selected from the list, **When** the main view updates, **Then** the scroll position resets to the beginning of the selected session
+3. **Given** a session is selected from the list, **When** the main view updates, **Then** if this is the first visit to that session the scroll position resets to the beginning; if the user previously viewed this session, scroll position is restored to where they left off
 
 ---
 
@@ -110,7 +110,7 @@ As a user viewing the session list, I want each session to display meaningful id
 - **FR-007**: System MUST re-enable live tailing (if previously enabled) when the user navigates back to the last session
 - **FR-008**: System MUST provide statistics aggregation at four levels via `StatsFilter`: MainAgent(SessionId) for a specific session's main agent, Subagent(AgentId) for a specific subagent, Session(SessionId) for per-session totals, and AllSessionsCombined (renamed from Global) for cross-session totals
 - **FR-009**: System MUST display session metadata in the list including: session number, start timestamp, and message count
-- **FR-010**: System MUST preserve the user's scroll position and view state for each session when switching between sessions
+- **FR-010**: System MUST preserve the user's scroll position and view state for each session when switching between sessions. On first visit to a session, scroll position starts at the beginning; on subsequent visits, scroll position is restored to where the user left off
 - **FR-011**: System MUST scope subagent tabs to the currently viewed session (switching sessions updates the available subagent tabs)
 - **FR-012**: System MUST display current session indicator in status bar as "Session N/M" (e.g., "Session 2/3") showing position and total count
 
@@ -153,3 +153,4 @@ As a user viewing the session list, I want each session to display meaningful id
 - Q: What is the session list modal hotkey? → A: Default binding is `S` (Shift+S). Users can customize via config (keybindings are configurable).
 - Q: Are subagent tabs scoped to the viewed session? → A: Yes, session-scoped. Subagent tabs show only the currently viewed session's subagents, not all sessions' subagents.
 - Q: How is current session indicated in main UI? → A: Status bar shows "Session N/M" (e.g., "Session 2/3") alongside existing indicators (LIVE, Wrap mode).
+- Q: When switching to a session, what should happen to scroll position? → A: Preserve on return - reset to beginning on first visit, restore saved position on subsequent visits. This resolves the apparent conflict between US2:AC3 (reset) and FR-010/SC-006 (preserve).
