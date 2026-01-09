@@ -112,6 +112,8 @@ git status             # Verify all changes committed
 ## Active Technologies
 - Rust 1.75+ (2021 edition) + ratatui 0.29, crossterm 0.28, serde_json, chrono, tui-markdown, syntect (002-view-state-layer)
 - N/A (in-memory view-state, no persistence) (002-view-state-layer)
+- Rust 1.83+ (2021 edition) + ratatui 0.29, crossterm 0.28, serde_json, chrono, tui-markdown, fenwick (003-session-navigation)
+- N/A (in-memory view-state) (003-session-navigation)
 
 ## Recent Changes
 - 002-view-state-layer: Added Rust 1.75+ (2021 edition) + ratatui 0.29, crossterm 0.28, serde_json, chrono, tui-markdown, syntect
