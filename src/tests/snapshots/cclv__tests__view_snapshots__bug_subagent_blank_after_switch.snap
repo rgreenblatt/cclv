@@ -1,0 +1,8 @@
+---
+source: src/tests/view_snapshots.rs
+expression: after_session_change.clone()
+---
+┌Conversations─────────────────────────────────────────────────────────────────┐
+│ Main │ subagent-a                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+[LIVE] │ Session 1/2 │ Wrap: On | q: Quit | ?: Help | /: Search

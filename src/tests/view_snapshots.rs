@@ -3778,3 +3778,99 @@ fn bug_session_tab_navigation_blank_after_change() {
          Actual output:\n{after_second_tab}"
     );
 }
+
+/// Bug reproduction: Screen blank when switching sessions while on subagent tab
+///
+/// EXPECTED: After switching sessions from a subagent tab, the new session's
+///           Main conversation should be visible immediately.
+///
+/// ACTUAL: After switching sessions while viewing a subagent tab, the
+///         conversation pane is completely blank. Pressing Tab fixes it.
+///
+/// Root cause hypothesis: When switching sessions from a subagent tab, the
+/// viewed_session updates but the conversation view doesn't re-render the
+/// correct content until tab cycling forces a view refresh.
+///
+/// Steps to reproduce manually:
+/// 1. cargo run -- tests/fixtures/session_nav_subagent_blank_repro.jsonl
+/// 2. App shows Session 2/2 with Main and subagent-b tabs
+/// 3. Press Tab to switch to subagent-b tab (shows "Session 2 subagent message")
+/// 4. Press 'S' to open session modal
+/// 5. Press 'k' to navigate to Session 1
+/// 6. Press Enter to select Session 1
+/// 7. Observe: Screen is blank (BUG!) - tabs show "Main | subagent-a" but no content
+/// 8. Press Tab - content appears (workaround)
+#[test]
+#[ignore = "cclv-t5m: screen blank when switching sessions from subagent tab"]
+fn bug_session_switch_from_subagent_tab_shows_blank() {
+    use crate::test_harness::AcceptanceTestHarness;
+    use crossterm::event::KeyCode;
+
+    // Load fixture: 2 sessions, each with Main + subagent
+    let mut harness = AcceptanceTestHarness::from_fixture_with_size(
+        "tests/fixtures/session_nav_subagent_blank_repro.jsonl",
+        80,
+        24,
+    )
+    .expect("Failed to load fixture");
+
+    // Initial render - should show Session 2/2 (latest)
+    let initial = harness.render_to_string();
+    assert!(
+        initial.contains("Session 2/2"),
+        "Should start on Session 2/2\n\nActual:\n{initial}"
+    );
+    assert!(
+        initial.contains("Session 2 main agent") || initial.contains("Session 2 user"),
+        "Should show Session 2 content initially\n\nActual:\n{initial}"
+    );
+
+    // Step 1: Press Tab to switch to subagent tab
+    harness.send_key(KeyCode::Tab);
+    let on_subagent = harness.render_to_string();
+    assert!(
+        on_subagent.contains("subagent-b"),
+        "Should now be on subagent-b tab\n\nActual:\n{on_subagent}"
+    );
+    assert!(
+        on_subagent.contains("Session 2 subagent message"),
+        "Should show Session 2 subagent content\n\nActual:\n{on_subagent}"
+    );
+
+    // Snapshot before session change (showing subagent-b tab)
+    insta::assert_snapshot!("bug_subagent_blank_before_switch", on_subagent);
+
+    // Step 2: Open session modal
+    harness.send_key(KeyCode::Char('S'));
+    let with_modal = harness.render_to_string();
+    assert!(
+        with_modal.contains("Session List"),
+        "Session modal should be visible"
+    );
+
+    // Step 3: Navigate up and select Session 1
+    harness.send_key(KeyCode::Char('k'));
+    harness.send_key(KeyCode::Enter);
+
+    // Capture state immediately after session change
+    let after_session_change = harness.render_to_string();
+
+    // Snapshot captures the buggy blank state
+    insta::assert_snapshot!("bug_subagent_blank_after_switch", after_session_change.clone());
+
+    // BUG ASSERTION: Screen should NOT be blank!
+    // The conversation area should show Session 1's Main content
+    let has_session_1_content = after_session_change.contains("Session 1 main agent")
+        || after_session_change.contains("Session 1 user message");
+
+    assert!(
+        has_session_1_content,
+        "BUG: Screen is blank after switching sessions from subagent tab.\n\n\
+         Expected: Session 1 Main content should be visible immediately\n\
+         Actual: Conversation area is blank\n\n\
+         The status bar shows 'Session 1/2' and tabs show 'Main | subagent-a',\n\
+         but the conversation pane has no content.\n\n\
+         Workaround: Pressing Tab fixes the display.\n\n\
+         Actual output:\n{after_session_change}"
+    );
+}
