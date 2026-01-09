@@ -260,6 +260,11 @@ where
             return true;
         }
 
+        // Session modal handler (before other key handlers) - captures keys when modal visible
+        if crate::state::handle_session_modal_key(&mut self.app_state, key) {
+            return false; // Key consumed by modal
+        }
+
         // Special case: Escape closes help overlay if visible (before key binding dispatch)
         if key.code == KeyCode::Esc && self.app_state.help_visible {
             self.app_state.help_visible = false;

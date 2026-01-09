@@ -292,29 +292,38 @@ impl AppState {
 
     /// Get main conversation view-state (for rendering).
     ///
-    /// Assumes single session (current limitation).
-    /// Returns None if no sessions exist (shouldn't happen in normal operation).
+    /// Uses `viewed_session` to determine which session to display.
+    /// Returns None if no sessions exist or viewed session is invalid.
     pub fn main_conversation_view(
         &self,
     ) -> Option<&crate::view_state::conversation::ConversationViewState> {
-        self.log_view.current_session().map(|s| s.main())
+        let session_count = self.log_view.session_count();
+        let session_idx = self.viewed_session.effective_index(session_count)?;
+        self.log_view.get_session(session_idx.get()).map(|s| s.main())
     }
 
     /// Get mutable main conversation view-state.
+    ///
+    /// Uses `viewed_session` to determine which session to display.
     pub fn main_conversation_view_mut(
         &mut self,
     ) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
-        self.log_view.current_session_mut().map(|s| s.main_mut())
+        let session_count = self.log_view.session_count();
+        let session_idx = self.viewed_session.effective_index(session_count)?;
+        self.log_view.get_session_mut(session_idx.get()).map(|s| s.main_mut())
     }
 
     /// Get subagent conversation view-state by tab index.
     ///
+    /// Uses `viewed_session` to determine which session to display.
     /// Returns None if tab_index is out of range or session doesn't exist.
     pub fn subagent_conversation_view(
         &mut self,
         tab_index: usize,
     ) -> Option<&crate::view_state::conversation::ConversationViewState> {
-        let session = self.log_view.get_session_mut(0)?;
+        let session_count = self.log_view.session_count();
+        let session_idx = self.viewed_session.effective_index(session_count)?;
+        let session = self.log_view.get_session_mut(session_idx.get())?;
         let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
         agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
         let agent_id = agent_ids.get(tab_index)?;
@@ -323,12 +332,15 @@ impl AppState {
 
     /// Get mutable subagent conversation view-state by tab index.
     ///
+    /// Uses `viewed_session` to determine which session to display.
     /// Returns None if tab_index is out of range or session doesn't exist.
     pub fn subagent_conversation_view_mut(
         &mut self,
         tab_index: usize,
     ) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
-        let session = self.log_view.get_session_mut(0)?;
+        let session_count = self.log_view.session_count();
+        let session_idx = self.viewed_session.effective_index(session_count)?;
+        let session = self.log_view.get_session_mut(session_idx.get())?;
         let mut agent_ids: Vec<_> = session.subagent_ids().cloned().collect();
         agent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
         let agent_id = agent_ids.get(tab_index).cloned()?;
