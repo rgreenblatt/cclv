@@ -31,7 +31,13 @@ fn create_test_app_with_sessions(session_count: usize) -> TuiApp<TestBackend> {
     let line_counter = 0;
     let key_bindings = KeyBindings::default();
 
-    let mut app = TuiApp::new_for_test(terminal, app_state, input_source, line_counter, key_bindings);
+    let mut app = TuiApp::new_for_test(
+        terminal,
+        app_state,
+        input_source,
+        line_counter,
+        key_bindings,
+    );
 
     // Create test sessions with entries
     for i in 0..session_count {
@@ -49,7 +55,6 @@ fn create_test_app_with_sessions(session_count: usize) -> TuiApp<TestBackend> {
 
     app
 }
-
 
 // ===== ISSUE 1: Tab Key Should Cycle Stats Filter When Focus On Stats =====
 
@@ -98,9 +103,8 @@ fn tab_key_cycles_through_all_filter_levels() {
     }
 
     // Ensure we're viewing the session with subagents
-    app.app_state.viewed_session = ViewedSession::Pinned(
-        SessionIndex::new(0, 1).expect("Valid session index")
-    );
+    app.app_state.viewed_session =
+        ViewedSession::Pinned(SessionIndex::new(0, 1).expect("Valid session index"));
     app.app_state.focus = FocusPane::Stats;
     app.app_state.stats_filter = StatsFilter::AllSessionsCombined;
 
@@ -174,9 +178,8 @@ fn session_change_via_modal_updates_session_scoped_filter() {
     let session0_id = SessionId::new("session-0").unwrap();
     let session1_id = SessionId::new("session-1").unwrap();
 
-    app.app_state.viewed_session = ViewedSession::Pinned(
-        SessionIndex::new(0, 2).expect("Valid session index")
-    );
+    app.app_state.viewed_session =
+        ViewedSession::Pinned(SessionIndex::new(0, 2).expect("Valid session index"));
     app.app_state.stats_filter = StatsFilter::Session(session0_id.clone());
 
     // Open session modal and select session 1
@@ -209,9 +212,8 @@ fn session_change_updates_main_agent_filter() {
     let session0_id = SessionId::new("session-0").unwrap();
     let session1_id = SessionId::new("session-1").unwrap();
 
-    app.app_state.viewed_session = ViewedSession::Pinned(
-        SessionIndex::new(0, 2).expect("Valid session index")
-    );
+    app.app_state.viewed_session =
+        ViewedSession::Pinned(SessionIndex::new(0, 2).expect("Valid session index"));
     app.app_state.stats_filter = StatsFilter::MainAgent(session0_id);
 
     // Open and change session
@@ -241,9 +243,8 @@ fn session_change_preserves_all_sessions_combined_filter() {
     // GIVEN: Filter is AllSessionsCombined
     let mut app = create_test_app_with_sessions(2);
     app.app_state.stats_filter = StatsFilter::AllSessionsCombined;
-    app.app_state.viewed_session = ViewedSession::Pinned(
-        SessionIndex::new(0, 2).expect("Valid session index")
-    );
+    app.app_state.viewed_session =
+        ViewedSession::Pinned(SessionIndex::new(0, 2).expect("Valid session index"));
 
     // Open and change session
     app.app_state.session_modal.open(0);
@@ -269,9 +270,8 @@ fn session_change_preserves_subagent_filter() {
     let mut app = create_test_app_with_sessions(2);
     let agent1 = AgentId::new("agent-1").unwrap();
     app.app_state.stats_filter = StatsFilter::Subagent(agent1.clone());
-    app.app_state.viewed_session = ViewedSession::Pinned(
-        SessionIndex::new(0, 2).expect("Valid session index")
-    );
+    app.app_state.viewed_session =
+        ViewedSession::Pinned(SessionIndex::new(0, 2).expect("Valid session index"));
 
     // Open and change session
     app.app_state.session_modal.open(0);

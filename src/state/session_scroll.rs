@@ -4,8 +4,8 @@
 //! - Key absent = session never visited → first visit shows top (offset 0)
 //! - Key present = session previously visited → return restores stored offset
 
-use std::collections::HashMap;
 use crate::model::SessionId;
+use std::collections::HashMap;
 
 /// Per-session scroll state storage (FR-010).
 ///

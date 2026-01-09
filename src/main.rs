@@ -265,7 +265,7 @@ mod tests {
 
     #[test]
     fn test_theme_flows_through_config_precedence_chain() {
-        use cclv::config::{ConfigFile, apply_cli_overrides, apply_env_overrides, merge_config};
+        use cclv::config::{apply_cli_overrides, apply_env_overrides, merge_config, ConfigFile};
 
         // Simulate full precedence chain: Defaults → Config File → Env Vars → CLI Args
         let config_file = ConfigFile {

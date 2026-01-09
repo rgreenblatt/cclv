@@ -113,7 +113,7 @@ fn next_tab_works_regardless_of_focus() {
 #[test]
 fn next_tab_does_nothing_when_no_session() {
     let state = AppState::new(); // No entries = no session
-    // AppState::new() initializes to Some(0) per FR-083
+                                 // AppState::new() initializes to Some(0) per FR-083
 
     let state = handle_tab_action(state, KeyAction::NextTab);
 
@@ -180,7 +180,7 @@ fn prev_tab_works_regardless_of_focus() {
     let mut state = AppState::new();
     state.add_entries(entries);
     state.focus = FocusPane::Stats; // Different focus
-    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
+                                    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
     state.selected_conversation = ConversationSelection::Subagent(AgentId::new("agent-2").unwrap());
 
     let state = handle_tab_action(state, KeyAction::PrevTab);
@@ -195,7 +195,7 @@ fn prev_tab_works_regardless_of_focus() {
 #[test]
 fn prev_tab_does_nothing_when_no_session() {
     let state = AppState::new(); // No entries = no session
-    // AppState::new() initializes to Some(0) per FR-083
+                                 // AppState::new() initializes to Some(0) per FR-083
 
     let state = handle_tab_action(state, KeyAction::PrevTab);
 
@@ -299,7 +299,7 @@ fn select_tab_works_regardless_of_focus() {
     let mut state = AppState::new();
     state.add_entries(entries);
     state.focus = FocusPane::Main; // Different focus
-    // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
+                                   // Tab 0 = main, tab 1 = agent-1, tab 2 = agent-2
     state.selected_conversation = ConversationSelection::Main;
 
     let state = handle_tab_action(state, KeyAction::SelectTab(3));
@@ -314,7 +314,7 @@ fn select_tab_works_regardless_of_focus() {
 #[test]
 fn select_tab_does_nothing_when_no_session() {
     let state = AppState::new(); // No entries = no session
-    // AppState::new() initializes to Some(0) per FR-083
+                                 // AppState::new() initializes to Some(0) per FR-083
 
     let state = handle_tab_action(state, KeyAction::SelectTab(1));
 

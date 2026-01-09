@@ -316,7 +316,9 @@ impl AppState {
     ) -> Option<&crate::view_state::conversation::ConversationViewState> {
         let session_count = self.log_view.session_count();
         let session_idx = self.viewed_session.effective_index(session_count)?;
-        self.log_view.get_session(session_idx.get()).map(|s| s.main())
+        self.log_view
+            .get_session(session_idx.get())
+            .map(|s| s.main())
     }
 
     /// Get mutable main conversation view-state.
@@ -327,7 +329,9 @@ impl AppState {
     ) -> Option<&mut crate::view_state::conversation::ConversationViewState> {
         let session_count = self.log_view.session_count();
         let session_idx = self.viewed_session.effective_index(session_count)?;
-        self.log_view.get_session_mut(session_idx.get()).map(|s| s.main_mut())
+        self.log_view
+            .get_session_mut(session_idx.get())
+            .map(|s| s.main_mut())
     }
 
     /// Get subagent conversation view-state by tab index.
@@ -684,7 +688,8 @@ impl AppState {
         let session_count = self.log_view.session_count();
         let current_session_idx = self.viewed_session.effective_index(session_count);
 
-        let current_session = current_session_idx.and_then(|idx| self.log_view.get_session(idx.get()));
+        let current_session =
+            current_session_idx.and_then(|idx| self.log_view.get_session(idx.get()));
 
         // Get sorted list of subagent IDs from current session
         let subagent_ids: Vec<AgentId> = current_session

@@ -9,8 +9,8 @@ use crate::source::InputSource;
 use crate::state::AppState;
 use crate::view::TuiApp;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::Terminal;
 
 /// Helper to create a test TuiApp
 fn create_test_app() -> TuiApp<TestBackend> {

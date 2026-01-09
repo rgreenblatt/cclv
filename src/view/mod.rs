@@ -12,9 +12,9 @@ pub mod session_modal;
 mod session_modal_event_loop_integration_test;
 #[cfg(test)]
 mod session_separator_tests;
+mod stats;
 #[cfg(test)]
 mod stats_filter_key_wiring_test;
-mod stats;
 mod stats_multi_scope;
 mod styles;
 pub mod tabs;
@@ -22,9 +22,9 @@ pub mod tabs;
 pub use help::render_help_overlay;
 pub use helpers::{empty_line, key_value_line};
 pub use live_indicator::LiveIndicator;
-pub use message::{ConversationView, extract_entry_text, has_code_blocks};
-pub use session_modal::render_session_modal;
+pub use message::{extract_entry_text, has_code_blocks, ConversationView};
 pub use search_input::SearchInput;
+pub use session_modal::render_session_modal;
 pub use stats::StatsPanel;
 pub use stats_multi_scope::MultiScopeStatsPanel;
 pub use styles::{ColorConfig, MessageStyles};
@@ -36,17 +36,17 @@ use crate::source::InputSource;
 #[cfg(test)]
 use crate::state::ConversationSelection;
 use crate::state::{
-    AppState, FocusPane, expand_handler, handle_toggle_wrap, next_match, prev_match,
-    scroll_handler, search_input_handler,
+    expand_handler, handle_toggle_wrap, next_match, prev_match, scroll_handler,
+    search_input_handler, AppState, FocusPane,
 };
 use crossterm::{
-    ExecutableCommand,
     event::{
         self, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
     },
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    ExecutableCommand,
 };
-use ratatui::{Terminal, backend::CrosstermBackend};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io::{self, Stdout};
 use std::time::Duration;
 use thiserror::Error;
@@ -409,9 +409,13 @@ where
             KeyAction::FilterMainAgent => {
                 // Get the currently viewed session's ID
                 let session_count = self.app_state.log_view().session_count();
-                if let Some(session_idx) = self.app_state.viewed_session.effective_index(session_count) {
-                    if let Some(session) = self.app_state.log_view().get_session(session_idx.get()) {
-                        self.app_state.stats_filter = crate::model::StatsFilter::MainAgent(session.session_id().clone());
+                if let Some(session_idx) =
+                    self.app_state.viewed_session.effective_index(session_count)
+                {
+                    if let Some(session) = self.app_state.log_view().get_session(session_idx.get())
+                    {
+                        self.app_state.stats_filter =
+                            crate::model::StatsFilter::MainAgent(session.session_id().clone());
                     }
                 }
             }
@@ -621,7 +625,7 @@ where
                 self.app_state.search =
                     search_input_handler::submit_search(self.app_state.search.clone());
                 // Execute search to populate matches
-                use crate::state::{SearchState, execute_search};
+                use crate::state::{execute_search, SearchState};
                 if let SearchState::Active { query, .. } = &self.app_state.search {
                     let session_view = self
                         .app_state
@@ -1543,7 +1547,8 @@ mod tests {
         assert_eq!(session_count, 2, "Should have 2 sessions");
 
         // Pin to first (historical) session
-        app.app_state.viewed_session = ViewedSession::Pinned(SessionIndex::new(0, session_count).unwrap());
+        app.app_state.viewed_session =
+            ViewedSession::Pinned(SessionIndex::new(0, session_count).unwrap());
 
         // Enable live mode and auto_scroll
         app.app_state.live_mode = true;

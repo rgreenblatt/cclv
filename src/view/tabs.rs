@@ -5,11 +5,11 @@
 
 use crate::model::AgentId;
 use ratatui::{
-    Frame,
     layout::Rect,
     style::{Color, Style},
     text::Line,
     widgets::{Block, Borders, Tabs},
+    Frame,
 };
 use std::collections::HashSet;
 
@@ -104,8 +104,8 @@ pub fn render_tab_bar(
 mod tests {
     use super::*;
     use crate::model::AgentId;
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::collections::HashSet;
 
     // Test helper: Create test terminal

@@ -5,11 +5,11 @@ use crate::model::{
     Role, SessionId,
 };
 use crate::state::app_state::WrapMode;
-use crate::view::MessageStyles;
 use crate::view::message::ConversationView;
+use crate::view::MessageStyles;
 use crate::view_state::conversation::ConversationViewState;
 use crate::view_state::layout_params::LayoutParams;
-use ratatui::{Terminal, backend::TestBackend, buffer::Buffer, layout::Rect};
+use ratatui::{backend::TestBackend, buffer::Buffer, layout::Rect, Terminal};
 
 // ===== Test Helpers =====
 

@@ -12,7 +12,7 @@ use crate::model::{
 };
 use crate::view::MultiScopeStatsPanel;
 use chrono::Utc;
-use ratatui::{Terminal, backend::TestBackend, buffer::Buffer};
+use ratatui::{backend::TestBackend, buffer::Buffer, Terminal};
 
 // ===== Test Helpers =====
 

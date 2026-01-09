@@ -47,7 +47,6 @@ fn add_test_session_with_subagents(
 
 #[test]
 fn cycle_from_all_sessions_combined_to_session() {
-    
     // Create app state with test data
     let mut state = AppState::new();
 
@@ -71,7 +70,6 @@ fn cycle_from_all_sessions_combined_to_session() {
 
 #[test]
 fn cycle_from_session_to_main_agent() {
-    
     let mut state = AppState::new();
     let session_id = SessionId::new("test-session-2").expect("valid session id");
     add_test_session(&mut state, session_id.clone());
@@ -92,16 +90,11 @@ fn cycle_from_session_to_main_agent() {
 
 #[test]
 fn cycle_from_main_agent_to_first_subagent() {
-    
     let mut state = AppState::new();
     let session_id = SessionId::new("test-session-3").expect("valid session id");
     let subagent_id = AgentId::new("subagent-alpha").expect("valid agent id");
 
-    add_test_session_with_subagents(
-        &mut state,
-        session_id.clone(),
-        vec![subagent_id.clone()],
-    );
+    add_test_session_with_subagents(&mut state, session_id.clone(), vec![subagent_id.clone()]);
 
     // Start with MainAgent filter
     state.stats_filter = StatsFilter::MainAgent(session_id);
@@ -119,7 +112,6 @@ fn cycle_from_main_agent_to_first_subagent() {
 
 #[test]
 fn cycle_from_main_agent_to_all_sessions_when_no_subagents() {
-    
     let mut state = AppState::new();
     let session_id = SessionId::new("test-session-4").expect("valid session id");
     add_test_session(&mut state, session_id.clone());
@@ -140,7 +132,6 @@ fn cycle_from_main_agent_to_all_sessions_when_no_subagents() {
 
 #[test]
 fn cycle_from_subagent_to_next_subagent() {
-    
     let mut state = AppState::new();
     let session_id = SessionId::new("test-session-5").expect("valid session id");
     let sub1 = AgentId::new("subagent-1").expect("valid agent id");
@@ -168,17 +159,12 @@ fn cycle_from_subagent_to_next_subagent() {
 
 #[test]
 fn cycle_from_last_subagent_to_all_sessions() {
-    
     let mut state = AppState::new();
     let session_id = SessionId::new("test-session-6").expect("valid session id");
     let sub1 = AgentId::new("subagent-1").expect("valid agent id");
     let sub2 = AgentId::new("subagent-2").expect("valid agent id");
 
-    add_test_session_with_subagents(
-        &mut state,
-        session_id.clone(),
-        vec![sub1, sub2.clone()],
-    );
+    add_test_session_with_subagents(&mut state, session_id.clone(), vec![sub1, sub2.clone()]);
 
     // Start with last subagent
     state.stats_filter = StatsFilter::Subagent(sub2);
@@ -196,7 +182,6 @@ fn cycle_from_last_subagent_to_all_sessions() {
 
 #[test]
 fn cycle_from_unknown_subagent_to_all_sessions() {
-    
     let mut state = AppState::new();
     let session_id = SessionId::new("test-session-7").expect("valid session id");
     let sub1 = AgentId::new("subagent-1").expect("valid agent id");
@@ -222,7 +207,6 @@ fn cycle_from_unknown_subagent_to_all_sessions() {
 
 #[test]
 fn on_session_change_preserves_all_sessions_combined() {
-    
     let mut state = AppState::new();
     let old_session = SessionId::new("session-old").expect("valid session id");
     let new_session = SessionId::new("session-new").expect("valid session id");
@@ -246,7 +230,6 @@ fn on_session_change_preserves_all_sessions_combined() {
 
 #[test]
 fn on_session_change_updates_session_filter() {
-    
     let mut state = AppState::new();
     let old_session = SessionId::new("session-old").expect("valid session id");
     let new_session = SessionId::new("session-new").expect("valid session id");
@@ -270,7 +253,6 @@ fn on_session_change_updates_session_filter() {
 
 #[test]
 fn on_session_change_updates_main_agent_filter() {
-    
     let mut state = AppState::new();
     let old_session = SessionId::new("session-old").expect("valid session id");
     let new_session = SessionId::new("session-new").expect("valid session id");
@@ -294,22 +276,13 @@ fn on_session_change_updates_main_agent_filter() {
 
 #[test]
 fn on_session_change_preserves_subagent_filter() {
-    
     let mut state = AppState::new();
     let old_session = SessionId::new("session-old").expect("valid session id");
     let new_session = SessionId::new("session-new").expect("valid session id");
     let subagent = AgentId::new("subagent-123").expect("valid agent id");
 
-    add_test_session_with_subagents(
-        &mut state,
-        old_session.clone(),
-        vec![subagent.clone()],
-    );
-    add_test_session_with_subagents(
-        &mut state,
-        new_session.clone(),
-        vec![subagent.clone()],
-    );
+    add_test_session_with_subagents(&mut state, old_session.clone(), vec![subagent.clone()]);
+    add_test_session_with_subagents(&mut state, new_session.clone(), vec![subagent.clone()]);
 
     // Set filter to Subagent
     state.stats_filter = StatsFilter::Subagent(subagent.clone());

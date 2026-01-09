@@ -10,10 +10,10 @@ use cclv::model::{
     AgentId, ContentBlock, ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry,
     Message, MessageContent, Role, SessionId,
 };
-use cclv::state::search::{SearchQuery, execute_search};
+use cclv::state::search::{execute_search, SearchQuery};
 use cclv::view_state::session::SessionViewState;
 use chrono::Utc;
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 /// Generate a large session with ~50MB of text content.
 ///

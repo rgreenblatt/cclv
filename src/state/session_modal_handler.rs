@@ -315,10 +315,7 @@ mod tests {
                 }
                 ViewedSession::Latest => panic!("Should be Pinned, not Latest"),
             }
-            assert!(
-                !state.session_modal.is_visible(),
-                "Modal should be closed"
-            );
+            assert!(!state.session_modal.is_visible(), "Modal should be closed");
         }
 
         #[test]
@@ -335,10 +332,7 @@ mod tests {
                 }
                 ViewedSession::Latest => panic!("Should be Pinned, not Latest"),
             }
-            assert!(
-                !state.session_modal.is_visible(),
-                "Modal should be closed"
-            );
+            assert!(!state.session_modal.is_visible(), "Modal should be closed");
         }
 
         #[test]
@@ -354,10 +348,7 @@ mod tests {
                 ViewedSession::Latest,
                 "Should set Latest mode when selecting last session"
             );
-            assert!(
-                !state.session_modal.is_visible(),
-                "Modal should be closed"
-            );
+            assert!(!state.session_modal.is_visible(), "Modal should be closed");
         }
 
         #[test]
@@ -394,10 +385,7 @@ mod tests {
                 ViewedSession::Latest,
                 "Should not change viewed_session"
             );
-            assert!(
-                !state.session_modal.is_visible(),
-                "Modal should be closed"
-            );
+            assert!(!state.session_modal.is_visible(), "Modal should be closed");
         }
 
         #[test]
@@ -414,10 +402,7 @@ mod tests {
                 ViewedSession::Latest,
                 "Should not change viewed_session"
             );
-            assert!(
-                !state.session_modal.is_visible(),
-                "Modal should be closed"
-            );
+            assert!(!state.session_modal.is_visible(), "Modal should be closed");
         }
 
         #[test]
@@ -437,10 +422,7 @@ mod tests {
                 ViewedSession::Latest,
                 "Should not change viewed_session"
             );
-            assert!(
-                !state.session_modal.is_visible(),
-                "Modal should be closed"
-            );
+            assert!(!state.session_modal.is_visible(), "Modal should be closed");
         }
     }
 

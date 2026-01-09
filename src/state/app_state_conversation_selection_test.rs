@@ -83,7 +83,8 @@ fn selected_conversation_view_respects_viewed_session_latest() {
     let state = create_test_state_with_sessions(3);
     // Default viewed_session is Latest
 
-    let view = state.selected_conversation_view()
+    let view = state
+        .selected_conversation_view()
         .expect("Should have conversation view");
 
     // Should show latest session (session 2 with 0-indexed)
@@ -93,8 +94,14 @@ fn selected_conversation_view_respects_viewed_session_latest() {
     // Verify the session ID matches the last session
     let expected_session_id = SessionId::new("550e8400-e29b-41d4-a716-446655440002").unwrap();
     let first_entry = entries.first().expect("Should have entry");
-    let actual_session_id = first_entry.entry().session_id().expect("Should have session_id");
-    assert_eq!(actual_session_id, &expected_session_id, "Expected latest session (index 2)");
+    let actual_session_id = first_entry
+        .entry()
+        .session_id()
+        .expect("Should have session_id");
+    assert_eq!(
+        actual_session_id, &expected_session_id,
+        "Expected latest session (index 2)"
+    );
 }
 
 #[test]
@@ -107,7 +114,8 @@ fn selected_conversation_view_respects_viewed_session_pinned_to_first() {
     // Pin to first session (index 0)
     state.viewed_session = ViewedSession::pinned(0, 3).expect("valid pin");
 
-    let view = state.selected_conversation_view()
+    let view = state
+        .selected_conversation_view()
         .expect("Should have conversation view");
 
     // Should show first session, NOT latest
@@ -117,8 +125,14 @@ fn selected_conversation_view_respects_viewed_session_pinned_to_first() {
     // Verify the session ID matches the FIRST session, not the last
     let expected_session_id = SessionId::new("550e8400-e29b-41d4-a716-446655440000").unwrap();
     let first_entry = entries.first().expect("Should have entry");
-    let actual_session_id = first_entry.entry().session_id().expect("Should have session_id");
-    assert_eq!(actual_session_id, &expected_session_id, "Expected first session (index 0), not latest");
+    let actual_session_id = first_entry
+        .entry()
+        .session_id()
+        .expect("Should have session_id");
+    assert_eq!(
+        actual_session_id, &expected_session_id,
+        "Expected first session (index 0), not latest"
+    );
 }
 
 #[test]
@@ -131,7 +145,8 @@ fn selected_conversation_view_respects_viewed_session_pinned_to_middle() {
     // Pin to middle session (index 1)
     state.viewed_session = ViewedSession::pinned(1, 3).expect("valid pin");
 
-    let view = state.selected_conversation_view()
+    let view = state
+        .selected_conversation_view()
         .expect("Should have conversation view");
 
     // Should show middle session
@@ -141,8 +156,14 @@ fn selected_conversation_view_respects_viewed_session_pinned_to_middle() {
     // Verify the session ID matches the MIDDLE session
     let expected_session_id = SessionId::new("550e8400-e29b-41d4-a716-446655440001").unwrap();
     let first_entry = entries.first().expect("Should have entry");
-    let actual_session_id = first_entry.entry().session_id().expect("Should have session_id");
-    assert_eq!(actual_session_id, &expected_session_id, "Expected middle session (index 1)");
+    let actual_session_id = first_entry
+        .entry()
+        .session_id()
+        .expect("Should have session_id");
+    assert_eq!(
+        actual_session_id, &expected_session_id,
+        "Expected middle session (index 1)"
+    );
 }
 
 #[test]
@@ -155,7 +176,8 @@ fn selected_conversation_view_mut_respects_viewed_session_pinned() {
     // Pin to first session
     state.viewed_session = ViewedSession::pinned(0, 3).expect("valid pin");
 
-    let view = state.selected_conversation_view_mut()
+    let view = state
+        .selected_conversation_view_mut()
         .expect("Should have conversation view");
 
     // Should show first session, NOT latest
@@ -165,8 +187,14 @@ fn selected_conversation_view_mut_respects_viewed_session_pinned() {
     // Verify the session ID matches the FIRST session, not the last
     let expected_session_id = SessionId::new("550e8400-e29b-41d4-a716-446655440000").unwrap();
     let first_entry = entries.first().expect("Should have entry");
-    let actual_session_id = first_entry.entry().session_id().expect("Should have session_id");
-    assert_eq!(actual_session_id, &expected_session_id, "Expected first session (index 0), not latest");
+    let actual_session_id = first_entry
+        .entry()
+        .session_id()
+        .expect("Should have session_id");
+    assert_eq!(
+        actual_session_id, &expected_session_id,
+        "Expected first session (index 0), not latest"
+    );
 }
 
 #[test]
@@ -199,11 +227,8 @@ fn create_test_state_with_sessions(session_count: usize) -> AppState {
     let mut state = AppState::new();
 
     for i in 0..session_count {
-        let session_id = SessionId::new(format!(
-            "550e8400-e29b-41d4-a716-44665544000{}",
-            i
-        ).as_str())
-        .unwrap();
+        let session_id =
+            SessionId::new(format!("550e8400-e29b-41d4-a716-44665544000{}", i).as_str()).unwrap();
 
         // Add a message to create the session
         let entry = LogEntry::new(

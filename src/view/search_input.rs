@@ -85,8 +85,8 @@ impl Widget for SearchInput<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
 
     #[test]
     fn search_input_renders_typing_state() {

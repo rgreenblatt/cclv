@@ -237,15 +237,16 @@ impl SessionStats {
     pub fn filtered_usage(&self, filter: &StatsFilter) -> TokenUsage {
         match filter {
             StatsFilter::AllSessionsCombined => self.total_usage,
-            StatsFilter::Session(session_id) => {
-                self.session_usage.get(session_id).copied().unwrap_or_default()
-            }
-            StatsFilter::MainAgent(session_id) => {
-                self.main_agent_usage_by_session
-                    .get(session_id)
-                    .copied()
-                    .unwrap_or_default()
-            }
+            StatsFilter::Session(session_id) => self
+                .session_usage
+                .get(session_id)
+                .copied()
+                .unwrap_or_default(),
+            StatsFilter::MainAgent(session_id) => self
+                .main_agent_usage_by_session
+                .get(session_id)
+                .copied()
+                .unwrap_or_default(),
             StatsFilter::Subagent(agent_id) => self
                 .subagent_usage
                 .get(agent_id)
@@ -1017,7 +1018,10 @@ mod tests {
     fn stats_filter_session_equality() {
         let session1 = make_session_id("session-1");
         let session2 = make_session_id("session-1");
-        assert_eq!(StatsFilter::Session(session1), StatsFilter::Session(session2));
+        assert_eq!(
+            StatsFilter::Session(session1),
+            StatsFilter::Session(session2)
+        );
     }
 
     #[test]
@@ -1070,7 +1074,10 @@ mod tests {
     fn stats_filter_label_main_agent() {
         let session_id = make_session_id("session-456");
         let filter = StatsFilter::MainAgent(session_id);
-        assert_eq!(filter.label(), "Statistics: Main Agent (Session session-456)");
+        assert_eq!(
+            filter.label(),
+            "Statistics: Main Agent (Session session-456)"
+        );
     }
 
     #[test]

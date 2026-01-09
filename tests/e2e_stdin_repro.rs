@@ -8,7 +8,7 @@
 
 #![cfg(feature = "e2e-tests")]
 
-use expectrl::{Eof, Regex, spawn};
+use expectrl::{spawn, Eof, Regex};
 use std::path::PathBuf;
 use std::time::Duration;
 

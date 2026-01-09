@@ -3,8 +3,8 @@
 //! Provides FileSource for synchronous, read-once loading of JSONL files.
 //! No file watching - users leverage `tail -f file | cclv` pattern instead.
 
-use crate::model::LogEntry;
 use crate::model::error::InputError;
+use crate::model::LogEntry;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};

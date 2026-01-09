@@ -32,8 +32,8 @@ use crate::view_state::types::EntryIndex;
 use crate::view_state::types::ViewportDimensions;
 use chrono::Utc;
 use proptest::prelude::*;
-use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::Terminal;
 
 // ===== Arbitrary Strategies =====
 

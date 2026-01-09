@@ -283,7 +283,9 @@ mod tests {
 
     #[test]
     fn from_session_extracts_message_count() {
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
+        };
         use crate::view_state::session::SessionViewState;
 
         let session_id = make_test_session_id();
@@ -319,7 +321,9 @@ mod tests {
         let index = make_test_index();
 
         // Add entry with timestamp to trigger start_time capture
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
+        };
         let timestamp = make_test_time();
         let entry = crate::model::ConversationEntry::Valid(Box::new(LogEntry::new(
             EntryUuid::new("uuid-1").unwrap(),
@@ -328,7 +332,10 @@ mod tests {
             None,
             timestamp,
             EntryType::User,
-            Message::new(Role::User, MessageContent::Text("First message".to_string())),
+            Message::new(
+                Role::User,
+                MessageContent::Text("First message".to_string()),
+            ),
             EntryMetadata::default(),
         )));
         session.add_main_entry(entry);
@@ -348,7 +355,9 @@ mod tests {
         let index = make_test_index();
 
         // Add 2 subagents
-        use crate::model::{EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role};
+        use crate::model::{
+            EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
+        };
         let agent1 = AgentId::new("agent-1").unwrap();
         let agent2 = AgentId::new("agent-2").unwrap();
 
@@ -359,7 +368,10 @@ mod tests {
             None,
             make_test_time(),
             EntryType::User,
-            Message::new(Role::User, MessageContent::Text("Subagent 1 message".to_string())),
+            Message::new(
+                Role::User,
+                MessageContent::Text("Subagent 1 message".to_string()),
+            ),
             EntryMetadata::default(),
         )));
         session.add_subagent_entry(agent1, entry1);
@@ -371,7 +383,10 @@ mod tests {
             None,
             make_test_time(),
             EntryType::User,
-            Message::new(Role::User, MessageContent::Text("Subagent 2 message".to_string())),
+            Message::new(
+                Role::User,
+                MessageContent::Text("Subagent 2 message".to_string()),
+            ),
             EntryMetadata::default(),
         )));
         session.add_subagent_entry(agent2, entry2);

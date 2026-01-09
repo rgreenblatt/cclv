@@ -16,7 +16,7 @@ use cclv::view_state::conversation::ConversationViewState;
 use cclv::view_state::layout_params::LayoutParams;
 use cclv::view_state::types::LineOffset;
 use chrono::Utc;
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 /// Create a simple valid entry for benchmarking.
 fn make_entry(uuid: &str) -> ConversationEntry {

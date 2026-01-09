@@ -136,7 +136,9 @@ fn text_format_is_consistent() {
     let static_text = LiveIndicator::new(InputMode::Static, false, true)
         .render()
         .content;
-    let eof_text = LiveIndicator::new(InputMode::Eof, false, true).render().content;
+    let eof_text = LiveIndicator::new(InputMode::Eof, false, true)
+        .render()
+        .content;
     let streaming_text = LiveIndicator::new(InputMode::Streaming, true, true)
         .render()
         .content;

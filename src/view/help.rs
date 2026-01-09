@@ -6,11 +6,11 @@
 use super::constants::{HELP_POPUP_HEIGHT_PERCENT, HELP_POPUP_WIDTH_PERCENT};
 use super::helpers::empty_line;
 use ratatui::{
-    Frame,
     layout::{Alignment, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
+    Frame,
 };
 
 /// Render the help overlay centered on the screen.

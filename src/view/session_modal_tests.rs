@@ -17,11 +17,8 @@ fn create_test_state_with_sessions(session_count: usize) -> AppState {
     let mut state = AppState::new();
 
     for i in 0..session_count {
-        let session_id = SessionId::new(format!(
-            "550e8400-e29b-41d4-a716-44665544000{}",
-            i
-        ).as_str())
-        .unwrap();
+        let session_id =
+            SessionId::new(format!("550e8400-e29b-41d4-a716-44665544000{}", i).as_str()).unwrap();
 
         // Add a message to create the session
         let entry = LogEntry::new(
@@ -61,11 +58,16 @@ fn render_session_modal_does_not_render_when_invisible() {
 
     // When modal is invisible, the buffer should be empty (all default cells)
     // Check that no modal border or content is rendered
-    let content = buffer.content().iter()
+    let content = buffer
+        .content()
+        .iter()
         .filter(|cell| !cell.symbol().trim().is_empty())
         .count();
 
-    assert_eq!(content, 0, "Modal should not render any content when invisible");
+    assert_eq!(
+        content, 0,
+        "Modal should not render any content when invisible"
+    );
 }
 
 #[test]
@@ -84,7 +86,9 @@ fn render_session_modal_shows_modal_when_visible() {
         .unwrap();
 
     let buffer = terminal.backend().buffer();
-    let rendered = buffer.content().iter()
+    let rendered = buffer
+        .content()
+        .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
 
@@ -110,23 +114,16 @@ fn render_session_modal_displays_all_sessions() {
         .unwrap();
 
     let buffer = terminal.backend().buffer();
-    let rendered = buffer.content().iter()
+    let rendered = buffer
+        .content()
+        .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
 
     // All sessions should be listed
-    assert!(
-        rendered.contains("Session 1:"),
-        "Should display Session 1"
-    );
-    assert!(
-        rendered.contains("Session 2:"),
-        "Should display Session 2"
-    );
-    assert!(
-        rendered.contains("Session 3:"),
-        "Should display Session 3"
-    );
+    assert!(rendered.contains("Session 1:"), "Should display Session 1");
+    assert!(rendered.contains("Session 2:"), "Should display Session 2");
+    assert!(rendered.contains("Session 3:"), "Should display Session 3");
 }
 
 #[test]
@@ -144,7 +141,9 @@ fn render_session_modal_displays_message_and_subagent_counts() {
         .unwrap();
 
     let buffer = terminal.backend().buffer();
-    let rendered = buffer.content().iter()
+    let rendered = buffer
+        .content()
+        .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
 
@@ -181,7 +180,9 @@ fn render_session_modal_marks_current_session() {
         .unwrap();
 
     let buffer = terminal.backend().buffer();
-    let rendered = buffer.content().iter()
+    let rendered = buffer
+        .content()
+        .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
 
@@ -207,7 +208,9 @@ fn render_session_modal_shows_footer_with_keybindings() {
         .unwrap();
 
     let buffer = terminal.backend().buffer();
-    let rendered = buffer.content().iter()
+    let rendered = buffer
+        .content()
+        .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
 
@@ -242,7 +245,9 @@ fn render_session_modal_centers_modal() {
         .unwrap();
 
     let buffer = terminal.backend().buffer();
-    let rendered = buffer.content().iter()
+    let rendered = buffer
+        .content()
+        .iter()
         .map(|cell| cell.symbol())
         .collect::<String>();
 
@@ -256,11 +261,18 @@ fn render_session_modal_centers_modal() {
     // With 60 column width and 100 column terminal, border should be around x=20 to x=80
     let mut found_border_in_middle = false;
     for y in 0..buffer.area.height {
-        for x in 15..50 {  // Check middle-ish region
+        for x in 15..50 {
+            // Check middle-ish region
             let cell = buffer.get(x, y);
             let symbol = cell.symbol();
             // Check for border characters (box drawing)
-            if symbol == "┌" || symbol == "─" || symbol == "│" || symbol == "└" || symbol == "┐" || symbol == "┘" {
+            if symbol == "┌"
+                || symbol == "─"
+                || symbol == "│"
+                || symbol == "└"
+                || symbol == "┐"
+                || symbol == "┘"
+            {
                 found_border_in_middle = true;
                 break;
             }
@@ -270,5 +282,8 @@ fn render_session_modal_centers_modal() {
         }
     }
 
-    assert!(found_border_in_middle, "Modal should have borders in middle region (not at edges)");
+    assert!(
+        found_border_in_middle,
+        "Modal should have borders in middle region (not at edges)"
+    );
 }

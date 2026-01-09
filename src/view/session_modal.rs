@@ -41,8 +41,9 @@ pub fn render_session_modal(frame: &mut Frame, state: &AppState) {
         .sessions()
         .enumerate()
         .map(|(i, session_view)| {
-            let index = crate::view_state::types::SessionIndex::new(i, state.log_view().session_count())
-                .expect("Index should be valid");
+            let index =
+                crate::view_state::types::SessionIndex::new(i, state.log_view().session_count())
+                    .expect("Index should be valid");
 
             SessionSummary::from_session(index, session_view)
         })
@@ -104,7 +105,8 @@ pub fn render_session_modal(frame: &mut Frame, state: &AppState) {
         );
 
     // Create list state for selection
-    let mut list_state = ListState::default().with_selected(Some(state.session_modal.selected_index()));
+    let mut list_state =
+        ListState::default().with_selected(Some(state.session_modal.selected_index()));
 
     // Render the list
     frame.render_stateful_widget(list, modal_area, &mut list_state);
@@ -117,11 +119,10 @@ pub fn render_session_modal(frame: &mut Frame, state: &AppState) {
         height: 1,
     };
 
-    let footer = ratatui::widgets::Paragraph::new(
-        "↑/↓: Navigate  Enter: Select  Esc: Cancel  S: Close",
-    )
-    .style(Style::default().fg(Color::Gray).add_modifier(Modifier::DIM))
-    .alignment(ratatui::layout::Alignment::Center);
+    let footer =
+        ratatui::widgets::Paragraph::new("↑/↓: Navigate  Enter: Select  Esc: Cancel  S: Close")
+            .style(Style::default().fg(Color::Gray).add_modifier(Modifier::DIM))
+            .alignment(ratatui::layout::Alignment::Center);
 
     frame.render_widget(footer, footer_area);
 }

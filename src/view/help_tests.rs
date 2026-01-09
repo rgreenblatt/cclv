@@ -1,8 +1,8 @@
 //! Tests for help overlay widget
 
 use super::*;
-use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::Terminal;
 
 #[test]
 fn render_help_overlay_shows_centered_modal() {

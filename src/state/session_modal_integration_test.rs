@@ -127,10 +127,7 @@ mod session_selection {
             ViewedSession::Latest,
             "Esc should not change viewed_session"
         );
-        assert!(
-            !state.session_modal.is_visible(),
-            "Modal should be closed"
-        );
+        assert!(!state.session_modal.is_visible(), "Modal should be closed");
     }
 }
 

@@ -27,7 +27,7 @@ fn appstate_has_viewed_session_field() {
 #[test]
 fn can_import_session_types_from_state_module() {
     // Test that we can access types through public paths
-    use crate::state::{ViewedSession, SessionModalState};
+    use crate::state::{SessionModalState, ViewedSession};
 
     let _modal = SessionModalState::new();
     let _session = ViewedSession::default();

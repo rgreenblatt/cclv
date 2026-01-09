@@ -1360,11 +1360,9 @@ mod tests {
         assert_eq!(sys_meta.agents[0], "general-purpose");
         assert_eq!(sys_meta.skills.len(), 2);
         assert!(sys_meta.skills.contains(&"commit".to_string()));
-        assert!(
-            sys_meta
-                .skills
-                .contains(&"test-driven-development".to_string())
-        );
+        assert!(sys_meta
+            .skills
+            .contains(&"test-driven-development".to_string()));
     }
 
     #[test]

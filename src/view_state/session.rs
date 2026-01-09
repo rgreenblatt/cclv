@@ -1112,9 +1112,7 @@ mod tests {
         let agent_id = make_agent_id("agent-1");
 
         let timestamp_main = "2025-01-09T10:00:00Z".parse().expect("valid timestamp");
-        let timestamp_subagent = "2025-01-09T11:00:00Z"
-            .parse()
-            .expect("valid timestamp");
+        let timestamp_subagent = "2025-01-09T11:00:00Z".parse().expect("valid timestamp");
 
         let main_entry = ConversationEntry::Valid(Box::new(LogEntry::new(
             make_entry_uuid("uuid-main"),
@@ -1155,9 +1153,7 @@ mod tests {
         let mut state = SessionViewState::new(session_id);
         let agent_id = make_agent_id("agent-1");
 
-        let timestamp_subagent = "2025-01-09T10:00:00Z"
-            .parse()
-            .expect("valid timestamp");
+        let timestamp_subagent = "2025-01-09T10:00:00Z".parse().expect("valid timestamp");
         let timestamp_main = "2025-01-09T11:00:00Z".parse().expect("valid timestamp");
 
         let subagent_entry = ConversationEntry::Valid(Box::new(LogEntry::new(

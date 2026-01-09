@@ -173,6 +173,9 @@ mod view_displays_selected_session {
             .app_state
             .main_conversation_view()
             .expect("Should have view");
-        assert!(!view.is_empty(), "View should have entries from first session");
+        assert!(
+            !view.is_empty(),
+            "View should have entries from first session"
+        );
     }
 }

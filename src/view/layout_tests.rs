@@ -3,8 +3,8 @@
 use super::*;
 use crate::model::{AgentId, ConversationEntry, SessionId};
 use crate::state::{AppState, ConversationSelection, InputMode, WrapMode};
-use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::Terminal;
 
 // ===== Test Helpers =====
 
@@ -925,7 +925,7 @@ fn render_layout_uses_search_highlighting_when_search_active() {
         .relayout(78, wrap_mode, &crate::state::SearchState::Inactive);
 
     // Activate search for "world"
-    use crate::state::search::{SearchQuery, execute_search};
+    use crate::state::search::{execute_search, SearchQuery};
     let query = SearchQuery::new("world").unwrap();
     let matches = execute_search(state.session_view(), &query);
     state.search = SearchState::Active {
@@ -1148,7 +1148,10 @@ fn create_entries_multiple_sessions() -> Vec<ConversationEntry> {
         None,
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 1 message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 1 message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry1)));
@@ -1161,7 +1164,10 @@ fn create_entries_multiple_sessions() -> Vec<ConversationEntry> {
         None,
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 2 message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 2 message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry2)));
@@ -1174,7 +1180,10 @@ fn create_entries_multiple_sessions() -> Vec<ConversationEntry> {
         None,
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 3 message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 3 message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry3)));
@@ -1578,7 +1587,10 @@ fn create_entries_two_sessions_different_subagents() -> Vec<ConversationEntry> {
         None,
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 1 main message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 1 main message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry1_main)));
@@ -1590,7 +1602,10 @@ fn create_entries_two_sessions_different_subagents() -> Vec<ConversationEntry> {
         Some(AgentId::new("subagent-alpha").unwrap()),
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 1 alpha message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 1 alpha message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry1_alpha)));
@@ -1602,7 +1617,10 @@ fn create_entries_two_sessions_different_subagents() -> Vec<ConversationEntry> {
         Some(AgentId::new("subagent-beta").unwrap()),
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 1 beta message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 1 beta message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry1_beta)));
@@ -1615,7 +1633,10 @@ fn create_entries_two_sessions_different_subagents() -> Vec<ConversationEntry> {
         None,
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 2 main message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 2 main message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry2_main)));
@@ -1627,7 +1648,10 @@ fn create_entries_two_sessions_different_subagents() -> Vec<ConversationEntry> {
         Some(AgentId::new("subagent-gamma").unwrap()),
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 2 gamma message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 2 gamma message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry2_gamma)));
@@ -1639,7 +1663,10 @@ fn create_entries_two_sessions_different_subagents() -> Vec<ConversationEntry> {
         Some(AgentId::new("subagent-delta").unwrap()),
         Utc::now(),
         EntryType::User,
-        Message::new(Role::User, MessageContent::Text("Session 2 delta message".to_string())),
+        Message::new(
+            Role::User,
+            MessageContent::Text("Session 2 delta message".to_string()),
+        ),
         EntryMetadata::default(),
     );
     entries.push(ConversationEntry::Valid(Box::new(entry2_delta)));

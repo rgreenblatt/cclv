@@ -10,12 +10,12 @@ use crate::model::{
     ToolCall, ToolName, ToolUseId,
 };
 use crate::state::WrapMode;
-use crate::view::{ConversationView, MessageStyles, StatsPanel, tabs};
+use crate::view::{tabs, ConversationView, MessageStyles, StatsPanel};
 use crate::view_state::conversation::ConversationViewState;
 use crate::view_state::layout_params::LayoutParams;
 use crate::view_state::types::{EntryIndex, ViewportDimensions};
-use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::Terminal;
 use std::collections::{HashMap, HashSet};
 
 // ===== Test Helpers =====
@@ -818,8 +818,8 @@ fn bug_initial_screen_blank_until_keypress() {
     use crate::source::FileSource;
     use crate::state::AppState;
     use crate::view::TuiApp;
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load fixture
@@ -878,8 +878,8 @@ fn bug_excessive_blank_lines_in_entry_rendering() {
     use crate::source::FileSource;
     use crate::state::AppState;
     use crate::view::TuiApp;
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load real fixture that reproduces the bug
@@ -973,8 +973,8 @@ fn bug_page_down_twice_causes_blank_viewport() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load minimal fixture from real log data (300 lines → ~294 entries)
@@ -1073,8 +1073,8 @@ fn us1_page_down_to_bottom_always_shows_content() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load large fixture: cc-session-log.jsonl has 31,210 entries
@@ -1172,8 +1172,8 @@ fn us1_home_key_shows_first_entries_from_bottom() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load large fixture
@@ -1248,8 +1248,8 @@ fn us1_end_key_shows_last_entries_with_content() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load large fixture
@@ -1320,8 +1320,8 @@ fn us1_rapid_scroll_updates_within_60fps() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
     use std::time::Instant;
 
@@ -1414,8 +1414,8 @@ fn bug_thinking_blocks_not_wrapped_like_prose() {
     use crate::source::FileSource;
     use crate::state::AppState;
     use crate::view::TuiApp;
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load minimal fixture with long thinking block line
@@ -1492,8 +1492,8 @@ fn bug_horizontal_scroll_does_not_work() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load minimal fixture with long line
@@ -3055,8 +3055,8 @@ fn bug_help_popup_not_triggered_by_question_mark() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load minimal fixture
@@ -3519,8 +3519,8 @@ fn bug_token_stats_divider_wrong_calculation() {
     use crate::source::FileSource;
     use crate::state::AppState;
     use crate::view::TuiApp;
-    use ratatui::Terminal;
     use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
     use std::path::PathBuf;
 
     // Load minimal fixture with token usage data
