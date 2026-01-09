@@ -3,7 +3,7 @@
 //! AppState is the root state type containing all UI state.
 //! All state transitions are pure functions following Elm architecture.
 
-use crate::model::{AgentId, StatsFilter};
+use crate::model::{AgentId, SessionId, StatsFilter};
 use crate::state::SearchState;
 use crate::view_state::log::LogViewState;
 
@@ -665,6 +665,31 @@ impl AppState {
     pub fn is_tailing_enabled(&self) -> bool {
         self.auto_scroll && self.viewed_session.is_last(self.log_view.session_count())
     }
+
+    /// Cycle through stats filter levels with session context (cclv-463.5.5).
+    ///
+    /// Implements the cycle order from contracts/stats-filter.md:
+    /// AllSessionsCombined → Session(current) → MainAgent(current) → Subagent(first) → ... → Subagent(last) → AllSessionsCombined
+    ///
+    /// Uses the currently viewed session for session-scoped filters.
+    pub fn cycle_stats_filter(&mut self) {
+        todo!("cycle_stats_filter")
+    }
+
+    /// Update stats filter when session changes (cclv-463.5.5).
+    ///
+    /// Called when user selects a different session from the session modal.
+    /// Updates session-scoped filters to use the new session ID.
+    ///
+    /// # Behavior
+    ///
+    /// - AllSessionsCombined: unchanged
+    /// - Session(old) → Session(new)
+    /// - MainAgent(old) → MainAgent(new)
+    /// - Subagent(id) → unchanged (identity-based, not session-scoped)
+    pub fn on_session_change(&mut self, _new_session_id: SessionId) {
+        todo!("on_session_change")
+    }
 }
 
 // ===== FocusPane =====
@@ -801,3 +826,7 @@ mod conversation_selection_test;
 #[cfg(test)]
 #[path = "app_state_session_navigation_wiring_test.rs"]
 mod session_navigation_wiring_test;
+
+#[cfg(test)]
+#[path = "app_state_stats_filter_cycle_test.rs"]
+mod app_state_stats_filter_cycle_test;
