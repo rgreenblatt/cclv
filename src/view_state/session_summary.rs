@@ -111,10 +111,16 @@ impl SessionSummary {
     /// - `index`: Validated session index
     /// - `session`: Reference to SessionViewState to extract data from
     pub fn from_session(
-        _index: SessionIndex,
-        _session: &crate::view_state::session::SessionViewState,
+        index: SessionIndex,
+        session: &crate::view_state::session::SessionViewState,
     ) -> Self {
-        todo!("SessionSummary::from_session")
+        Self {
+            index,
+            session_id: session.session_id().clone(),
+            message_count: session.main().len(),
+            start_time: session.start_time(),
+            subagent_count: session.subagents().len(),
+        }
     }
 }
 
