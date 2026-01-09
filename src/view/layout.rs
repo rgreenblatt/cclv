@@ -235,8 +235,19 @@ fn render_conversation_pane(
     let content_area = chunks[1];
 
     // Build tab list: Main Agent (tab 0) + Subagents (tabs 1..N)
+    // FR-011: Get subagents from viewed session, not current session
     // Sort subagent IDs for deterministic tab ordering (HashMap iteration is non-deterministic)
-    let mut subagent_ids: Vec<_> = state.session_view().subagent_ids().collect();
+    let session_count = state.log_view().session_count();
+    let viewed_session_idx = state.viewed_session.effective_index(session_count);
+    let mut subagent_ids: Vec<_> = if let Some(idx) = viewed_session_idx {
+        state
+            .log_view()
+            .get_session(idx.get())
+            .map(|s| s.subagent_ids().collect())
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
     subagent_ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
 
     // FR-086: Build ConversationTab list with Main Agent at position 0
