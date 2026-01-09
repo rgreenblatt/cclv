@@ -122,6 +122,77 @@ impl ViewportDimensions {
     }
 }
 
+/// Validated index into LogViewState.sessions.
+///
+/// # Invariants
+/// - Always < session_count at construction time
+/// - 0-indexed: 0 is the first session
+///
+/// # Smart Constructor
+/// Use `SessionIndex::new(index, session_count)` which returns `Option<Self>`.
+/// Never export the raw constructor.
+///
+/// # Cardinality
+/// - Valid states: [0, session_count)
+/// - Total states: [0, usize::MAX)
+/// - Precision: session_count / usize::MAX ≈ 1.0 for typical session counts
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct SessionIndex(usize);
+
+impl SessionIndex {
+    /// Create a validated session index.
+    ///
+    /// Returns `None` if index >= session_count.
+    ///
+    /// # Examples
+    /// ```
+    /// # use cclv::view_state::types::SessionIndex;
+    /// let idx = SessionIndex::new(0, 3); // Some(SessionIndex(0))
+    /// let idx = SessionIndex::new(3, 3); // None (out of bounds)
+    /// ```
+    pub fn new(_index: usize, _session_count: usize) -> Option<Self> {
+        todo!("SessionIndex::new")
+    }
+
+    /// Get the raw index value.
+    pub fn get(&self) -> usize {
+        todo!("SessionIndex::get")
+    }
+
+    /// Display index (1-based, for user-facing display).
+    pub fn display(&self) -> usize {
+        todo!("SessionIndex::display")
+    }
+
+    /// Check if this is the last session.
+    ///
+    /// Used to determine if live tailing should be enabled.
+    pub fn is_last(&self, _session_count: usize) -> bool {
+        todo!("SessionIndex::is_last")
+    }
+
+    /// Check if this is the first session.
+    pub fn is_first(&self) -> bool {
+        todo!("SessionIndex::is_first")
+    }
+
+    /// Next session index, if valid.
+    pub fn next(&self, _session_count: usize) -> Option<Self> {
+        todo!("SessionIndex::next")
+    }
+
+    /// Previous session index, if valid.
+    pub fn prev(&self) -> Option<Self> {
+        todo!("SessionIndex::prev")
+    }
+}
+
+impl std::fmt::Display for SessionIndex {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!("SessionIndex::Display")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -357,6 +428,202 @@ mod tests {
             let debug_str = format!("{:?}", dims);
             assert!(debug_str.contains("80"));
             assert!(debug_str.contains("24"));
+        }
+    }
+
+    mod session_index {
+        use super::*;
+
+        #[test]
+        fn new_accepts_valid_index() {
+            let result = SessionIndex::new(0, 3);
+            assert!(result.is_some());
+        }
+
+        #[test]
+        fn new_accepts_middle_index() {
+            let result = SessionIndex::new(1, 3);
+            assert!(result.is_some());
+        }
+
+        #[test]
+        fn new_accepts_last_valid_index() {
+            let result = SessionIndex::new(2, 3);
+            assert!(result.is_some());
+        }
+
+        #[test]
+        fn new_rejects_out_of_bounds() {
+            let result = SessionIndex::new(3, 3);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn new_rejects_far_out_of_bounds() {
+            let result = SessionIndex::new(100, 3);
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn get_returns_raw_index() {
+            let index = SessionIndex::new(0, 3).unwrap();
+            assert_eq!(index.get(), 0);
+        }
+
+        #[test]
+        fn get_returns_raw_middle_index() {
+            let index = SessionIndex::new(5, 10).unwrap();
+            assert_eq!(index.get(), 5);
+        }
+
+        #[test]
+        fn display_returns_one_based_for_first() {
+            let index = SessionIndex::new(0, 3).unwrap();
+            assert_eq!(index.display(), 1);
+        }
+
+        #[test]
+        fn display_returns_one_based_for_middle() {
+            let index = SessionIndex::new(1, 3).unwrap();
+            assert_eq!(index.display(), 2);
+        }
+
+        #[test]
+        fn display_returns_one_based_for_last() {
+            let index = SessionIndex::new(2, 3).unwrap();
+            assert_eq!(index.display(), 3);
+        }
+
+        #[test]
+        fn is_last_true_for_last_session() {
+            let index = SessionIndex::new(2, 3).unwrap();
+            assert!(index.is_last(3));
+        }
+
+        #[test]
+        fn is_last_false_for_first_session() {
+            let index = SessionIndex::new(0, 3).unwrap();
+            assert!(!index.is_last(3));
+        }
+
+        #[test]
+        fn is_last_false_for_middle_session() {
+            let index = SessionIndex::new(1, 3).unwrap();
+            assert!(!index.is_last(3));
+        }
+
+        #[test]
+        fn is_first_true_for_first_session() {
+            let index = SessionIndex::new(0, 3).unwrap();
+            assert!(index.is_first());
+        }
+
+        #[test]
+        fn is_first_false_for_middle_session() {
+            let index = SessionIndex::new(1, 3).unwrap();
+            assert!(!index.is_first());
+        }
+
+        #[test]
+        fn is_first_false_for_last_session() {
+            let index = SessionIndex::new(2, 3).unwrap();
+            assert!(!index.is_first());
+        }
+
+        #[test]
+        fn next_returns_some_when_valid() {
+            let index = SessionIndex::new(1, 3).unwrap();
+            let next = index.next(3);
+            assert!(next.is_some());
+            assert_eq!(next.unwrap().get(), 2);
+        }
+
+        #[test]
+        fn next_from_first() {
+            let index = SessionIndex::new(0, 3).unwrap();
+            let next = index.next(3);
+            assert!(next.is_some());
+            assert_eq!(next.unwrap().get(), 1);
+        }
+
+        #[test]
+        fn next_returns_none_at_last() {
+            let index = SessionIndex::new(2, 3).unwrap();
+            let next = index.next(3);
+            assert!(next.is_none());
+        }
+
+        #[test]
+        fn prev_returns_some_when_valid() {
+            let index = SessionIndex::new(1, 3).unwrap();
+            let prev = index.prev();
+            assert!(prev.is_some());
+            assert_eq!(prev.unwrap().get(), 0);
+        }
+
+        #[test]
+        fn prev_from_last() {
+            let index = SessionIndex::new(2, 3).unwrap();
+            let prev = index.prev();
+            assert!(prev.is_some());
+            assert_eq!(prev.unwrap().get(), 1);
+        }
+
+        #[test]
+        fn prev_returns_none_at_first() {
+            let index = SessionIndex::new(0, 3).unwrap();
+            let prev = index.prev();
+            assert!(prev.is_none());
+        }
+
+        #[test]
+        fn display_trait_shows_one_based() {
+            let index = SessionIndex::new(0, 3).unwrap();
+            let display_str = format!("{}", index);
+            assert_eq!(display_str, "1");
+        }
+
+        #[test]
+        fn display_trait_for_middle() {
+            let index = SessionIndex::new(5, 10).unwrap();
+            let display_str = format!("{}", index);
+            assert_eq!(display_str, "6");
+        }
+
+        #[test]
+        fn ordering_works() {
+            let i1 = SessionIndex::new(0, 3).unwrap();
+            let i2 = SessionIndex::new(1, 3).unwrap();
+            let i3 = SessionIndex::new(2, 3).unwrap();
+            assert!(i1 < i2);
+            assert!(i2 < i3);
+            assert!(i1 < i3);
+        }
+
+        #[test]
+        fn equality_works() {
+            let i1 = SessionIndex::new(1, 3).unwrap();
+            let i2 = SessionIndex::new(1, 5).unwrap(); // Different session_count, same index
+            let i3 = SessionIndex::new(2, 3).unwrap();
+            assert_eq!(i1, i2); // Equality based on index only
+            assert_ne!(i1, i3);
+        }
+
+        #[test]
+        fn hash_works() {
+            use std::collections::HashSet;
+            let mut set = HashSet::new();
+            set.insert(SessionIndex::new(0, 3).unwrap());
+            set.insert(SessionIndex::new(1, 3).unwrap());
+            set.insert(SessionIndex::new(0, 3).unwrap()); // Duplicate
+            assert_eq!(set.len(), 2);
+        }
+
+        #[test]
+        fn debug_formatting() {
+            let index = SessionIndex::new(5, 10).unwrap();
+            let debug_str = format!("{:?}", index);
+            assert!(debug_str.contains("SessionIndex"));
         }
     }
 }
