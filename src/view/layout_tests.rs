@@ -1556,3 +1556,182 @@ fn status_line_not_rendered() {
         first_line
     );
 }
+
+// ===== FR-011: Session-Scoped Subagent Tabs Tests =====
+
+/// Helper to create entries for two sessions with different subagents.
+/// Session 1 has subagent-alpha and subagent-beta.
+/// Session 2 has subagent-gamma and subagent-delta.
+fn create_entries_two_sessions_different_subagents() -> Vec<ConversationEntry> {
+    use crate::model::{
+        AgentId, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent, Role,
+    };
+    use chrono::Utc;
+
+    let mut entries = Vec::new();
+
+    // Session 1: Main + subagent-alpha + subagent-beta
+    let entry1_main = LogEntry::new(
+        EntryUuid::new("s1-entry-1").unwrap(),
+        None,
+        SessionId::new("session-1").unwrap(),
+        None,
+        Utc::now(),
+        EntryType::User,
+        Message::new(Role::User, MessageContent::Text("Session 1 main message".to_string())),
+        EntryMetadata::default(),
+    );
+    entries.push(ConversationEntry::Valid(Box::new(entry1_main)));
+
+    let entry1_alpha = LogEntry::new(
+        EntryUuid::new("s1-entry-2").unwrap(),
+        None,
+        SessionId::new("session-1").unwrap(),
+        Some(AgentId::new("subagent-alpha").unwrap()),
+        Utc::now(),
+        EntryType::User,
+        Message::new(Role::User, MessageContent::Text("Session 1 alpha message".to_string())),
+        EntryMetadata::default(),
+    );
+    entries.push(ConversationEntry::Valid(Box::new(entry1_alpha)));
+
+    let entry1_beta = LogEntry::new(
+        EntryUuid::new("s1-entry-3").unwrap(),
+        None,
+        SessionId::new("session-1").unwrap(),
+        Some(AgentId::new("subagent-beta").unwrap()),
+        Utc::now(),
+        EntryType::User,
+        Message::new(Role::User, MessageContent::Text("Session 1 beta message".to_string())),
+        EntryMetadata::default(),
+    );
+    entries.push(ConversationEntry::Valid(Box::new(entry1_beta)));
+
+    // Session 2: Main + subagent-gamma + subagent-delta
+    let entry2_main = LogEntry::new(
+        EntryUuid::new("s2-entry-1").unwrap(),
+        None,
+        SessionId::new("session-2").unwrap(),
+        None,
+        Utc::now(),
+        EntryType::User,
+        Message::new(Role::User, MessageContent::Text("Session 2 main message".to_string())),
+        EntryMetadata::default(),
+    );
+    entries.push(ConversationEntry::Valid(Box::new(entry2_main)));
+
+    let entry2_gamma = LogEntry::new(
+        EntryUuid::new("s2-entry-2").unwrap(),
+        None,
+        SessionId::new("session-2").unwrap(),
+        Some(AgentId::new("subagent-gamma").unwrap()),
+        Utc::now(),
+        EntryType::User,
+        Message::new(Role::User, MessageContent::Text("Session 2 gamma message".to_string())),
+        EntryMetadata::default(),
+    );
+    entries.push(ConversationEntry::Valid(Box::new(entry2_gamma)));
+
+    let entry2_delta = LogEntry::new(
+        EntryUuid::new("s2-entry-3").unwrap(),
+        None,
+        SessionId::new("session-2").unwrap(),
+        Some(AgentId::new("subagent-delta").unwrap()),
+        Utc::now(),
+        EntryType::User,
+        Message::new(Role::User, MessageContent::Text("Session 2 delta message".to_string())),
+        EntryMetadata::default(),
+    );
+    entries.push(ConversationEntry::Valid(Box::new(entry2_delta)));
+
+    entries
+}
+
+/// FR-011: Test that tab bar shows only the currently viewed session's subagents.
+/// When viewing session 1, tabs should show subagent-alpha and subagent-beta.
+/// When viewing session 2, tabs should show subagent-gamma and subagent-delta.
+#[test]
+fn tab_bar_shows_viewed_session_subagents_only() {
+    use crate::state::ViewedSession;
+
+    let mut terminal = create_test_terminal();
+    let entries = create_entries_two_sessions_different_subagents();
+    let mut state = AppState::new();
+    state.add_entries(entries);
+
+    // Test 1: View session 1 (index 0) - should show alpha and beta
+    state.viewed_session = ViewedSession::pinned(0, 2).unwrap();
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer1 = terminal.backend().buffer().clone();
+    let content1 = buffer1
+        .content
+        .iter()
+        .map(|c| c.symbol())
+        .collect::<String>();
+
+    // Session 1 tabs should show alpha and beta
+    assert!(
+        content1.contains("subagent-alpha"),
+        "FR-011: Viewing session 1 should show subagent-alpha in tabs. Got: '{}'",
+        &content1[..content1.len().min(500)]
+    );
+    assert!(
+        content1.contains("subagent-beta"),
+        "FR-011: Viewing session 1 should show subagent-beta in tabs. Got: '{}'",
+        &content1[..content1.len().min(500)]
+    );
+
+    // Session 1 tabs should NOT show gamma or delta (session 2 subagents)
+    assert!(
+        !content1.contains("subagent-gamma"),
+        "FR-011: Viewing session 1 should NOT show subagent-gamma (session 2 agent) in tabs"
+    );
+    assert!(
+        !content1.contains("subagent-delta"),
+        "FR-011: Viewing session 1 should NOT show subagent-delta (session 2 agent) in tabs"
+    );
+
+    // Test 2: View session 2 (index 1) - should show gamma and delta
+    state.viewed_session = ViewedSession::pinned(1, 2).unwrap();
+
+    terminal
+        .draw(|frame| {
+            render_layout(frame, &state);
+        })
+        .unwrap();
+
+    let buffer2 = terminal.backend().buffer().clone();
+    let content2 = buffer2
+        .content
+        .iter()
+        .map(|c| c.symbol())
+        .collect::<String>();
+
+    // Session 2 tabs should show gamma and delta
+    assert!(
+        content2.contains("subagent-gamma"),
+        "FR-011: Viewing session 2 should show subagent-gamma in tabs. Got: '{}'",
+        &content2[..content2.len().min(500)]
+    );
+    assert!(
+        content2.contains("subagent-delta"),
+        "FR-011: Viewing session 2 should show subagent-delta in tabs. Got: '{}'",
+        &content2[..content2.len().min(500)]
+    );
+
+    // Session 2 tabs should NOT show alpha or beta (session 1 subagents)
+    assert!(
+        !content2.contains("subagent-alpha"),
+        "FR-011: Viewing session 2 should NOT show subagent-alpha (session 1 agent) in tabs"
+    );
+    assert!(
+        !content2.contains("subagent-beta"),
+        "FR-011: Viewing session 2 should NOT show subagent-beta (session 1 agent) in tabs"
+    );
+}
