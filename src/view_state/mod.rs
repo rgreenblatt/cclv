@@ -6,7 +6,7 @@
 //!
 //! # Module Structure
 //!
-//! - `types`: Core newtypes (LineHeight, LineOffset, EntryIndex, ViewportDimensions)
+//! - `types`: Core newtypes (LineHeight, LineOffset, EntryIndex, SessionIndex, ViewportDimensions)
 //! - `layout`: EntryLayout - per-entry layout information
 //! - `entry_view`: EntryView - owned entry with layout and view state
 //! - `scroll`: ScrollPosition - semantic scroll position enum
