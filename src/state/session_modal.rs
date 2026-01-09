@@ -107,6 +107,152 @@ impl SessionModalState {
 mod tests {
     use super::*;
 
+    mod properties {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Invariant 4: SessionModalState selection is always bounded
+            /// After any number of select_next calls, selected_index < session_count
+            #[test]
+            fn select_next_bounded(
+                session_count in 1usize..50,
+                num_nexts in 0usize..200,
+            ) {
+                let mut modal = SessionModalState::new();
+                modal.open(0);
+
+                for _ in 0..num_nexts {
+                    modal.select_next(session_count);
+                }
+
+                prop_assert!(modal.selected_index() < session_count);
+            }
+
+            /// Invariant 4 (continued): After any number of select_prev calls, selected_index >= 0
+            /// (This is automatically true for usize, but we test the clamping behavior)
+            #[test]
+            fn select_prev_bounded(
+                session_count in 1usize..50,
+                num_prevs in 0usize..200,
+            ) {
+                let mut modal = SessionModalState::new();
+                // Start at last session
+                modal.open(session_count.saturating_sub(1));
+
+                for _ in 0..num_prevs {
+                    modal.select_prev();
+                }
+
+                // After many prev calls, should eventually saturate at 0
+                // (unless num_prevs was 0, in which case we're still at the start position)
+                let expected = if num_prevs >= session_count {
+                    0
+                } else {
+                    session_count.saturating_sub(1).saturating_sub(num_prevs)
+                };
+                prop_assert_eq!(modal.selected_index(), expected);
+            }
+
+            /// Invariant 4 (continued): selected_session_index() returns Some when visible and valid
+            #[test]
+            fn selected_session_index_valid_when_visible(
+                session_count in 1usize..50,
+                offset in 0usize..100,
+            ) {
+                let index = offset % session_count;
+                let mut modal = SessionModalState::new();
+                modal.open(index);
+
+                if modal.is_visible() && session_count > 0 {
+                    let result = modal.selected_session_index(session_count);
+                    prop_assert!(result.is_some());
+                    if let Some(idx) = result {
+                        prop_assert!(idx.get() < session_count);
+                    }
+                }
+            }
+
+            /// Invariant: select_first always goes to 0
+            #[test]
+            fn select_first_always_zero(
+                session_count in 1usize..50,
+                initial_index in 0usize..100,
+            ) {
+                let index = initial_index % session_count;
+                let mut modal = SessionModalState::new();
+                modal.open(index);
+
+                modal.select_first();
+                prop_assert_eq!(modal.selected_index(), 0);
+            }
+
+            /// Invariant: select_last always goes to session_count - 1
+            #[test]
+            fn select_last_always_max(session_count in 1usize..50) {
+                let mut modal = SessionModalState::new();
+                modal.open(0);
+
+                modal.select_last(session_count);
+                prop_assert_eq!(modal.selected_index(), session_count - 1);
+            }
+
+            /// Invariant: Mixed navigation preserves boundedness
+            /// After arbitrary sequence of select_next/prev/first/last, selection is valid
+            #[test]
+            fn mixed_navigation_bounded(
+                session_count in 1usize..20,
+                operations in prop::collection::vec(0u8..4, 0..100),
+            ) {
+                let mut modal = SessionModalState::new();
+                modal.open(0);
+
+                for op in operations {
+                    match op % 4 {
+                        0 => modal.select_next(session_count),
+                        1 => modal.select_prev(),
+                        2 => modal.select_first(),
+                        _ => modal.select_last(session_count),
+                    }
+                }
+
+                prop_assert!(modal.selected_index() < session_count);
+
+                // Verify selected_session_index is valid
+                if let Some(idx) = modal.selected_session_index(session_count) {
+                    prop_assert!(idx.get() < session_count);
+                }
+            }
+
+            /// Invariant: adjust_scroll keeps selection visible
+            /// After adjust_scroll, selected_index is within [scroll_offset, scroll_offset + visible_rows)
+            #[test]
+            fn adjust_scroll_keeps_selection_visible(
+                session_count in 10usize..50,
+                visible_rows in 3usize..10,
+                target_index in 0usize..50,
+            ) {
+                let index = target_index % session_count;
+                let mut modal = SessionModalState::new();
+                modal.open(0);
+
+                // Navigate to target
+                for _ in 0..index {
+                    modal.select_next(session_count);
+                }
+
+                modal.adjust_scroll(visible_rows);
+
+                let selected = modal.selected_index();
+                let scroll = modal.scroll_offset();
+
+                // Selection must be visible within the viewport
+                prop_assert!(selected >= scroll);
+                prop_assert!(selected < scroll + visible_rows);
+            }
+        }
+    }
+
     #[test]
     fn toggle_changes_visibility() {
         let mut modal = SessionModalState::new();

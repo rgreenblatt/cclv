@@ -105,6 +105,140 @@ impl ViewedSession {
 mod tests {
     use super::*;
 
+    mod properties {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Invariant 2: ViewedSession::effective_index always returns valid index
+            /// For any ViewedSession (Latest or Pinned), when session_count > 0:
+            /// - effective_index returns Some(idx)
+            /// - idx.get() < session_count
+            #[test]
+            fn effective_index_always_valid_when_sessions_exist(
+                session_count in 1usize..100,
+                offset in 0usize..100,
+            ) {
+                let index = offset % session_count;
+
+                // Test Latest variant
+                if let Some(idx) = ViewedSession::Latest.effective_index(session_count) {
+                    prop_assert!(idx.get() < session_count);
+                    prop_assert_eq!(idx.get(), session_count - 1);
+                }
+
+                // Test Pinned variant
+                if let Some(session) = ViewedSession::pinned(index, session_count) {
+                    if let Some(idx) = session.effective_index(session_count) {
+                        prop_assert!(idx.get() < session_count);
+                        prop_assert_eq!(idx.get(), index);
+                    }
+                }
+            }
+
+            /// Invariant 2 (edge case): effective_index returns None for zero sessions
+            #[test]
+            fn effective_index_none_for_zero_sessions(_dummy in 0usize..10) {
+                let result = ViewedSession::Latest.effective_index(0);
+                prop_assert!(result.is_none());
+            }
+
+            /// Invariant 3: ViewedSession::Latest.is_last() always returns true
+            /// For any session_count > 0, Latest.is_last(n) == true
+            #[test]
+            fn latest_is_always_last(session_count in 1usize..100) {
+                prop_assert!(ViewedSession::Latest.is_last(session_count));
+            }
+
+            /// Invariant 3 (continued): Pinned to last index is_last() returns true
+            /// For Pinned(last_idx), is_last(n) == true where last_idx is n-1
+            #[test]
+            fn pinned_to_last_is_last(session_count in 1usize..100) {
+                let last_index = session_count - 1;
+                if let Some(session) = ViewedSession::pinned(last_index, session_count) {
+                    prop_assert!(session.is_last(session_count));
+                }
+            }
+
+            /// Invariant 3 (continued): Pinned to non-last index is_last() returns false
+            #[test]
+            fn pinned_to_non_last_not_last(session_count in 2usize..100) {
+                let index = session_count - 2;
+                if let Some(session) = ViewedSession::pinned(index, session_count) {
+                    prop_assert!(!session.is_last(session_count));
+                }
+            }
+
+            /// Invariant: next() preserves validity
+            /// After any number of next() calls, effective_index is valid
+            #[test]
+            fn next_preserves_validity(
+                session_count in 1usize..20,
+                num_nexts in 0usize..50,
+            ) {
+                let mut current = ViewedSession::pinned(0, session_count)
+                    .unwrap_or(ViewedSession::Latest);
+
+                for _ in 0..num_nexts {
+                    current = current.next(session_count);
+                }
+
+                if let Some(idx) = current.effective_index(session_count) {
+                    prop_assert!(idx.get() < session_count);
+                }
+            }
+
+            /// Invariant: prev() preserves validity
+            /// After any number of prev() calls, effective_index is valid
+            #[test]
+            fn prev_preserves_validity(
+                session_count in 1usize..20,
+                num_prevs in 0usize..50,
+            ) {
+                let mut current = ViewedSession::Latest;
+
+                for _ in 0..num_prevs {
+                    current = current.prev(session_count);
+                }
+
+                if let Some(idx) = current.effective_index(session_count) {
+                    prop_assert!(idx.get() < session_count);
+                }
+            }
+
+            /// Invariant: next from Latest stays Latest
+            #[test]
+            fn next_from_latest_stays_latest(session_count in 1usize..100) {
+                let result = ViewedSession::Latest.next(session_count);
+                prop_assert_eq!(result, ViewedSession::Latest);
+            }
+
+            /// Invariant: next to last switches to Latest
+            #[test]
+            fn next_from_last_switches_to_latest(session_count in 1usize..100) {
+                let last_index = session_count - 1;
+                if let Some(session) = ViewedSession::pinned(last_index, session_count) {
+                    let result = session.next(session_count);
+                    prop_assert_eq!(result, ViewedSession::Latest);
+                }
+            }
+
+            /// Invariant: prev from first stays at first
+            #[test]
+            fn prev_from_first_stays_at_first(session_count in 1usize..100) {
+                if let Some(session) = ViewedSession::pinned(0, session_count) {
+                    let result = session.prev(session_count);
+                    if let ViewedSession::Pinned(idx) = result {
+                        prop_assert_eq!(idx.get(), 0);
+                    } else {
+                        // Should never be Latest after prev() from Pinned(0)
+                        prop_assert!(false, "Expected Pinned(0), got Latest");
+                    }
+                }
+            }
+        }
+    }
+
     mod default {
         use super::*;
 

@@ -439,6 +439,102 @@ mod tests {
         }
     }
 
+    mod session_index_properties {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Invariant 1: SessionIndex::new rejects out-of-bounds
+            /// For any index >= session_count, SessionIndex::new returns None
+            #[test]
+            fn new_rejects_out_of_bounds(
+                session_count in 0usize..100,
+                extra in 0usize..100,
+            ) {
+                let out_of_bounds_index = session_count.saturating_add(extra);
+                let result = SessionIndex::new(out_of_bounds_index, session_count);
+                prop_assert!(result.is_none());
+            }
+
+            /// Invariant 1 (continued): SessionIndex::new accepts in-bounds
+            /// For index < session_count (when session_count > 0), returns Some
+            #[test]
+            fn new_accepts_in_bounds(
+                session_count in 1usize..100,
+            ) {
+                let index = session_count - 1;
+                let result = SessionIndex::new(index, session_count);
+                prop_assert!(result.is_some());
+                prop_assert_eq!(result.unwrap().get(), index);
+            }
+
+            /// Invariant: SessionIndex always holds valid index
+            /// For any SessionIndex created, get() < session_count
+            #[test]
+            fn get_is_always_valid(
+                session_count in 1usize..100,
+                offset in 0usize..100,
+            ) {
+                let index = offset % session_count;
+                if let Some(idx) = SessionIndex::new(index, session_count) {
+                    prop_assert!(idx.get() < session_count);
+                }
+            }
+
+            /// Invariant: is_last is correct
+            /// For last index in session_count, is_last returns true
+            #[test]
+            fn is_last_correct_for_last_index(session_count in 1usize..100) {
+                let last_index = session_count - 1;
+                if let Some(idx) = SessionIndex::new(last_index, session_count) {
+                    prop_assert!(idx.is_last(session_count));
+                }
+            }
+
+            /// Invariant: is_last is correct for non-last
+            /// For any index < session_count - 1, is_last returns false
+            #[test]
+            fn is_last_correct_for_non_last(session_count in 2usize..100) {
+                let index = session_count - 2;
+                if let Some(idx) = SessionIndex::new(index, session_count) {
+                    prop_assert!(!idx.is_last(session_count));
+                }
+            }
+
+            /// Invariant: next preserves validity
+            /// If next() returns Some, it's a valid SessionIndex for session_count
+            #[test]
+            fn next_preserves_validity(
+                session_count in 1usize..100,
+                offset in 0usize..100,
+            ) {
+                let index = offset % session_count;
+                if let Some(idx) = SessionIndex::new(index, session_count) {
+                    if let Some(next) = idx.next(session_count) {
+                        prop_assert!(next.get() < session_count);
+                        prop_assert_eq!(next.get(), idx.get() + 1);
+                    }
+                }
+            }
+
+            /// Invariant: prev preserves validity
+            /// If prev() returns Some, it's a valid SessionIndex
+            #[test]
+            fn prev_preserves_validity(
+                session_count in 1usize..100,
+                offset in 0usize..100,
+            ) {
+                let index = offset % session_count;
+                if let Some(idx) = SessionIndex::new(index, session_count) {
+                    if let Some(prev) = idx.prev() {
+                        prop_assert!(prev.get() < session_count);
+                        prop_assert_eq!(prev.get() + 1, idx.get());
+                    }
+                }
+            }
+        }
+    }
+
     mod session_index {
         use super::*;
 
