@@ -87,8 +87,7 @@ pub fn handle_session_modal_key(state: &mut AppState, key: KeyEvent) -> bool {
                 // Validate selected_conversation: if current subagent doesn't exist in new session, reset to Main
                 if let ConversationSelection::Subagent(agent_id) = &state.selected_conversation {
                     if let Some(session) = state.log_view().get_session(idx.get()) {
-                        let subagent_ids: Vec<_> = session.subagents().keys().collect();
-                        if !subagent_ids.iter().any(|id| *id == agent_id) {
+                        if !session.subagents().keys().any(|id| id == agent_id) {
                             // Subagent doesn't exist in new session, reset to Main
                             state.selected_conversation = ConversationSelection::Main;
                         }
