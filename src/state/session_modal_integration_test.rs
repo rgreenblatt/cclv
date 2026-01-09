@@ -149,7 +149,7 @@ mod view_renders_selected_session {
         // The view should contain messages from the last session (session-2)
         // We can't easily verify message content here without inspecting the view state,
         // but we can verify the view exists
-        assert!(view.len() > 0, "View should have entries");
+        assert!(!view.is_empty(), "View should have entries");
     }
 
     #[test]
@@ -164,7 +164,7 @@ mod view_renders_selected_session {
             .expect("Should have conversation view");
 
         // The view should now show session 0's messages
-        assert!(view.len() > 0, "View should have entries");
+        assert!(!view.is_empty(), "View should have entries");
     }
 
     #[test]

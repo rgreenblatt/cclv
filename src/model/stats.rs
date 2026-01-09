@@ -1835,7 +1835,7 @@ mod tests {
 
         let session_id = make_session_id("session-4");
         // Should NOT populate main_agent_usage_by_session for subagent
-        assert!(stats.main_agent_usage_by_session.get(&session_id).is_none());
+        assert!(!stats.main_agent_usage_by_session.contains_key(&session_id));
     }
 
     #[test]

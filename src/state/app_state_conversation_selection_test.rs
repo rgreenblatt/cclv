@@ -199,10 +199,10 @@ fn create_test_state_with_sessions(session_count: usize) -> AppState {
     let mut state = AppState::new();
 
     for i in 0..session_count {
-        let session_id = SessionId::new(&format!(
+        let session_id = SessionId::new(format!(
             "550e8400-e29b-41d4-a716-44665544000{}",
             i
-        ))
+        ).as_str())
         .unwrap();
 
         // Add a message to create the session
