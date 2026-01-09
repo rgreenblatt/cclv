@@ -174,6 +174,12 @@ pub struct AppState {
 
     /// Which session is currently being viewed.
     pub viewed_session: crate::state::ViewedSession,
+
+    /// Per-session scroll positions (FR-010).
+    /// Tracks scroll offset for each visited session.
+    /// Key absence = unvisited (first visit shows top).
+    /// Key presence = visited (return restores offset).
+    pub session_scroll_states: crate::state::SessionScrollStates,
 }
 
 impl Default for AppState {
@@ -203,6 +209,7 @@ impl AppState {
             pricing: crate::model::PricingConfig::default(),
             session_modal: crate::state::SessionModalState::new(),
             viewed_session: crate::state::ViewedSession::default(), // ViewedSession::Latest
+            session_scroll_states: crate::state::SessionScrollStates::new(),
         }
     }
 
