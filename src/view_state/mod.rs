@@ -35,3 +35,7 @@ pub mod session_summary;
 pub mod token_divider;
 pub mod types;
 pub mod visible_range;
+
+// Re-export session navigation types
+pub use session_summary::SessionSummary;
+pub use types::SessionIndex;

@@ -168,6 +168,12 @@ pub struct AppState {
     /// Pricing configuration for cost estimation (cclv-5ur.32).
     /// Used by token divider to show estimated costs.
     pub pricing: crate::model::PricingConfig,
+
+    /// Session list modal state.
+    pub session_modal: crate::state::SessionModalState,
+
+    /// Which session is currently being viewed.
+    pub viewed_session: crate::state::ViewedSession,
 }
 
 impl Default for AppState {
@@ -195,6 +201,8 @@ impl AppState {
             blink_on: true, // Start with indicator visible
             max_context_tokens: 200_000,
             pricing: crate::model::PricingConfig::default(),
+            session_modal: crate::state::SessionModalState::new(),
+            viewed_session: crate::state::ViewedSession::default(), // ViewedSession::Latest
         }
     }
 
@@ -699,3 +707,7 @@ mod routing_test;
 #[cfg(test)]
 #[path = "app_state_conversation_selection_test.rs"]
 mod conversation_selection_test;
+
+#[cfg(test)]
+#[path = "app_state_session_navigation_wiring_test.rs"]
+mod session_navigation_wiring_test;
