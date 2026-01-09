@@ -3683,7 +3683,6 @@ fn bug_help_popup_no_scroll() {
 /// 9. Press Tab to switch to subagent tab
 /// 10. Observe: Subagent tab is blank even though it has content (BUG #2)
 #[test]
-#[ignore = "cclv-463.3: Tab navigation broken after changing sessions"]
 fn bug_session_tab_navigation_blank_after_change() {
     use crate::test_harness::AcceptanceTestHarness;
     use crossterm::event::KeyCode;
