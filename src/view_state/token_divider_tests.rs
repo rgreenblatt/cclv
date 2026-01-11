@@ -1,8 +1,8 @@
 //! Tests for token divider rendering.
 
 use super::*;
-use crate::model::stats::PricingConfig;
 use crate::model::MessageContent;
+use crate::model::stats::PricingConfig;
 
 // ===== ContextWindowTokens Tests =====
 

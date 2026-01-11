@@ -3,7 +3,7 @@
 //! This test parses the entire tests/fixtures/cc-session-log.jsonl file
 //! to verify compatibility with actual Claude Code JSONL format.
 
-use crate::parser::{parse_entry_graceful, ParseResult};
+use crate::parser::{ParseResult, parse_entry_graceful};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 

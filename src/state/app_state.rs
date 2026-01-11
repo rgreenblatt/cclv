@@ -636,7 +636,8 @@ impl AppState {
                     let subagent_index = (index - 1).min(sorted_ids.len().saturating_sub(1));
 
                     if let Some(agent_id) = sorted_ids.get(subagent_index) {
-                        self.selected_conversation = ConversationSelection::Subagent(agent_id.clone());
+                        self.selected_conversation =
+                            ConversationSelection::Subagent(agent_id.clone());
                     }
                 }
             }

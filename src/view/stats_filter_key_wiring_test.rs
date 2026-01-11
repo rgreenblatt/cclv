@@ -12,8 +12,8 @@ use crate::state::{FocusPane, ViewedSession};
 use crate::view::TuiApp;
 use crate::view_state::types::SessionIndex;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
 // ===== Test Helpers =====
 

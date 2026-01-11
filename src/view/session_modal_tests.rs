@@ -1,7 +1,7 @@
 //! Tests for session modal rendering.
 
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
 use crate::model::{
     ConversationEntry, EntryMetadata, EntryType, EntryUuid, LogEntry, Message, MessageContent,

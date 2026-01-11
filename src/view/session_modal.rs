@@ -93,10 +93,7 @@ pub fn render_session_modal(frame: &mut Frame, state: &AppState) {
 
     // Calculate scroll indicators
     // Per contract lines 116-133: Show ▲/▼ when content extends beyond view
-    let visible_rows = modal_area
-        .height
-        .saturating_sub(4)
-        .max(1);
+    let visible_rows = modal_area.height.saturating_sub(4).max(1);
     let needs_scrolling = session_count > visible_rows as usize;
     let selected = state.session_modal.selected_index();
 
@@ -116,7 +113,8 @@ pub fn render_session_modal(frame: &mut Frame, state: &AppState) {
     };
 
     let show_up_arrow = needs_scrolling && scroll_offset > 0;
-    let show_down_arrow = needs_scrolling && (scroll_offset + visible_rows as usize) < session_count;
+    let show_down_arrow =
+        needs_scrolling && (scroll_offset + visible_rows as usize) < session_count;
 
     // Build title with optional scroll indicator
     let title_text = if show_up_arrow {

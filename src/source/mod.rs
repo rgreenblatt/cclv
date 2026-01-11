@@ -5,8 +5,8 @@
 //! - Stdin for piped input (live streaming)
 //! - Unified InputSource enum for both
 
-use crate::model::error::InputError;
 use crate::model::LogEntry;
+use crate::model::error::InputError;
 use std::path::PathBuf;
 
 pub mod file;

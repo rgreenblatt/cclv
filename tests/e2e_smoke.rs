@@ -10,7 +10,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use expectrl::{spawn, ControlCode, Eof, Regex};
+use expectrl::{ControlCode, Eof, Regex, spawn};
 
 /// Helper to find the cclv binary in target directory
 fn find_binary() -> PathBuf {

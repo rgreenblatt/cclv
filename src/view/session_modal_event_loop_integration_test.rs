@@ -8,8 +8,8 @@ use crate::model::{EntryType, LogEntry, Message, MessageContent, Role, SessionId
 use crate::state::{AppState, ViewedSession};
 use crate::view::TuiApp;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
 /// Helper to create a KeyEvent
 fn key(code: KeyCode) -> KeyEvent {

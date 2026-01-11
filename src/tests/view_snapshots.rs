@@ -10,12 +10,12 @@ use crate::model::{
     ToolCall, ToolName, ToolUseId,
 };
 use crate::state::WrapMode;
-use crate::view::{tabs, ConversationView, MessageStyles, StatsPanel};
+use crate::view::{ConversationView, MessageStyles, StatsPanel, tabs};
 use crate::view_state::conversation::ConversationViewState;
 use crate::view_state::layout_params::LayoutParams;
 use crate::view_state::types::{EntryIndex, ViewportDimensions};
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 use std::collections::{HashMap, HashSet};
 
 // ===== Test Helpers =====
@@ -818,8 +818,8 @@ fn bug_initial_screen_blank_until_keypress() {
     use crate::source::FileSource;
     use crate::state::AppState;
     use crate::view::TuiApp;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load fixture
@@ -878,8 +878,8 @@ fn bug_excessive_blank_lines_in_entry_rendering() {
     use crate::source::FileSource;
     use crate::state::AppState;
     use crate::view::TuiApp;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load real fixture that reproduces the bug
@@ -973,8 +973,8 @@ fn bug_page_down_twice_causes_blank_viewport() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load minimal fixture from real log data (300 lines → ~294 entries)
@@ -1073,8 +1073,8 @@ fn us1_page_down_to_bottom_always_shows_content() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load large fixture: cc-session-log.jsonl has 31,210 entries
@@ -1172,8 +1172,8 @@ fn us1_home_key_shows_first_entries_from_bottom() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load large fixture
@@ -1248,8 +1248,8 @@ fn us1_end_key_shows_last_entries_with_content() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load large fixture
@@ -1320,8 +1320,8 @@ fn us1_rapid_scroll_updates_within_60fps() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
     use std::time::Instant;
 
@@ -1414,8 +1414,8 @@ fn bug_thinking_blocks_not_wrapped_like_prose() {
     use crate::source::FileSource;
     use crate::state::AppState;
     use crate::view::TuiApp;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load minimal fixture with long thinking block line
@@ -1492,8 +1492,8 @@ fn bug_horizontal_scroll_does_not_work() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load minimal fixture with long line
@@ -3055,8 +3055,8 @@ fn bug_help_popup_not_triggered_by_question_mark() {
     use crate::state::AppState;
     use crate::view::TuiApp;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load minimal fixture
@@ -3519,8 +3519,8 @@ fn bug_token_stats_divider_wrong_calculation() {
     use crate::source::FileSource;
     use crate::state::AppState;
     use crate::view::TuiApp;
-    use ratatui::backend::TestBackend;
     use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
     use std::path::PathBuf;
 
     // Load minimal fixture with token usage data
@@ -3723,7 +3723,10 @@ fn bug_session_tab_navigation_blank_after_change() {
     let after_session_change = harness.render_to_string();
 
     // Take snapshot - captures buggy blank state
-    insta::assert_snapshot!("bug_session_tab_nav_after_change", after_session_change.clone());
+    insta::assert_snapshot!(
+        "bug_session_tab_nav_after_change",
+        after_session_change.clone()
+    );
 
     // BUG #1: Screen should NOT be blank after changing sessions
     // The content area should show the Main agent view (or previously focused pane)
@@ -3743,7 +3746,10 @@ fn bug_session_tab_navigation_blank_after_change() {
     let after_first_tab = harness.render_to_string();
 
     // Take snapshot after first Tab - should show subagent-a
-    insta::assert_snapshot!("bug_session_tab_nav_after_first_tab", after_first_tab.clone());
+    insta::assert_snapshot!(
+        "bug_session_tab_nav_after_first_tab",
+        after_first_tab.clone()
+    );
 
     // After first Tab, should show subagent-a content (Main -> subagent-a)
     let showing_subagent = after_first_tab.contains("subagent-a [Sonnet]")
@@ -3761,7 +3767,10 @@ fn bug_session_tab_navigation_blank_after_change() {
     let after_second_tab = harness.render_to_string();
 
     // Take snapshot - should show Main again (completing the cycle)
-    insta::assert_snapshot!("bug_session_tab_nav_after_second_tab", after_second_tab.clone());
+    insta::assert_snapshot!(
+        "bug_session_tab_nav_after_second_tab",
+        after_second_tab.clone()
+    );
 
     // After second Tab, should be back on Main (subagent-a -> Main)
     let showing_main = after_second_tab.contains("Main [Opus]")
@@ -3855,7 +3864,10 @@ fn bug_session_switch_from_subagent_tab_shows_blank() {
     let after_session_change = harness.render_to_string();
 
     // Snapshot captures the buggy blank state
-    insta::assert_snapshot!("bug_subagent_blank_after_switch", after_session_change.clone());
+    insta::assert_snapshot!(
+        "bug_subagent_blank_after_switch",
+        after_session_change.clone()
+    );
 
     // BUG ASSERTION: Screen should NOT be blank!
     // The conversation area should show Session 1's Main content

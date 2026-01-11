@@ -24,11 +24,11 @@ pub use app_state::{AppState, ConversationSelection, FocusPane, InputMode, WrapC
 pub use expand_handler::handle_expand_action;
 pub use match_navigation_handler::{next_match, prev_match};
 pub use mouse_handler::{
-    detect_entry_click, detect_tab_click, handle_entry_click, handle_mouse_click,
-    handle_mouse_scroll, EntryClickResult, TabClickResult,
+    EntryClickResult, TabClickResult, detect_entry_click, detect_tab_click, handle_entry_click,
+    handle_mouse_click, handle_mouse_scroll,
 };
 pub use scroll_handler::handle_scroll_action;
-pub use search::{agent_ids_with_matches, execute_search, SearchMatch, SearchQuery, SearchState};
+pub use search::{SearchMatch, SearchQuery, SearchState, agent_ids_with_matches, execute_search};
 pub use search_input_handler::{
     activate_search_input, cancel_search, handle_backspace, handle_char_input, handle_cursor_left,
     handle_cursor_right, submit_search,

@@ -18,8 +18,8 @@ use crate::view::{ConversationView, MessageStyles};
 use crate::view_state::conversation::ConversationViewState;
 use crate::view_state::layout_params::LayoutParams;
 use crate::view_state::types::{EntryIndex, ViewportDimensions};
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
 // ===== Test Helpers =====
 

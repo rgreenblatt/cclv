@@ -3,7 +3,7 @@
 //! Displays per-entry token usage, cost, and accumulated context window usage
 //! as a subtle divider line between entries (FR-XXX).
 
-use crate::model::{stats::PricingConfig, ContentBlock, MessageContent, TokenUsage};
+use crate::model::{ContentBlock, MessageContent, TokenUsage, stats::PricingConfig};
 use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},

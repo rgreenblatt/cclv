@@ -22,7 +22,7 @@ pub mod tabs;
 pub use help::render_help_overlay;
 pub use helpers::{empty_line, key_value_line};
 pub use live_indicator::LiveIndicator;
-pub use message::{extract_entry_text, has_code_blocks, ConversationView};
+pub use message::{ConversationView, extract_entry_text, has_code_blocks};
 pub use search_input::SearchInput;
 pub use session_modal::render_session_modal;
 pub use stats::StatsPanel;
@@ -36,17 +36,17 @@ use crate::source::InputSource;
 #[cfg(test)]
 use crate::state::ConversationSelection;
 use crate::state::{
-    expand_handler, handle_toggle_wrap, next_match, prev_match, scroll_handler,
-    search_input_handler, AppState, FocusPane,
+    AppState, FocusPane, expand_handler, handle_toggle_wrap, next_match, prev_match,
+    scroll_handler, search_input_handler,
 };
 use crossterm::{
+    ExecutableCommand,
     event::{
         self, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
     },
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io::{self, Stdout};
 use std::time::Duration;
 use thiserror::Error;
@@ -625,7 +625,7 @@ where
                 self.app_state.search =
                     search_input_handler::submit_search(self.app_state.search.clone());
                 // Execute search to populate matches
-                use crate::state::{execute_search, SearchState};
+                use crate::state::{SearchState, execute_search};
                 if let SearchState::Active { query, .. } = &self.app_state.search {
                     let session_view = self
                         .app_state

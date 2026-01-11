@@ -116,9 +116,8 @@ fn bug_stats_should_update_when_switching_tabs() {
 fn bug_stats_show_zeros_after_session_modal_switch() {
     // GIVEN: Log file with two sessions (Alpha first, Beta second)
     // By default, Beta session is displayed (most recent)
-    let mut harness =
-        AcceptanceTestHarness::from_fixture_with_size(MULTI_SESSION_FIXTURE, 100, 30)
-            .expect("Should load multi-session fixture");
+    let mut harness = AcceptanceTestHarness::from_fixture_with_size(MULTI_SESSION_FIXTURE, 100, 30)
+        .expect("Should load multi-session fixture");
 
     // Enable stats pane
     harness.send_key(KeyCode::Char('s'));

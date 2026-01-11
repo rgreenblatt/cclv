@@ -10,12 +10,12 @@
 
 use cclv::config::keybindings::KeyBindings;
 use cclv::source::{FileSource, InputSource, StdinSource};
-use cclv::state::app_state::WrapMode;
 use cclv::state::AppState;
+use cclv::state::app_state::WrapMode;
 use cclv::view::TuiApp;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 use std::path::PathBuf;
 
 /// Load the large fixture file and create a baseline app state.

@@ -8,8 +8,8 @@ use crate::source::{FileSource, StdinSource};
 use crate::state::AppState;
 use crate::view::{TuiApp, TuiError};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 use std::path::PathBuf;
 
 /// Convert a ratatui buffer to a string representation for snapshot testing.

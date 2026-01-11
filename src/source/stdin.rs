@@ -5,7 +5,7 @@
 
 use crate::model::error::InputError;
 use std::io::{BufRead, BufReader, IsTerminal, Read};
-use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::sync::mpsc::{Receiver, TryRecvError, channel};
 use std::thread::{self, JoinHandle};
 
 /// Message sent from background reader thread to main thread.

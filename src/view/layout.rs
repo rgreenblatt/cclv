@@ -4,19 +4,20 @@
 //! with tab bar for switching between main agent and subagent conversations.
 
 use crate::model::{AgentId, PricingConfig};
-use crate::state::{agent_ids_with_matches, AppState, FocusPane, SearchState, WrapMode};
+use crate::state::{AppState, FocusPane, SearchState, WrapMode, agent_ids_with_matches};
 use crate::view::{
+    MessageStyles, SearchInput,
     constants::{SEARCH_INPUT_HEIGHT, STATS_PANEL_HEIGHT, STATUS_BAR_HEIGHT, TAB_BAR_HEIGHT},
     help::render_help_overlay,
     message,
     stats::StatsPanel,
-    tabs, MessageStyles, SearchInput,
+    tabs,
 };
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     text::{Line, Span},
     widgets::Paragraph,
-    Frame,
 };
 use std::collections::HashSet;
 

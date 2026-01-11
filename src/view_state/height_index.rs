@@ -164,11 +164,7 @@ impl HeightIndex {
             }
         }
 
-        if left >= self.len {
-            None
-        } else {
-            Some(left)
-        }
+        if left >= self.len { None } else { Some(left) }
     }
 
     /// Returns the total cumulative height of all entries.

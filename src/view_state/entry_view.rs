@@ -128,7 +128,7 @@ impl EntryView {
         pricing: crate::model::PricingConfig,
     ) -> Self {
         let expanded = false; // Start collapsed
-                              // New entries have no wrap override, so use global mode
+        // New entries have no wrap override, so use global mode
         let wrap_ctx = WrapContext::from_global(wrap_mode);
         // TODO: Pass MessageStyles from caller instead of default
         let styles = crate::view::MessageStyles::new();

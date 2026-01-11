@@ -18,10 +18,10 @@
 //! - Collapse decision made once at entry level, not per-block
 //! - Rendered line count matches height calculation
 
-use crate::model::{stats::PricingConfig, ContentBlock, ConversationEntry, MessageContent};
+use crate::model::{ContentBlock, ConversationEntry, MessageContent, stats::PricingConfig};
 use crate::state::{WrapContext, WrapMode};
 use crate::view::MessageStyles;
-use crate::view_state::token_divider::{render_token_divider, ContextWindowTokens};
+use crate::view_state::token_divider::{ContextWindowTokens, render_token_divider};
 use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},

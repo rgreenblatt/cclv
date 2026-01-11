@@ -3,8 +3,8 @@
 use super::*;
 use crate::model::{AgentId, ConversationEntry, SessionId};
 use crate::state::{AppState, ConversationSelection, InputMode, WrapMode};
-use ratatui::backend::TestBackend;
 use ratatui::Terminal;
+use ratatui::backend::TestBackend;
 
 // ===== Test Helpers =====
 
@@ -925,7 +925,7 @@ fn render_layout_uses_search_highlighting_when_search_active() {
         .relayout(78, wrap_mode, &crate::state::SearchState::Inactive);
 
     // Activate search for "world"
-    use crate::state::search::{execute_search, SearchQuery};
+    use crate::state::search::{SearchQuery, execute_search};
     let query = SearchQuery::new("world").unwrap();
     let matches = execute_search(state.session_view(), &query);
     state.search = SearchState::Active {
