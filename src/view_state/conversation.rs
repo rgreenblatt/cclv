@@ -648,7 +648,11 @@ impl ConversationViewState {
         search_state: &crate::state::SearchState,
     ) {
         if index >= self.entries.len() {
-            tracing::warn!("toggle_entry_expanded: index {} >= entries.len() {}", index, self.entries.len());
+            tracing::warn!(
+                "toggle_entry_expanded: index {} >= entries.len() {}",
+                index,
+                self.entries.len()
+            );
             return;
         }
 
@@ -659,8 +663,13 @@ impl ConversationViewState {
         // Toggle expanded state
         entry.toggle_expanded();
 
-        tracing::trace!("toggle_entry_expanded: index={}, expanded: {} -> {}, height_before={:?}",
-            index, old_expanded, entry.is_expanded(), old_height);
+        tracing::trace!(
+            "toggle_entry_expanded: index={}, expanded: {} -> {}, height_before={:?}",
+            index,
+            old_expanded,
+            entry.is_expanded(),
+            old_height
+        );
 
         // Recompute lines with new expand state
         let effective_wrap = entry.effective_wrap(self.global_wrap);
@@ -674,7 +683,10 @@ impl ConversationViewState {
 
         let new_height = entry.height().get() as usize;
 
-        tracing::trace!("After recompute: new_height={}, updating HeightIndex", new_height);
+        tracing::trace!(
+            "After recompute: new_height={}, updating HeightIndex",
+            new_height
+        );
 
         // Update HeightIndex atomically
         self.height_index.set(index, new_height);
@@ -682,7 +694,10 @@ impl ConversationViewState {
         // Update total_height
         self.total_height = self.height_index.total();
 
-        tracing::trace!("After HeightIndex update: total_height={}", self.total_height);
+        tracing::trace!(
+            "After HeightIndex update: total_height={}",
+            self.total_height
+        );
     }
 
     /// Set wrap override for entry. O(log n).
@@ -720,7 +735,10 @@ impl ConversationViewState {
 
         let new_height = entry.height().get() as usize;
 
-        tracing::trace!("After recompute: new_height={}, updating HeightIndex", new_height);
+        tracing::trace!(
+            "After recompute: new_height={}, updating HeightIndex",
+            new_height
+        );
 
         // Update HeightIndex atomically
         self.height_index.set(index, new_height);
@@ -728,7 +746,10 @@ impl ConversationViewState {
         // Update total_height
         self.total_height = self.height_index.total();
 
-        tracing::trace!("After HeightIndex update: total_height={}", self.total_height);
+        tracing::trace!(
+            "After HeightIndex update: total_height={}",
+            self.total_height
+        );
     }
 
     /// Append new entries (streaming mode). O(n log n) where n is new entries.

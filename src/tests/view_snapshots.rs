@@ -3996,7 +3996,10 @@ fn bug_mouse_clicks_broken_on_non_last_session() {
     let after_tab_click_non_last = harness.render_to_string();
 
     // Capture snapshot of buggy state
-    insta::assert_snapshot!("bug_mouse_clicks_non_last_session", after_tab_click_non_last.clone());
+    insta::assert_snapshot!(
+        "bug_mouse_clicks_non_last_session",
+        after_tab_click_non_last.clone()
+    );
 
     // BUG: Screen goes blank after tab click on non-last session!
     // Check for actual conversation entry markers (│ N where N is entry number)
@@ -4085,13 +4088,19 @@ fn bug_mouse_entry_expand_non_last_session() {
     );
 
     // Snapshot initial state on last session
-    insta::assert_snapshot!("bug_entry_expand_last_session_initial", initial_output.clone());
+    insta::assert_snapshot!(
+        "bug_entry_expand_last_session_initial",
+        initial_output.clone()
+    );
 
     // TEST PART 1: Click at row 10 (in content area) on last session
     // This should be in the middle of the visible entries
     harness.click_at(60, 10);
     let after_click_last = harness.render_to_string();
-    insta::assert_snapshot!("bug_entry_expand_last_session_after_click", after_click_last.clone());
+    insta::assert_snapshot!(
+        "bug_entry_expand_last_session_after_click",
+        after_click_last.clone()
+    );
 
     // TEST PART 2: Switch to session 1
     harness.send_key_with_mods(KeyCode::Char('S'), crossterm::event::KeyModifiers::SHIFT);
@@ -4111,7 +4120,10 @@ fn bug_mouse_entry_expand_non_last_session() {
     );
 
     // Snapshot session 1 before click
-    insta::assert_snapshot!("bug_entry_expand_session1_before_click", after_switch.clone());
+    insta::assert_snapshot!(
+        "bug_entry_expand_session1_before_click",
+        after_switch.clone()
+    );
 
     // TEST PART 3: Click on entry 8 which has truncated content (+164 more lines)
     // Entry 8 starts at row ~28, where "(+164 more lines)" is visible
@@ -4119,7 +4131,10 @@ fn bug_mouse_entry_expand_non_last_session() {
     let after_click_session1 = harness.render_to_string();
 
     // Snapshot after click on session 1
-    insta::assert_snapshot!("bug_mouse_entry_expand_non_last_session", after_click_session1.clone());
+    insta::assert_snapshot!(
+        "bug_mouse_entry_expand_non_last_session",
+        after_click_session1.clone()
+    );
 
     // BUG ASSERTION: The click should change the output by expanding/collapsing an entry.
     // When the bug exists, outputs are IDENTICAL before and after click (click ignored).

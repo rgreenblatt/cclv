@@ -240,8 +240,12 @@ pub fn handle_entry_click(
             // Toggle expand via ConversationViewState
             let session_count = state.log_view().session_count();
             let session_idx = state.viewed_session.effective_index(session_count);
-            tracing::trace!("MainPaneEntry click: session_count={}, session_idx={:?}, entry_index={}",
-                session_count, session_idx.map(|i| i.get()), index);
+            tracing::trace!(
+                "MainPaneEntry click: session_count={}, session_idx={:?}, entry_index={}",
+                session_count,
+                session_idx.map(|i| i.get()),
+                index
+            );
             if let Some(idx) = session_idx {
                 if let Some(session_view) = state.log_view_mut().get_session_mut(idx.get()) {
                     let conv_view = session_view.main_mut();
@@ -251,7 +255,10 @@ pub fn handle_entry_click(
                     tracing::warn!("Failed to get session_view_mut for session {}", idx.get());
                 }
             } else {
-                tracing::warn!("Failed to get effective_index for session_count={}", session_count);
+                tracing::warn!(
+                    "Failed to get effective_index for session_count={}",
+                    session_count
+                );
             }
         }
         EntryClickResult::SubagentPaneEntry(index) => {
