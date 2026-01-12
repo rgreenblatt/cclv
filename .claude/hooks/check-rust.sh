@@ -25,7 +25,7 @@ if [[ $result -ne 0 ]]; then
   exit 2  # Exit 2 = blocking error, rejects the edit
 fi
 
-# Format the edited file with rustfmt
-rustfmt "$file_path" 2>&1
+# Format the edited file with rustfmt (through treefmt-nix)
+nix fmt "$file_path" 2>&1
 
 exit 0

@@ -22,7 +22,6 @@ cargo build --release         # Build release binary
 cargo test                    # Run all tests
 cargo test <test_name>        # Run single test
 cargo clippy                  # Lint
-cargo fmt                     # Format Rust code
 ```
 
 ## Architecture
@@ -80,7 +79,7 @@ Before committing:
 - `cargo build` - zero warnings
 - `cargo test` - all pass
 - `cargo clippy` - no issues
-- `nix fmt` - code formatted
+- `nix fmt` - code formatted (do NOT use cargo fmt, use `nix fmt` ALWAYS)
 
 ## Issue Tracking (beads)
 
