@@ -3885,3 +3885,149 @@ fn bug_session_switch_from_subagent_tab_shows_blank() {
          Actual output:\n{after_session_change}"
     );
 }
+
+/// Bug reproduction: Mouse clicks stop working after switching to non-last session
+///
+/// EXPECTED: Mouse clicks for tab switching and expand/collapse should work
+/// regardless of which session is currently viewed.
+///
+/// ACTUAL: After switching to a session that is NOT the last session,
+/// mouse clicks on tabs cause blank screen, and expand/collapse clicks are ignored.
+///
+/// ROOT CAUSE: `session_view()` calls `current_session()` in `log.rs` which always
+/// returns `sessions.last()`, ignoring the `viewed_session` state (which can be
+/// `ViewedSession::Pinned(idx)`). This causes the mouse handler to get tab info
+/// from the WRONG session.
+///
+/// Steps to reproduce manually:
+/// 1. cargo run --release -- tests/fixtures/cc-session-log.jsonl
+/// 2. Click on tabs and entries - works correctly on session 24/24
+/// 3. Press Shift+S to open session modal, select session 1
+/// 4. Try clicking on tabs - screen goes blank
+/// 5. Try clicking on entries to expand - clicks are ignored
+#[test]
+#[ignore = "cclv-bgu: mouse clicks broken on non-last sessions"]
+fn bug_mouse_clicks_broken_on_non_last_session() {
+    use crate::test_harness::AcceptanceTestHarness;
+    use crossterm::event::KeyCode;
+
+    // Load fixture with multiple sessions using test harness
+    let mut harness = AcceptanceTestHarness::from_fixture_with_size(
+        "tests/fixtures/cc-session-log.jsonl",
+        200,
+        40,
+    )
+    .expect("Should load fixture");
+
+    // Verify precondition: multiple sessions exist
+    let session_count = harness.state().log_view().session_count();
+    assert!(
+        session_count >= 2,
+        "Test precondition: need at least 2 sessions, got {}",
+        session_count
+    );
+
+    // Initial render
+    let initial_output = harness.render_to_string();
+    assert!(
+        initial_output.contains(&format!("Session {}/{}", session_count, session_count)),
+        "Should start on last session"
+    );
+
+    // TEST PART 1: Verify mouse clicks work on last session
+    // Click on second tab (around column 15-25 for a subagent tab, row 1 for tab bar)
+    harness.click_at(20, 1);
+    let after_tab_click_last = harness.render_to_string();
+
+    // Should still show content (conversation pane should have text)
+    let has_content_last = after_tab_click_last
+        .lines()
+        .skip(3) // Skip header and tab rows
+        .any(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty()
+                && !trimmed
+                    .chars()
+                    .all(|c| matches!(c, '│' | '─' | '┌' | '┐' | '└' | '┘' | ' '))
+        });
+    assert!(
+        has_content_last,
+        "Tab click on last session should show content"
+    );
+
+    // TEST PART 2: Switch to first session via keyboard (session modal)
+    // Press Shift+S to open session modal
+    harness.send_key_with_mods(KeyCode::Char('S'), crossterm::event::KeyModifiers::SHIFT);
+    let modal_output = harness.render_to_string();
+    assert!(
+        modal_output.contains("Session List"),
+        "Session modal should open"
+    );
+
+    // Press 'g' to go to first session
+    harness.send_key(KeyCode::Char('g'));
+
+    // Press Enter to select session 1
+    harness.send_key(KeyCode::Enter);
+
+    // Render after session switch
+    let after_switch = harness.render_to_string();
+    assert!(
+        after_switch.contains("Session 1/"),
+        "Should be on session 1 after switch\nActual:\n{after_switch}"
+    );
+
+    // Verify content is visible after switch (before any mouse interaction)
+    let has_content_after_switch = after_switch.lines().skip(3).any(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty()
+            && !trimmed
+                .chars()
+                .all(|c| matches!(c, '│' | '─' | '┌' | '┐' | '└' | '┘' | ' '))
+    });
+    assert!(
+        has_content_after_switch,
+        "Content should be visible after switching to session 1"
+    );
+
+    // TEST PART 3: Try clicking on a tab on the NON-LAST session
+    // This is where the bug manifests
+    harness.click_at(20, 1); // Click on second tab
+
+    let after_tab_click_non_last = harness.render_to_string();
+
+    // Capture snapshot of buggy state
+    insta::assert_snapshot!("bug_mouse_clicks_non_last_session", after_tab_click_non_last.clone());
+
+    // BUG: Screen goes blank after tab click on non-last session!
+    // Check for actual conversation entry markers (│ N where N is entry number)
+    // or meaningful text content in the conversation pane.
+    // The status bar ([LIVE] │ Session...) should NOT count as conversation content.
+    let has_conversation_content = after_tab_click_non_last.lines().any(|line| {
+        // Look for entry number markers like "│  1 " or "│ 12 " which indicate
+        // conversation entries are being rendered
+        line.contains("│  1 ")
+            || line.contains("│  2 ")
+            || line.contains("│  3 ")
+            || line.contains("│ 1 ")
+            || line.contains("│ 2 ")
+            || line.contains("│ 3 ")
+            // Also check for tool call markers
+            || line.contains("🔧 Tool:")
+            // Or thinking block markers
+            || line.contains("thinking")
+            // Or any pane header with entry count like "[Opus] (83 entries)"
+            || line.contains("entries)")
+    });
+
+    // The content pane should NOT be blank - we should see conversation entries
+    assert!(
+        has_conversation_content,
+        "BUG: Screen went blank after clicking tab on non-last session!\n\n\
+         Expected: Conversation entries should be visible (│ 1, │ 2, tool calls, etc.)\n\
+         Actual: Conversation pane is blank - no entry markers found\n\n\
+         Root cause: session_view() -> current_session() returns sessions.last()\n\
+         instead of respecting viewed_session (ViewedSession::Pinned)\n\n\
+         Output after tab click:\n{after_tab_click_non_last}"
+    );
+}

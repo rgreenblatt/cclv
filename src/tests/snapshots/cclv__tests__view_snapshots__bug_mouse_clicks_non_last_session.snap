@@ -1,0 +1,8 @@
+---
+source: src/tests/view_snapshots.rs
+expression: after_tab_click_non_last.clone()
+---
+┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Main │ toolu_01DEfQddExUyZs1r9z6THScM │ toolu_01MXGXpkHkWxmSjJswAV1dLc │ toolu_01SA5Pockrn73MHHwa24cwq9 │ toolu_01To4EpAmDWLJGFrWyzKr4jp │ toolu_01VNHBYrBWyPxX7eNRi87Egw │ toolu_01VzXGo1GJ1LkH6gMvc│
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+[LIVE] │ Session 1/24 │ Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
