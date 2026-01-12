@@ -4030,3 +4030,103 @@ fn bug_mouse_clicks_broken_on_non_last_session() {
          Output after tab click:\n{after_tab_click_non_last}"
     );
 }
+
+/// Bug reproduction: Mouse clicks don't expand/collapse entries on non-last sessions
+///
+/// EXPECTED: Clicking on an entry should toggle its expand state,
+///           regardless of which session is being viewed.
+///
+/// ACTUAL (BUG): On the last session (default), clicking toggles expand state.
+///               On any other session, clicks are ignored - expand state unchanged.
+///
+/// Steps to reproduce manually:
+/// 1. cargo run --release -- tests/fixtures/cc-session-log.jsonl
+/// 2. Click on entry 9 with "(+161 more lines)" - it expands ✓
+/// 3. Press Shift+S to open session modal, select session 1
+/// 4. Find entry 8 with "(+161 more lines)"
+/// 5. Click on it - it does NOT expand ✗
+///
+/// Note: This test verifies via rendered output since we confirmed the bug in tmux
+/// with direct mouse interaction. The test clicks at row 10-15 where entries are visible.
+///
+/// Bead: cclv-haf
+#[test]
+#[ignore = "cclv-haf: mouse clicks don't expand entries on non-last sessions"]
+fn bug_mouse_entry_expand_non_last_session() {
+    use crate::test_harness::AcceptanceTestHarness;
+    use crossterm::event::KeyCode;
+
+    // Load fixture with multiple sessions
+    let mut harness = AcceptanceTestHarness::from_fixture_with_size(
+        "tests/fixtures/cc-session-log.jsonl",
+        120,
+        40,
+    )
+    .expect("Should load fixture");
+
+    // Verify precondition: multiple sessions exist
+    let session_count = harness.state().log_view().session_count();
+    assert!(
+        session_count >= 2,
+        "Test precondition: need at least 2 sessions, got {}",
+        session_count
+    );
+
+    // Initial render
+    let initial_output = harness.render_to_string();
+    assert!(
+        initial_output.contains(&format!("Session {}/{}", session_count, session_count)),
+        "Should start on last session"
+    );
+
+    // Snapshot initial state on last session
+    insta::assert_snapshot!("bug_entry_expand_last_session_initial", initial_output.clone());
+
+    // TEST PART 1: Click at row 10 (in content area) on last session
+    // This should be in the middle of the visible entries
+    harness.click_at(60, 10);
+    let after_click_last = harness.render_to_string();
+    insta::assert_snapshot!("bug_entry_expand_last_session_after_click", after_click_last.clone());
+
+    // TEST PART 2: Switch to session 1
+    harness.send_key_with_mods(KeyCode::Char('S'), crossterm::event::KeyModifiers::SHIFT);
+    let modal_output = harness.render_to_string();
+    assert!(
+        modal_output.contains("Session List"),
+        "Session modal should open"
+    );
+
+    harness.send_key(KeyCode::Char('g')); // Go to first item
+    harness.send_key(KeyCode::Enter); // Select
+
+    let after_switch = harness.render_to_string();
+    assert!(
+        after_switch.contains("Session 1/"),
+        "Should be on session 1 after switch\nActual:\n{after_switch}"
+    );
+
+    // Snapshot session 1 before click
+    insta::assert_snapshot!("bug_entry_expand_session1_before_click", after_switch.clone());
+
+    // TEST PART 3: Click at same row on session 1 (non-last)
+    harness.click_at(60, 10);
+    let after_click_session1 = harness.render_to_string();
+
+    // Snapshot after click on session 1
+    insta::assert_snapshot!("bug_mouse_entry_expand_non_last_session", after_click_session1.clone());
+
+    // BUG ASSERTION: The click should change the output by expanding/collapsing an entry.
+    // When the bug exists, outputs are IDENTICAL before and after click (click ignored).
+    // When the bug is FIXED, outputs will DIFFER (click had effect).
+    let click_changed_output = after_switch != after_click_session1;
+
+    assert!(
+        click_changed_output,
+        "BUG cclv-haf: Mouse click had no effect on non-last session!\n\n\
+         Expected: Click should toggle entry expand/collapse (output should change)\n\
+         Actual: Output unchanged after click - click was ignored\n\n\
+         This works on the last session but NOT on session 1.\n\n\
+         Before click:\n{after_switch}\n\n\
+         After click:\n{after_click_session1}"
+    );
+}

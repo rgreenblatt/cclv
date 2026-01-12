@@ -1,0 +1,44 @@
+---
+source: src/tests/view_snapshots.rs
+expression: after_switch.clone()
+---
+┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Main │ toolu_01DEfQddExUyZs1r9z6THScM │ toolu_01MXGXpkHkWxmSjJswAV1dLc │ toolu_01SA5Pockrn73MHHwa24cwq9 │ toolu_01To4│
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌Main [Opus] (83 entries)──────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                                                      │
+│                                                                                                                      │
+││  3 Let me understand the task:                                                                                      │
+││                                                                                                                     │
+││    1. I'm a coordinator agent that CANNOT read/write code directly                                                  │
+││    2. I need to claim ONE bead from the epic cclv-07v                                                               │
+││    3. I need to first run the efficient-subagent-orchestration skill                                                │
+││    4. I need to follow the protocol: setup, find epic, check checklists, load context, find ready work, execute     │
+││                                                                                                                     │
+││    Let me start by loading the required skill and then following the protocol.                                      │
+││                                                                                                                     │
+││    First, I'll invoke the efficient-subagent-orchestration skill as required.                                       │
+│── ↓37.4k/37.4k ↑1/118 / $0.06 | Context: 37.4k (18%) ──                                                              │
+││  4 I'll start by loading the required skill and then following the coordinator protocol.                            │
+│── ↓37.4k/37.4k ↑1/1 / $0.06 | Context: 37.4k (18%) ──                                                                │
+││  5 🔧  Tool: Skill                                                                                                   │
+││      {                                                                                                              │
+││        "skill": "efficient-subagent-orchestration"                                                                  │
+││      }                                                                                                              │
+│── ↓37.4k/37.4k ↑1/12 / $0.06 | Context: 37.4k (18%) ──                                                               │
+││  6 🔧  Tool: Skill                                                                                                   │
+││      {                                                                                                              │
+││        "skill": "beads-project-tracking"                                                                            │
+││      }                                                                                                              │
+│── ↓37.4k/37.4k ↑1/9 / $0.06 | Context: 37.4k (18%) ──                                                                │
+││  7 Launching skill: efficient-subagent-orchestration                                                                │
+│                                                                                                                      │
+││  8 Base directory for this skill: /home/claude/.claude/skills/efficient-subagent-orchestration                      │
+││                                                                                                                     │
+││    # Efficient Subagent Orchestration for Main Agent                                                                │
+││    (+164 more lines)                                                                                                │
+│                                                                                                                      │
+││  9 Launching skill: beads-project-tracking                                                                          │
+│                                                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+[LIVE] │ Session 1/24 │ Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes
