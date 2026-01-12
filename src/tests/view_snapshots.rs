@@ -3906,7 +3906,6 @@ fn bug_session_switch_from_subagent_tab_shows_blank() {
 /// 4. Try clicking on tabs - screen goes blank
 /// 5. Try clicking on entries to expand - clicks are ignored
 #[test]
-#[ignore = "cclv-bgu: mouse clicks broken on non-last sessions"]
 fn bug_mouse_clicks_broken_on_non_last_session() {
     use crate::test_harness::AcceptanceTestHarness;
     use crossterm::event::KeyCode;

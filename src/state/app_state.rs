@@ -289,11 +289,16 @@ impl AppState {
 
     /// Get immutable reference to current session view-state.
     ///
-    /// Returns the last/active session in the log.
+    /// Uses `viewed_session` to determine which session to display.
     /// Panics if no sessions exist (shouldn't happen in normal operation).
     pub fn session_view(&self) -> &crate::view_state::session::SessionViewState {
+        let session_count = self.log_view.session_count();
+        let session_idx = self
+            .viewed_session
+            .effective_index(session_count)
+            .expect("No session view-state - this is a bug");
         self.log_view
-            .current_session()
+            .get_session(session_idx.get())
             .expect("No session view-state - this is a bug")
     }
 
