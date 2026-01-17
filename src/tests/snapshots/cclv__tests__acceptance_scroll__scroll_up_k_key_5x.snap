@@ -1,5 +1,6 @@
 ---
 source: src/tests/acceptance_scroll.rs
+assertion_line: 132
 expression: scrolled_up_output
 ---
 ┌Conversations─────────────────────────────────────────────────────────────────┐
@@ -16,13 +17,13 @@ expression: scrolled_up_output
 ││  8 Base directory for this skill: /home/claude/.claude/skills/efficient-suba│
 ││    gent-orchestration                                                       │
 ││                                                                             │
-││    (+180 more lines)                                                        │
+││    (+162 more lines)                                                        │
 │                                                                              │
 ││  9 Launching skill: beads-project-tracking                                  │
 │                                                                              │
 ││ 10 Base directory for this skill: /home/claude/.claude/skills/beads-project-│
 ││    tracking                                                                 │
 ││                                                                             │
-││    (+218 more lines)                                                        │
+││    (+204 more lines)                                                        │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

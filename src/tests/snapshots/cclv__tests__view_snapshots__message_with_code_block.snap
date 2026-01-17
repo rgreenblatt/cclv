@@ -1,15 +1,16 @@
 ---
 source: src/tests/view_snapshots.rs
+assertion_line: 442
 expression: output
 ---
 ┌Main (1 entries)────────────────────────────────────────────────────┐
 ││  1 Here's some code:                                              │
-││                                                                   │
 ││    fn main() {                                                    │
 ││        println!("Hello, world!");                                 │
 ││    }                                                              │
-││                                                                   │
 ││    That's the code.                                               │
+│                                                                    │
+│                                                                    │
 │                                                                    │
 │                                                                    │
 │                                                                    │

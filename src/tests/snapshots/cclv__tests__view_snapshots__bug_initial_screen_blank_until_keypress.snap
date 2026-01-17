@@ -1,5 +1,6 @@
 ---
 source: src/tests/view_snapshots.rs
+assertion_line: 858
 expression: output
 ---
 ┌Conversations─────────────────────────────────────────────────────────────────┐
@@ -31,14 +32,14 @@ expression: output
 ││  8 Base directory for this skill: /home/claude/.claude/skills/efficient-suba│
 ││    gent-orchestration                                                       │
 ││                                                                             │
-││    (+180 more lines)                                                        │
+││    (+162 more lines)                                                        │
 │                                                                              │
 ││  9 Launching skill: beads-project-tracking                                  │
 │                                                                              │
 ││ 10 Base directory for this skill: /home/claude/.claude/skills/beads-project-│
 ││    tracking                                                                 │
 ││                                                                             │
-││    (+218 more lines)                                                        │
+││    (+204 more lines)                                                        │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

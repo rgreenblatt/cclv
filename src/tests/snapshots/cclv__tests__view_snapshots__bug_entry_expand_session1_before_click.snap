@@ -1,5 +1,6 @@
 ---
 source: src/tests/view_snapshots.rs
+assertion_line: 4123
 expression: after_switch.clone()
 ---
 ┌Conversations─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -36,7 +37,7 @@ expression: after_switch.clone()
 ││  8 Base directory for this skill: /home/claude/.claude/skills/efficient-subagent-orchestration                      │
 ││                                                                                                                     │
 ││    # Efficient Subagent Orchestration for Main Agent                                                                │
-││    (+164 more lines)                                                                                                │
+││    (+146 more lines)                                                                                                │
 │                                                                                                                      │
 ││  9 Launching skill: beads-project-tracking                                                                          │
 │                                                                                                                      │

@@ -4,9 +4,12 @@ use serde::Deserialize;
 use std::path::PathBuf;
 use thiserror::Error;
 
-// Theme name constants (cclv-5ur.67.9)
+// Re-export theme constants from highlighter module
+pub use crate::view_state::highlighter::{DEFAULT_THEME as THEME_DEFAULT, VALID_THEMES};
+
+// Legacy theme name aliases for backwards compatibility
 /// Base16 Ocean theme name.
-pub const THEME_BASE16_OCEAN: &str = "base16-ocean";
+pub const THEME_BASE16_OCEAN: &str = "base16-ocean-dark";
 
 /// Solarized Dark theme name.
 pub const THEME_SOLARIZED_DARK: &str = "solarized-dark";
@@ -17,16 +20,17 @@ pub const THEME_SOLARIZED_LIGHT: &str = "solarized-light";
 /// Monokai theme name.
 pub const THEME_MONOKAI: &str = "monokai";
 
-/// Default theme (Base16 Ocean per CLI contract).
-pub const THEME_DEFAULT: &str = THEME_BASE16_OCEAN;
+/// Gruvbox Dark theme name.
+pub const THEME_GRUVBOX_DARK: &str = "gruvbox-dark";
 
-/// Array of all valid theme names for validation.
-pub const VALID_THEMES: &[&str] = &[
-    THEME_BASE16_OCEAN,
-    THEME_SOLARIZED_DARK,
-    THEME_SOLARIZED_LIGHT,
-    THEME_MONOKAI,
-];
+/// Gruvbox Light theme name.
+pub const THEME_GRUVBOX_LIGHT: &str = "gruvbox-light";
+
+/// Nord theme name.
+pub const THEME_NORD: &str = "nord";
+
+/// Dracula theme name.
+pub const THEME_DRACULA: &str = "dracula";
 
 /// Errors that can occur during config loading.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]

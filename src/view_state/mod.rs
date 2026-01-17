@@ -20,10 +20,12 @@
 //! - `renderer`: Entry rendering with consistent collapse logic
 //! - `token_divider`: Token statistics divider rendering
 //! - `session_summary`: SessionSummary - session metadata for modal display
+//! - `highlighter`: Syntax highlighting with configurable themes
 
 pub mod conversation;
 pub mod entry_view;
 pub mod height_index;
+pub mod highlighter;
 pub mod hit_test;
 pub mod layout;
 pub mod layout_params;
@@ -39,3 +41,6 @@ pub mod visible_range;
 // Re-export session navigation types
 pub use session_summary::SessionSummary;
 pub use types::SessionIndex;
+
+// Re-export theme initialization
+pub use highlighter::init_theme;

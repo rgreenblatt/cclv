@@ -1,6 +1,5 @@
 //! Claude Code Log Viewer - Entry Point
 
-use cclv::config::THEME_DEFAULT;
 use cclv::config::VALID_THEMES;
 use clap::Parser;
 use std::path::PathBuf;
@@ -32,8 +31,8 @@ pub struct Args {
     pub no_color: bool,
 
     /// Color theme for syntax highlighting
-    #[arg(long, default_value = THEME_DEFAULT, value_parser = clap::builder::PossibleValuesParser::new(VALID_THEMES))]
-    pub theme: String,
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(VALID_THEMES))]
+    pub theme: Option<String>,
 
     /// Path to configuration file
     #[arg(long)]
@@ -69,9 +68,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let with_env = cclv::config::apply_env_overrides(merged);
 
         // 4. Apply CLI argument overrides
-        // For theme: always use CLI value (has default)
-        // For stats: only override if flag was explicitly set (true)
-        let theme_override = Some(args.theme.clone());
+        // Only override if explicitly set on command line
+        let theme_override = args.theme.clone();
         let stats_override = if args.stats { Some(true) } else { None };
 
         let config = cclv::config::apply_cli_overrides(with_env, theme_override, stats_override);
@@ -81,6 +79,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize tracing with configured log file path (FR-054/055)
     cclv::logging::init(&config.log_file_path)?;
+
+    // Initialize syntax highlighting theme
+    cclv::view_state::init_theme(&config.theme);
 
     info!(
         config = ?config,
@@ -139,7 +140,7 @@ mod tests {
         assert_eq!(args.search, None);
         assert!(!args.stats);
         assert!(!args.no_color);
-        assert_eq!(args.theme, THEME_DEFAULT);
+        assert_eq!(args.theme, None); // Theme comes from config file, not CLI default
         assert_eq!(args.config, None);
     }
 
@@ -208,25 +209,25 @@ mod tests {
     #[test]
     fn test_theme_base16_ocean() {
         let args = Args::parse_from(["cclv", "--theme", THEME_BASE16_OCEAN]);
-        assert_eq!(args.theme, THEME_BASE16_OCEAN);
+        assert_eq!(args.theme, Some(THEME_BASE16_OCEAN.to_string()));
     }
 
     #[test]
     fn test_theme_solarized_dark() {
         let args = Args::parse_from(["cclv", "--theme", THEME_SOLARIZED_DARK]);
-        assert_eq!(args.theme, THEME_SOLARIZED_DARK);
+        assert_eq!(args.theme, Some(THEME_SOLARIZED_DARK.to_string()));
     }
 
     #[test]
     fn test_theme_solarized_light() {
         let args = Args::parse_from(["cclv", "--theme", THEME_SOLARIZED_LIGHT]);
-        assert_eq!(args.theme, THEME_SOLARIZED_LIGHT);
+        assert_eq!(args.theme, Some(THEME_SOLARIZED_LIGHT.to_string()));
     }
 
     #[test]
     fn test_theme_monokai() {
         let args = Args::parse_from(["cclv", "--theme", THEME_MONOKAI]);
-        assert_eq!(args.theme, THEME_MONOKAI);
+        assert_eq!(args.theme, Some(THEME_MONOKAI.to_string()));
     }
 
     #[test]
@@ -260,7 +261,7 @@ mod tests {
         assert_eq!(args.line, 42);
         assert_eq!(args.search, Some("error".to_string()));
         assert!(args.stats);
-        assert_eq!(args.theme, THEME_MONOKAI);
+        assert_eq!(args.theme, Some(THEME_MONOKAI.to_string()));
     }
 
     #[test]
@@ -307,8 +308,8 @@ mod tests {
 
         let config = ResolvedConfig::default();
         assert_eq!(
-            config.theme, THEME_BASE16_OCEAN,
-            "Default theme should be base16-ocean per CLI contract"
+            config.theme, THEME_DEFAULT,
+            "Default theme should be base16-ocean-dark"
         );
     }
 }

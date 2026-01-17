@@ -21,6 +21,7 @@
 use crate::model::{ContentBlock, ConversationEntry, MessageContent, stats::PricingConfig};
 use crate::state::{WrapContext, WrapMode};
 use crate::view::MessageStyles;
+use crate::view_state::highlighter::SyntaxHighlighter;
 use crate::view_state::token_divider::{ContextWindowTokens, render_token_divider};
 use ratatui::{
     style::{Color, Modifier, Style},
@@ -311,16 +312,105 @@ pub fn compute_entry_lines(
     lines
 }
 
-/// Render markdown text with role-based styling applied to unstyled spans.
+/// Get a syntax highlighter with the configured theme.
 ///
-/// This function parses markdown with tui-markdown (which applies syntax highlighting)
-/// and then post-processes to remove fence markers that tui-markdown adds by design.
+/// This reads the globally configured theme (set via `init_theme()` at startup)
+/// and creates a highlighter using that theme.
+fn get_highlighter() -> SyntaxHighlighter {
+    let theme = crate::view_state::highlighter::get_configured_theme();
+    SyntaxHighlighter::new(theme)
+}
+
+/// Markdown chunk - either regular text or a code block.
+#[derive(Debug)]
+enum MarkdownChunk<'a> {
+    /// Regular markdown text (not inside a code block)
+    Text(&'a str),
+    /// Fenced code block with optional language specifier
+    CodeBlock { language: Option<&'a str>, code: &'a str },
+}
+
+/// Parse markdown into chunks of text and code blocks.
 ///
-/// # Fence Marker Handling
+/// Handles fenced code blocks (``` or ~~~) and extracts the language specifier.
+fn parse_markdown_chunks(markdown: &str) -> Vec<MarkdownChunk<'_>> {
+    let mut chunks = Vec::new();
+    let mut current_pos = 0;
+    let mut in_code_block = false;
+    let mut code_start = 0;
+    let mut code_lang: Option<&str> = None;
+    let mut fence_char = '`';
+
+    for (line_start, line) in markdown.match_indices('\n').map(|(i, _)| i).chain(std::iter::once(markdown.len())).scan(0, |start, end| {
+        let line_start = *start;
+        *start = end + 1;
+        Some((line_start, &markdown[line_start..end]))
+    }) {
+        let trimmed = line.trim_start();
+
+        if !in_code_block {
+            // Check for opening fence
+            if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+                fence_char = trimmed.chars().next().unwrap();
+                // Capture any text before this code block
+                if line_start > current_pos {
+                    chunks.push(MarkdownChunk::Text(&markdown[current_pos..line_start]));
+                }
+                // Extract language (everything after the fence on this line)
+                let after_fence = trimmed.trim_start_matches(fence_char);
+                code_lang = if after_fence.is_empty() {
+                    None
+                } else {
+                    Some(after_fence.split_whitespace().next().unwrap_or(""))
+                };
+                in_code_block = true;
+                code_start = line_start + line.len() + 1; // Start after this line
+            }
+        } else {
+            // Check for closing fence (must match opening fence char)
+            if trimmed.starts_with(fence_char) && trimmed.chars().take_while(|&c| c == fence_char).count() >= 3 {
+                // End of code block
+                let code_end = line_start;
+                let code = if code_start < code_end {
+                    &markdown[code_start..code_end]
+                } else {
+                    ""
+                };
+                chunks.push(MarkdownChunk::CodeBlock {
+                    language: code_lang,
+                    code,
+                });
+                in_code_block = false;
+                current_pos = line_start + line.len() + 1; // Continue after closing fence
+            }
+        }
+    }
+
+    // Handle remaining text after last code block (or if no code blocks)
+    if current_pos < markdown.len() {
+        let remaining = &markdown[current_pos..];
+        if !remaining.trim().is_empty() {
+            if in_code_block {
+                // Unclosed code block - treat as code
+                chunks.push(MarkdownChunk::CodeBlock {
+                    language: code_lang,
+                    code: &markdown[code_start..],
+                });
+            } else {
+                chunks.push(MarkdownChunk::Text(remaining));
+            }
+        }
+    }
+
+    chunks
+}
+
+/// Render markdown text with role-based styling and custom code highlighting.
 ///
-/// tui-markdown intentionally adds fence marker lines (```lang) to code blocks.
-/// We filter these out because they're redundant in a TUI - syntax highlighting
-/// already indicates code blocks visually.
+/// This function:
+/// 1. Parses markdown to find fenced code blocks
+/// 2. Renders code blocks with the configured syntax highlighter theme
+/// 3. Renders other markdown with tui-markdown
 ///
 /// # Arguments
 /// * `markdown_text` - The markdown content to render
@@ -329,41 +419,45 @@ pub fn compute_entry_lines(
 /// # Returns
 /// Vector of ratatui `Line` objects representing the rendered markdown
 fn render_markdown_with_style(markdown_text: &str, base_style: Style) -> Vec<Line<'static>> {
-    let text = from_str(markdown_text);
+    let chunks = parse_markdown_chunks(markdown_text);
+    let mut lines = Vec::new();
 
-    text.lines
-        .into_iter()
-        .filter_map(|line| {
-            // Filter out fence marker lines that tui-markdown adds
-            // Fence markers start with ``` and contain only that marker (possibly with language)
-            let line_text: String = line
-                .spans
-                .iter()
-                .map(|span| span.content.as_ref())
-                .collect();
-            let trimmed = line_text.trim();
+    for chunk in chunks {
+        match chunk {
+            MarkdownChunk::Text(text) => {
+                // Render non-code markdown with tui-markdown
+                let rendered = from_str(text);
+                for line in rendered.lines {
+                    // Filter out fence markers that might remain
+                    let line_text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+                    if line_text.trim().starts_with("```") || line_text.trim().starts_with("~~~") {
+                        continue;
+                    }
 
-            // Skip lines that are fence markers: ``` or ```lang
-            if trimmed.starts_with("```") {
-                None
-            } else {
-                // Apply base_style to non-fence-marker lines
-                let owned_spans: Vec<_> = line
-                    .spans
-                    .into_iter()
-                    .map(|span| {
-                        // Apply base_style as default, then overlay markdown styling
-                        let combined_style = base_style.patch(span.style);
-                        ratatui::text::Span {
-                            content: span.content.into_owned().into(),
-                            style: combined_style,
-                        }
-                    })
-                    .collect();
-                Some(Line::from(owned_spans))
+                    let owned_spans: Vec<_> = line
+                        .spans
+                        .into_iter()
+                        .map(|span| {
+                            let combined_style = base_style.patch(span.style);
+                            Span {
+                                content: span.content.into_owned().into(),
+                                style: combined_style,
+                            }
+                        })
+                        .collect();
+                    lines.push(Line::from(owned_spans));
+                }
             }
-        })
-        .collect()
+            MarkdownChunk::CodeBlock { language, code } => {
+                // Render code with our custom highlighter using configured theme
+                let highlighter = get_highlighter();
+                let highlighted = highlighter.highlight_code(code, language);
+                lines.extend(highlighted);
+            }
+        }
+    }
+
+    lines
 }
 
 /// Wrap lines to match height calculation behavior.

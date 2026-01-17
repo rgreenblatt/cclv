@@ -1,5 +1,6 @@
 ---
 source: src/tests/acceptance_scroll.rs
+assertion_line: 271
 expression: paged_up_output
 ---
 ┌Conversations─────────────────────────────────────────────────────────────────┐
@@ -12,14 +13,14 @@ expression: paged_up_output
 ││  8 Base directory for this skill: /home/claude/.claude/skills/efficient-suba│
 ││    gent-orchestration                                                       │
 ││                                                                             │
-││    (+180 more lines)                                                        │
+││    (+162 more lines)                                                        │
 │                                                                              │
 ││  9 Launching skill: beads-project-tracking                                  │
 │                                                                              │
 ││ 10 Base directory for this skill: /home/claude/.claude/skills/beads-project-│
 ││    tracking                                                                 │
 ││                                                                             │
-││    (+218 more lines)                                                        │
+││    (+204 more lines)                                                        │
 │                                                                              │
 ││ 11 Now let me follow the coordinator protocol:                              │
 ││                                                                             │
