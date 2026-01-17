@@ -8,9 +8,9 @@ expression: output
 ┌Main [Opus] (3 entries)───────────────────────────────────────────────────────────────────────────┐
 │                                                                                                  │
 ││  2 Beta session - Main agent response 1                                                         │
-│── ↓5.0k/5.0k ↑500/500 / $0.11 | Context: 5.5k (2%) ──                                            │
+│── ↓5.0k/5.0k ↑500/500 / $0.04 | Context: 5.5k (2%) ──                                            │
 ││  3 Beta session - Main agent response 2                                                         │
-│── ↓6.0k/6.0k ↑600/600 / $0.14 | Context: 6.6k (3%) ──                                            │
+│── ↓6.0k/6.0k ↑600/600 / $0.04 | Context: 6.6k (3%) ──                                            │
 │                                                                                                  │
 │                                                                                                  │
 │                                                                                                  │
@@ -28,7 +28,7 @@ expression: output
 │  Total:  12,100                                                                                  │
 │                                                                                                  │
 │Estimated Cost:                                                                                   │
-│  $0.25                                                                                           │
+│  $0.08                                                                                           │
 │                                                                                                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 [LIVE] │ Session 2/2 │ Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

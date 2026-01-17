@@ -13,7 +13,7 @@ expression: output
 ││     exceeds the typical width of most terminal displays.│
 ││                                                         │
 ││    Another short line.                                  │
-│── ↓100/100 ↑50/100 / $0.01 | Context: 150 (0%) ──        │
+│── ↓100/100 ↑50/100 / $0.00 | Context: 150 (0%) ──        │
 │                                                          │
 │                                                          │
 │                                                          │

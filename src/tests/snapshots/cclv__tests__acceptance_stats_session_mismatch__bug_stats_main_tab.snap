@@ -8,9 +8,9 @@ expression: main_tab_output
 ┌Main [Opus] (3 entries)───────────────────────────────────────────────────────────────────────────┐
 │                                                                                                  │
 ││  2 Main agent response 1                                                                        │
-│── ↓1.0k/1.0k ↑100/100 / $0.02 | Context: 1.1k (0%) ──                                            │
+│── ↓1.0k/1.0k ↑100/100 / $0.01 | Context: 1.1k (0%) ──                                            │
 ││  3 Main agent response 2                                                                        │
-│── ↓2.0k/2.0k ↑200/200 / $0.04 | Context: 2.2k (1%) ──                                            │
+│── ↓2.0k/2.0k ↑200/200 / $0.01 | Context: 2.2k (1%) ──                                            │
 │                                                                                                  │
 │                                                                                                  │
 │                                                                                                  │
@@ -28,7 +28,7 @@ expression: main_tab_output
 │  Total:  3,300                                                                                   │
 │                                                                                                  │
 │Estimated Cost:                                                                                   │
-│  $0.07                                                                                           │
+│  $0.02                                                                                           │
 │                                                                                                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

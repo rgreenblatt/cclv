@@ -8,9 +8,9 @@ expression: output_after_switch
 ┌Main [Opus] (3 entries)───────────────────────────────────────────────────────────────────────────┐
 │                                                                                                  │
 ││  2 Alpha session - Main agent response 1                                                        │
-│── ↓1.0k/1.0k ↑100/100 / $0.02 | Context: 1.1k (0%) ──                                            │
+│── ↓1.0k/1.0k ↑100/100 / $0.01 | Context: 1.1k (0%) ──                                            │
 ││  3 Alpha session - Main agent response 2                                                        │
-│── ↓1.5k/1.5k ↑150/150 / $0.03 | Context: 1.6k (0%) ──                                            │
+│── ↓1.5k/1.5k ↑150/150 / $0.01 | Context: 1.6k (0%) ──                                            │
 │                                                                                                  │
 │                                                                                                  │
 │                                                                                                  │
@@ -28,7 +28,7 @@ expression: output_after_switch
 │  Total:  2,750                                                                                   │
 │                                                                                                  │
 │Estimated Cost:                                                                                   │
-│  $0.06                                                                                           │
+│  $0.02                                                                                           │
 │                                                                                                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 [LIVE] │ Session 1/2 │ Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

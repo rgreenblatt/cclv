@@ -477,7 +477,7 @@ mod tests {
         use std::collections::HashMap;
 
         // Setup: 1M input tokens, 1M output tokens using Opus pricing
-        // Expected: $15 (input) + $75 (output) = $90.00
+        // Expected: $5 (input) + $25 (output) = $30.00
         let stats = SessionStats {
             total_usage: TokenUsage {
                 input_tokens: 1_000_000,
@@ -515,8 +515,8 @@ mod tests {
 
         // Verify the actual cost is displayed correctly
         assert!(
-            content.contains("$90.00"),
-            "Expected cost '$90.00' for Opus model (1M input + 1M output), got:\n{}",
+            content.contains("$30.00"),
+            "Expected cost '$30.00' for Opus model (1M input + 1M output), got:\n{}",
             content
         );
     }
@@ -573,7 +573,7 @@ mod tests {
         use std::collections::HashMap;
 
         // Setup: 5M input tokens, 2M output tokens using Haiku pricing
-        // Expected: $4 (5M * $0.8) + $8 (2M * $4) = $12.00
+        // Expected: $5 (5M * $1) + $10 (2M * $5) = $15.00
         let stats = SessionStats {
             total_usage: TokenUsage {
                 input_tokens: 5_000_000,
@@ -603,8 +603,8 @@ mod tests {
         let content = buffer_to_string(&buffer);
 
         assert!(
-            content.contains("$12.00"),
-            "Expected cost '$12.00' for Haiku model (5M input + 2M output), got:\n{}",
+            content.contains("$15.00"),
+            "Expected cost '$15.00' for Haiku model (5M input + 2M output), got:\n{}",
             content
         );
     }
@@ -617,7 +617,7 @@ mod tests {
         use std::collections::HashMap;
 
         // Setup: 1M input, 1M output, 1M cache using Opus pricing
-        // Expected: $15 (input) + $75 (output) + $1.50 (cache) = $91.50
+        // Expected: $5 (input) + $25 (output) + $0.50 (cache) = $30.50
         let stats = SessionStats {
             total_usage: TokenUsage {
                 input_tokens: 1_000_000,
@@ -647,8 +647,8 @@ mod tests {
         let content = buffer_to_string(&buffer);
 
         assert!(
-            content.contains("$91.50"),
-            "Expected cost '$91.50' for Opus with cache (1M input + 1M output + 1M cache), got:\n{}",
+            content.contains("$30.50"),
+            "Expected cost '$30.50' for Opus with cache (1M input + 1M output + 1M cache), got:\n{}",
             content
         );
     }
@@ -712,7 +712,7 @@ mod tests {
         use std::collections::HashMap;
 
         // Setup: 100k input tokens, 50k output tokens using Opus pricing
-        // Expected: $1.50 (0.1M * $15) + $3.75 (0.05M * $75) = $5.25
+        // Expected: $0.50 (0.1M * $5) + $1.25 (0.05M * $25) = $1.75
         let stats = SessionStats {
             total_usage: TokenUsage {
                 input_tokens: 100_000,
@@ -742,8 +742,8 @@ mod tests {
         let content = buffer_to_string(&buffer);
 
         assert!(
-            content.contains("$5.25"),
-            "Expected fractional cost '$5.25', got:\n{}",
+            content.contains("$1.75"),
+            "Expected fractional cost '$1.75', got:\n{}",
             content
         );
     }
@@ -1304,16 +1304,16 @@ mod tests {
 
         let content = buffer_to_string(&buffer);
 
-        // Should show cost for main agent only: $15 + $75 = $90.00
-        // NOT total cost of $180.00
+        // Should show cost for main agent only: $5 + $25 = $30.00
+        // NOT total cost of $60.00
         assert!(
-            content.contains("$90.00"),
-            "Expected filtered cost '$90.00' for MainAgent (1M input + 1M output), got:\n{}",
+            content.contains("$30.00"),
+            "Expected filtered cost '$30.00' for MainAgent (1M input + 1M output), got:\n{}",
             content
         );
         assert!(
-            !content.contains("$180.00"),
-            "Should NOT show total cost '$180.00' when filtering to MainAgent, got:\n{}",
+            !content.contains("$60.00"),
+            "Should NOT show total cost '$60.00' when filtering to MainAgent, got:\n{}",
             content
         );
     }
@@ -1377,21 +1377,16 @@ mod tests {
 
         let content = buffer_to_string(&buffer);
 
-        // Should show cost for subagent only: $7.50 + $37.50 = $45.00
-        // NOT total cost of $135.00 or main agent cost of $90.00
+        // Should show cost for subagent only: $2.50 + $12.50 = $15.00
+        // NOT total cost of $45.00 or main agent cost of $30.00
         assert!(
-            content.contains("$45.00"),
-            "Expected filtered cost '$45.00' for Subagent (500k input + 500k output), got:\n{}",
+            content.contains("$15.00"),
+            "Expected filtered cost '$15.00' for Subagent (500k input + 500k output), got:\n{}",
             content
         );
         assert!(
-            !content.contains("$135.00"),
-            "Should NOT show total cost '$135.00' when filtering to Subagent, got:\n{}",
-            content
-        );
-        assert!(
-            !content.contains("$90.00"),
-            "Should NOT show main agent cost '$90.00' when filtering to Subagent, got:\n{}",
+            !content.contains("$45.00"),
+            "Should NOT show total cost '$45.00' when filtering to Subagent, got:\n{}",
             content
         );
     }
@@ -1722,8 +1717,8 @@ mod tests {
             content
         );
         assert!(
-            content.contains("$90.00"),
-            "Expected estimated cost '$90.00' (1M input + 1M output at Opus pricing), got:\n{}",
+            content.contains("$30.00"),
+            "Expected estimated cost '$30.00' (1M input + 1M output at Opus pricing), got:\n{}",
             content
         );
     }

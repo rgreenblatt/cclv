@@ -369,16 +369,16 @@ fn multi_scope_panel_cost_calculation_differs_by_scope() {
     let buffer = terminal.backend().buffer();
     let content = buffer_to_string(buffer);
 
-    // THEN: Focused scope should show main agent cost: $15 + $75 = $90
-    // Session scope should show total cost: ($15 + $75) + ($7.50 + $37.50) = $135
+    // THEN: Focused scope should show main agent cost: $5 + $25 = $30
+    // Session scope should show total cost: ($5 + $25) + ($2.50 + $12.50) = $45
     assert!(
-        content.contains("$90.00") || content.contains("90.00"),
-        "Expected focused scope to show main agent cost ($90.00), got:\n{}",
+        content.contains("$30.00") || content.contains("30.00"),
+        "Expected focused scope to show main agent cost ($30.00), got:\n{}",
         content
     );
     assert!(
-        content.contains("$135.00") || content.contains("135.00"),
-        "Expected session scope to show total cost ($135.00), got:\n{}",
+        content.contains("$45.00") || content.contains("45.00"),
+        "Expected session scope to show total cost ($45.00), got:\n{}",
         content
     );
 }

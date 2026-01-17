@@ -1,6 +1,5 @@
 ---
 source: src/tests/acceptance_scroll.rs
-assertion_line: 100
 expression: scrolled_up_output
 ---
 ┌Conversations─────────────────────────────────────────────────────────────────┐
@@ -8,7 +7,7 @@ expression: scrolled_up_output
 └──────────────────────────────────────────────────────────────────────────────┘
 ┌Main [Opus] (20 entries)──────────────────────────────────────────────────────┐
 ││      }                                                                      │
-│── ↓37.4k/37.4k ↑1/9 / $0.06 | Context: 37.4k (18%) ──                        │
+│── ↓37.4k/37.4k ↑1/9 / $0.02 | Context: 37.4k (18%) ──                        │
 ││  7 Launching skill: efficient-subagent-orchestration                        │
 │                                                                              │
 ││  8 Base directory for this skill: /home/claude/.claude/skills/efficient-suba│

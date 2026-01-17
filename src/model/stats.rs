@@ -342,25 +342,25 @@ impl Default for PricingConfig {
     fn default() -> Self {
         let mut models = HashMap::new();
 
-        // Claude Opus 4.5 - $15/$75 per million tokens
+        // Claude Opus 4.5 - $5/$25 per million tokens (Jan 2026)
         models.insert(
             "opus".to_string(),
-            ModelPricing::new(15.0, 75.0).with_cache(1.5),
+            ModelPricing::new(5.0, 25.0).with_cache(0.5),
         );
-        // Claude Sonnet 4 - $3/$15 per million tokens
+        // Claude Sonnet 4.5 - $3/$15 per million tokens
         models.insert(
             "sonnet".to_string(),
             ModelPricing::new(3.0, 15.0).with_cache(0.3),
         );
-        // Claude Haiku 3.5 - $0.80/$4 per million tokens
+        // Claude Haiku 4.5 - $1/$5 per million tokens
         models.insert(
             "haiku".to_string(),
-            ModelPricing::new(0.8, 4.0).with_cache(0.08),
+            ModelPricing::new(1.0, 5.0).with_cache(0.1),
         );
 
         Self {
             models,
-            default_pricing: ModelPricing::new(15.0, 75.0), // Opus as fallback
+            default_pricing: ModelPricing::new(5.0, 25.0), // Opus as fallback
         }
     }
 }
@@ -405,10 +405,10 @@ impl PricingConfig {
 ///
 /// # Default Pricing (FR-046)
 ///
-/// Hardcoded defaults in `PricingConfig::default()`:
-/// - **Claude Opus 4.5**: $15 input / $75 output / $1.50 cached (per million)
-/// - **Claude Sonnet 4**: $3 input / $15 output / $0.30 cached (per million)
-/// - **Claude Haiku 3.5**: $0.80 input / $4 output / $0.08 cached (per million)
+/// Hardcoded defaults in `PricingConfig::default()` (Jan 2026 pricing):
+/// - **Claude Opus 4.5**: $5 input / $25 output / $0.50 cached (per million)
+/// - **Claude Sonnet 4.5**: $3 input / $15 output / $0.30 cached (per million)
+/// - **Claude Haiku 4.5**: $1 input / $5 output / $0.10 cached (per million)
 ///
 /// # Configuration (FR-047)
 ///
@@ -778,8 +778,8 @@ mod tests {
 
         let cost = stats.estimated_cost(&pricing, Some("opus"));
 
-        // Opus: $15 per million input tokens
-        assert_eq!(cost, 15.0);
+        // Opus 4.5: $5 per million input tokens
+        assert_eq!(cost, 5.0);
     }
 
     #[test]
@@ -800,8 +800,8 @@ mod tests {
 
         let cost = stats.estimated_cost(&pricing, Some("opus"));
 
-        // Opus: $75 per million output tokens
-        assert_eq!(cost, 75.0);
+        // Opus 4.5: $25 per million output tokens
+        assert_eq!(cost, 25.0);
     }
 
     #[test]
@@ -822,8 +822,8 @@ mod tests {
 
         let cost = stats.estimated_cost(&pricing, Some("opus"));
 
-        // Opus: $1.5 per million cached tokens, total 1M cached = $1.5
-        assert_eq!(cost, 1.5);
+        // Opus 4.5: $0.5 per million cached tokens, total 1M cached = $0.5
+        assert_eq!(cost, 0.5);
     }
 
     #[test]
@@ -844,8 +844,8 @@ mod tests {
 
         let cost = stats.estimated_cost(&pricing, Some("opus"));
 
-        // $15 (input) + $75 (output) + $1.5 (cached) = $91.5
-        assert_eq!(cost, 91.5);
+        // $5 (input) + $25 (output) + $0.5 (cached) = $30.5
+        assert_eq!(cost, 30.5);
     }
 
     #[test]
@@ -888,8 +888,8 @@ mod tests {
 
         let cost = stats.estimated_cost(&pricing, Some("haiku"));
 
-        // Haiku: $0.8 (input) + $4 (output) = $4.8
-        assert_eq!(cost, 4.8);
+        // Haiku 4.5: $1 (input) + $5 (output) = $6
+        assert_eq!(cost, 6.0);
     }
 
     #[test]
@@ -910,8 +910,8 @@ mod tests {
 
         let cost = stats.estimated_cost(&pricing, Some("unknown-model"));
 
-        // Default (Opus): $15 (input) + $75 (output) = $90
-        assert_eq!(cost, 90.0);
+        // Default (Opus 4.5): $5 (input) + $25 (output) = $30
+        assert_eq!(cost, 30.0);
     }
 
     #[test]
@@ -932,8 +932,8 @@ mod tests {
 
         let cost = stats.estimated_cost(&pricing, None);
 
-        // Default (Opus): $15 (input) + $75 (output) = $90
-        assert_eq!(cost, 90.0);
+        // Default (Opus 4.5): $5 (input) + $25 (output) = $30
+        assert_eq!(cost, 30.0);
     }
 
     // ===== PricingConfig::get Tests =====
@@ -943,9 +943,9 @@ mod tests {
         let pricing = PricingConfig::default();
         let model_pricing = pricing.get("opus");
 
-        assert_eq!(model_pricing.input_cost_per_million, 15.0);
-        assert_eq!(model_pricing.output_cost_per_million, 75.0);
-        assert_eq!(model_pricing.cached_input_cost_per_million, Some(1.5));
+        assert_eq!(model_pricing.input_cost_per_million, 5.0);
+        assert_eq!(model_pricing.output_cost_per_million, 25.0);
+        assert_eq!(model_pricing.cached_input_cost_per_million, Some(0.5));
     }
 
     #[test]
@@ -963,9 +963,9 @@ mod tests {
         let pricing = PricingConfig::default();
         let model_pricing = pricing.get("haiku");
 
-        assert_eq!(model_pricing.input_cost_per_million, 0.8);
-        assert_eq!(model_pricing.output_cost_per_million, 4.0);
-        assert_eq!(model_pricing.cached_input_cost_per_million, Some(0.08));
+        assert_eq!(model_pricing.input_cost_per_million, 1.0);
+        assert_eq!(model_pricing.output_cost_per_million, 5.0);
+        assert_eq!(model_pricing.cached_input_cost_per_million, Some(0.1));
     }
 
     #[test]
@@ -973,8 +973,8 @@ mod tests {
         let pricing = PricingConfig::default();
         let model_pricing = pricing.get("claude-opus-4-5-20251101");
 
-        assert_eq!(model_pricing.input_cost_per_million, 15.0);
-        assert_eq!(model_pricing.output_cost_per_million, 75.0);
+        assert_eq!(model_pricing.input_cost_per_million, 5.0);
+        assert_eq!(model_pricing.output_cost_per_million, 25.0);
     }
 
     #[test]
@@ -989,10 +989,10 @@ mod tests {
     #[test]
     fn pricing_config_get_family_match_haiku() {
         let pricing = PricingConfig::default();
-        let model_pricing = pricing.get("claude-haiku-3-5-20241022");
+        let model_pricing = pricing.get("claude-haiku-4-5-20251022");
 
-        assert_eq!(model_pricing.input_cost_per_million, 0.8);
-        assert_eq!(model_pricing.output_cost_per_million, 4.0);
+        assert_eq!(model_pricing.input_cost_per_million, 1.0);
+        assert_eq!(model_pricing.output_cost_per_million, 5.0);
     }
 
     #[test]
@@ -1000,8 +1000,8 @@ mod tests {
         let pricing = PricingConfig::default();
         let model_pricing = pricing.get("gpt-4");
 
-        assert_eq!(model_pricing.input_cost_per_million, 15.0);
-        assert_eq!(model_pricing.output_cost_per_million, 75.0);
+        assert_eq!(model_pricing.input_cost_per_million, 5.0);
+        assert_eq!(model_pricing.output_cost_per_million, 25.0);
     }
 
     // ===== StatsFilter Tests =====

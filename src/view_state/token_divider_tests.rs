@@ -152,7 +152,7 @@ fn render_token_divider_calculates_cost_correctly() {
     let content = MessageContent::Text("response".to_string());
     let max_context = ContextWindowTokens::new(200_000);
 
-    // Use default pricing: Opus is $15 per million input
+    // Use default pricing: Opus 4.5 is $5 per million input
     let pricing = PricingConfig::default();
 
     let line = render_token_divider(&usage, &content, max_context, &pricing, Some("opus"));
@@ -160,8 +160,8 @@ fn render_token_divider_calculates_cost_correctly() {
     // Extract text from line spans
     let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
 
-    // 1M input tokens * $15/M = $15.00
-    assert!(text.contains("$15.00"));
+    // 1M input tokens * $5/M = $5.00
+    assert!(text.contains("$5.00"));
 }
 
 #[test]
@@ -219,13 +219,13 @@ fn render_token_divider_includes_cache_tokens_in_cost() {
     let content = MessageContent::Text("".to_string());
     let max_context = ContextWindowTokens::new(200_000);
 
-    // Opus pricing: $1.50 per million cached tokens
+    // Opus 4.5 pricing: $0.50 per million cached tokens
     let pricing = PricingConfig::default();
 
     let line = render_token_divider(&usage, &content, max_context, &pricing, Some("opus"));
 
     let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
 
-    // 1M cache tokens * $1.50/M = $1.50
-    assert!(text.contains("$1.50"));
+    // 1M cache tokens * $0.50/M = $0.50
+    assert!(text.contains("$0.50"));
 }

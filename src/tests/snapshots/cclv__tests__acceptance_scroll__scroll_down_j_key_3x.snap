@@ -9,20 +9,20 @@ expression: scrolled_output
 ││                                                                             │
 ││    1. I'm a coordinator agent that CANNOT read/write code directly          │
 ││    (+10 more lines)                                                         │
-│── ↓37.4k/37.4k ↑1/118 / $0.06 | Context: 37.4k (18%) ──                      │
+│── ↓37.4k/37.4k ↑1/118 / $0.02 | Context: 37.4k (18%) ──                      │
 ││  4 I'll start by loading the required skill and then following the coordinat│
 ││    or protocol.                                                             │
-│── ↓37.4k/37.4k ↑1/1 / $0.06 | Context: 37.4k (18%) ──                        │
+│── ↓37.4k/37.4k ↑1/1 / $0.02 | Context: 37.4k (18%) ──                        │
 ││  5 🔧' Tool: Skill                                                           │
 ││      {                                                                      │
 ││        "skill": "efficient-subagent-orchestration"                          │
 ││      }                                                                      │
-│── ↓37.4k/37.4k ↑1/12 / $0.06 | Context: 37.4k (18%) ──                       │
+│── ↓37.4k/37.4k ↑1/12 / $0.02 | Context: 37.4k (18%) ──                       │
 ││  6 🔧  Tool: Skill                                                           │
 ││      {                                                                      │
 ││        "skill": "beads-project-tracking"                                    │
 ││      }                                                                      │
-│── ↓37.4k/37.4k ↑1/9 / $0.06 | Context: 37.4k (18%) ──                        │
+│── ↓37.4k/37.4k ↑1/9 / $0.02 | Context: 37.4k (18%) ──                        │
 ││  7 Launching skill: efficient-subagent-orchestration                        │
 └──────────────────────────────────────────────────────────────────────────────┘
 [LIVE] Wrap: On | q: Quit | ?: Help | /: Search | s: Stats | Tab: Cycle panes

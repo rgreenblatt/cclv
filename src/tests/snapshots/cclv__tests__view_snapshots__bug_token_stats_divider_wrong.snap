@@ -11,11 +11,11 @@ expression: output
 ││  2 This is a thinking block with some content that should be estimated as to│
 ││    kens. Let me think about this carefully.                                 │
 ││    Here is my response.                                                     │
-│── ↓600/800 ↑50/78 / $0.01 | Context: 850 (0%) ──                             │
+│── ↓600/800 ↑50/78 / $0.00 | Context: 850 (0%) ──                             │
 ││  3 Another test                                                             │
 │                                                                              │
 ││  4 Second response.                                                         │
-│── ↓150/950 ↑30/30 / $0.01 | Context: 980 (0%) ──                             │
+│── ↓150/950 ↑30/30 / $0.00 | Context: 980 (0%) ──                             │
 │                                                                              │
 │                                                                              │
 │                                                                              │
